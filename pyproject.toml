@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "void-liquidity"
+version = "0.1.0"
+description = "Market data and trading research system starting with Polymarket."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx==0.28.1",
+    "pydantic==2.13.3",
+    "pydantic-settings==2.14.0",
+    "sqlalchemy==2.0.49",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.0.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["void_liquidity*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
