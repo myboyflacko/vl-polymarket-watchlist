@@ -7,7 +7,30 @@ from typing import Any
 import pytest
 
 from void_liquidity.adapters.polymarket.params import ActivityParams
-from void_liquidity.adapters.polymarket.services import track_whales as module
+from void_liquidity.adapters.polymarket.services.track_whales import (
+    WhaleTracker,
+    WhaleTrackingProfile,
+    load_workflow_profile,
+)
+from void_liquidity.adapters.polymarket.services.track_whales.config import (
+    PROJECT_ROOT,
+    _resolve_project_path,
+)
+from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
+    _aggregate_closed_positions,
+    _build_candidate_pool,
+    _qualification_reasons,
+)
+from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
+    ActivityConfig,
+    CandidatePoolConfig,
+    ClosedPositionsConfig,
+    CurrentPositionsConfig,
+    WhaleFilterConfig,
+)
+from void_liquidity.adapters.polymarket.services.track_whales import (
+    tracker as tracker_module,
+)
 
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -30,25 +53,25 @@ class FrozenDateTime(datetime):
         return cls.frozen_now.astimezone(tz)
 
 
-def _profile(output_path: Path) -> module.WhaleTrackingProfile:
-    return module.WhaleTrackingProfile(
+def _profile(output_path: Path) -> WhaleTrackingProfile:
+    return WhaleTrackingProfile(
         target_wallet_count=10,
         wallet_batch_size=2,
         output_path=str(output_path),
-        candidate_pool=module.CandidatePoolConfig(top_n=2, leaderboard_limit=2),
-        current_positions=module.CurrentPositionsConfig(limit=10),
-        closed_positions=module.ClosedPositionsConfig(
+        candidate_pool=CandidatePoolConfig(top_n=2, leaderboard_limit=2),
+        current_positions=CurrentPositionsConfig(limit=10),
+        closed_positions=ClosedPositionsConfig(
             window_days=30,
             limit=50,
             max_positions_per_wallet=100,
         ),
-        activity=module.ActivityConfig(
+        activity=ActivityConfig(
             trade_count_window_days=30,
             min_trade_count=10,
             last_activity_max_age_days=7,
             limit=500,
         ),
-        filters=module.WhaleFilterConfig(
+        filters=WhaleFilterConfig(
             min_current_position_value=10_000,
             min_closed_trade_count=50,
             min_win_rate=0.70,
@@ -128,31 +151,48 @@ def test_track_whales_filters_and_writes_v2_output(
             },
         ]
 
-    async def fake_get_current_positions(client: Any, params: Any) -> list[dict[str, Any]]:
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
         if params.user == WALLET_ONE:
             return [{"currentValue": 15_000, "initialValue": 10_000}]
 
         return [{"currentValue": 1_000, "initialValue": 1_000}]
 
-    async def fake_get_closed_positions(client: Any, params: Any) -> list[dict[str, Any]]:
+    async def fake_get_closed_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
         if params.offset:
             return []
 
         return _closed_positions(now)
 
-    async def fake_get_activity(client: Any, params: ActivityParams) -> list[dict[str, Any]]:
+    async def fake_get_activity(
+        client: Any,
+        params: ActivityParams,
+    ) -> list[dict[str, Any]]:
         assert params.start is not None
         assert params.end is not None
         return _activity(now)
 
-    monkeypatch.setattr(module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(module, "get_current_positions", fake_get_current_positions)
-    monkeypatch.setattr(module, "get_closed_positions", fake_get_closed_positions)
-    monkeypatch.setattr(module, "get_activity", fake_get_activity)
-    monkeypatch.setattr(module, "datetime", FrozenDateTime)
+    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
+    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
+    monkeypatch.setattr(
+        tracker_module,
+        "get_current_positions",
+        fake_get_current_positions,
+    )
+    monkeypatch.setattr(
+        tracker_module,
+        "get_closed_positions",
+        fake_get_closed_positions,
+    )
+    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
+    monkeypatch.setattr(tracker_module, "datetime", FrozenDateTime)
 
-    whales = asyncio.run(module.WhaleTracker(profile=profile).run())
+    whales = asyncio.run(WhaleTracker(profile=profile).run())
 
     assert list(whales) == [WALLET_ONE]
     assert output_path.exists()
@@ -172,7 +212,7 @@ def test_track_whales_filters_and_writes_v2_output(
 
 
 def test_load_default_workflow_profile() -> None:
-    profile = module.load_workflow_profile()
+    profile = load_workflow_profile()
 
     assert profile.profile_version == "whale_tracking_v2"
     assert profile.candidate_pool.top_n == 250
@@ -181,12 +221,12 @@ def test_load_default_workflow_profile() -> None:
 
 
 def test_resolve_project_path_uses_repo_root_for_relative_paths() -> None:
-    resolved_path = module._resolve_project_path(
+    resolved_path = _resolve_project_path(
         "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json"
     )
 
     assert resolved_path == (
-        module.PROJECT_ROOT
+        PROJECT_ROOT
         / "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json"
     )
 
@@ -207,13 +247,16 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
         for _ in range(profile.activity.limit)
     ]
 
-    async def fake_get_activity(client: Any, params: ActivityParams) -> list[dict[str, Any]]:
+    async def fake_get_activity(
+        client: Any,
+        params: ActivityParams,
+    ) -> list[dict[str, Any]]:
         return page
 
-    monkeypatch.setattr(module, "get_activity", fake_get_activity)
+    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
 
     rows, is_complete = asyncio.run(
-        module.WhaleTracker(profile=profile)._fetch_all_activity(
+        WhaleTracker(profile=profile)._fetch_all_activity(
             client=FakeHTTPClient(),
             proxy_wallet=WALLET_ONE,
             start=datetime(2026, 5, 1, tzinfo=UTC),
@@ -228,7 +271,7 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
 def test_incomplete_activity_is_not_a_reject_reason(tmp_path: Path) -> None:
     profile = _profile(tmp_path / "whales.json")
 
-    reasons = module._qualification_reasons(
+    reasons = _qualification_reasons(
         profile=profile,
         exposure_metrics={
             "current_positions_complete": True,
@@ -255,8 +298,8 @@ def test_whale_tracker_instances_keep_independent_profiles(tmp_path: Path) -> No
     second_profile = _profile(tmp_path / "second.json")
     second_profile.target_wallet_count = 3
 
-    first_tracker = module.WhaleTracker(profile=first_profile)
-    second_tracker = module.WhaleTracker(profile=second_profile)
+    first_tracker = WhaleTracker(profile=first_profile)
+    second_tracker = WhaleTracker(profile=second_profile)
 
     assert first_tracker.profile.output_path == str(tmp_path / "first.json")
     assert first_tracker.profile.target_wallet_count == 10
@@ -277,7 +320,7 @@ def test_build_candidate_pool_splits_core_specialists_and_profitable_volume() ->
         losing_volume: {"proxyWallet": losing_volume, "pnl": -1},
     }
 
-    candidates = module._build_candidate_pool(
+    candidates = _build_candidate_pool(
         pnl_entries=pnl_entries,
         vol_entries=vol_entries,
     )
@@ -302,7 +345,7 @@ def test_build_candidate_pool_splits_core_specialists_and_profitable_volume() ->
 
 
 def test_closed_position_metrics_include_risk_return_ratios() -> None:
-    metrics = module._aggregate_closed_positions(
+    metrics = _aggregate_closed_positions(
         closed_positions=[
             {"realizedPnl": 30, "initialValue": 100},
             {"realizedPnl": 10, "initialValue": 100},
@@ -323,7 +366,7 @@ def test_closed_position_metrics_include_risk_return_ratios() -> None:
 
 
 def test_closed_position_metrics_mark_truncated_samples() -> None:
-    metrics = module._aggregate_closed_positions(
+    metrics = _aggregate_closed_positions(
         closed_positions=[{"realizedPnl": 1, "initialValue": 10}],
         is_complete=True,
         unknown_timestamp_count=0,
