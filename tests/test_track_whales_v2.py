@@ -217,10 +217,9 @@ def test_track_whales_filters_and_writes_v2_output(
         for line in log_path.read_text(encoding="utf-8").splitlines()
     ]
     assert log_events == [
-        "polymarket.track_whales.start",
-        "polymarket.candidate_pool.built",
-        "polymarket.wallet_batch.done",
-        "polymarket.track_whales.done",
+        "polymarket.track_whales.run_started",
+        "polymarket.track_whales.report",
+        "polymarket.track_whales.run_finished",
     ]
 
 

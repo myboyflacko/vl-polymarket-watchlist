@@ -41,10 +41,12 @@ from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
     _qualification_reasons,
     _qualification_thresholds,
 )
+from void_liquidity.adapters.polymarket.services.track_whales.run_log import (
+    WhaleTrackerRunLog,
+)
 from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.util.log import log_error, log_event
 
 
 class WhaleTracker:
@@ -54,16 +56,10 @@ class WhaleTracker:
     async def run(self) -> dict[str, dict[str, Any]]:
         client = HTTPClient()
         now = datetime.now(UTC)
-        started_at = datetime.now(UTC)
+        run_log = WhaleTrackerRunLog(profile=self.profile)
 
         try:
-            log_event(
-                "info",
-                "polymarket.track_whales.start",
-                profile_version=self.profile.profile_version,
-                target_wallet_count=self.profile.target_wallet_count,
-                wallet_batch_size=self.profile.wallet_batch_size,
-            )
+            run_log.start()
             pnl_entries, vol_entries, candidates, candidate_pool_summary = (
                 await self._fetch_candidate_entries(client=client)
             )
@@ -83,23 +79,17 @@ class WhaleTracker:
                 candidate_wallet_count=len(candidates),
                 candidate_pool_summary=candidate_pool_summary,
             )
-            log_event(
-                "info",
-                "polymarket.track_whales.done",
+            run_log.report(
                 candidate_wallet_count=len(candidates),
                 checked_wallet_count=checked_wallet_count,
-                wallet_count=len(whales),
-                reject_summary=dict(sorted(reject_summary.items())),
-                duration_seconds=(datetime.now(UTC) - started_at).total_seconds(),
+                whales=whales,
+                reject_summary=reject_summary,
+                candidate_pool_summary=candidate_pool_summary,
             )
+            run_log.finish()
             return whales
         except Exception as exc:
-            log_error(
-                "polymarket.track_whales.failed",
-                exc,
-                profile_version=self.profile.profile_version,
-                duration_seconds=(datetime.now(UTC) - started_at).total_seconds(),
-            )
+            run_log.fail(exc)
             raise
 
         finally:
@@ -128,14 +118,6 @@ class WhaleTracker:
         )
         candidate_pool_summary = Counter(
             candidate["source"] for candidate in candidates
-        )
-        log_event(
-            "info",
-            "polymarket.candidate_pool.built",
-            pnl_wallets=len(pnl_entries),
-            vol_wallets=len(vol_entries),
-            candidates=len(candidates),
-            candidate_pool_summary=dict(sorted(candidate_pool_summary.items())),
         )
         return pnl_entries, vol_entries, candidates, candidate_pool_summary
 
@@ -231,16 +213,6 @@ class WhaleTracker:
 
                 if len(whales) >= self.profile.target_wallet_count:
                     break
-
-            log_event(
-                "info",
-                "polymarket.wallet_batch.done",
-                batch_start=batch_start,
-                batch_size=len(batch),
-                checked_wallet_count=checked_wallet_count,
-                qualified_wallet_count=len(whales),
-                reject_summary=dict(sorted(reject_summary.items())),
-            )
 
         return whales, reject_summary, checked_wallet_count
 
