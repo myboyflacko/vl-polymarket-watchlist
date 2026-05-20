@@ -31,6 +31,7 @@ from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
 from void_liquidity.adapters.polymarket.services.track_whales import (
     tracker as tracker_module,
 )
+from void_liquidity.util.log import DEFAULT_LOG_FILE_NAME
 
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -209,6 +210,7 @@ def test_track_whales_filters_and_writes_v2_output(
     assert "closed_positions" in payload["whales"][WALLET_ONE]["metrics"]
     assert "activity" in payload["whales"][WALLET_ONE]["metrics"]
     assert payload["whales"][WALLET_ONE]["metrics"]["qualification"]["passed"] is True
+    assert not (tmp_path / "logs" / DEFAULT_LOG_FILE_NAME).exists()
 
 
 def test_load_default_workflow_profile() -> None:

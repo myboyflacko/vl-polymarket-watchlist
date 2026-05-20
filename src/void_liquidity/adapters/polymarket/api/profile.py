@@ -47,13 +47,6 @@ async def get_closed_positions(
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)
 
-                log_event(
-                    "info",
-                    "polymarket.rate_limit.attempt",
-                    endpoint=endpoint,
-                    attempt=attempt,
-                    max_attempts=max_attempts,
-                )
                 return await client.get(
                     base_url=base_url,
                     endpoint=endpoint,
@@ -120,13 +113,6 @@ async def get_current_positions(
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)
 
-                log_event(
-                    "info",
-                    "polymarket.rate_limit.attempt",
-                    endpoint=endpoint,
-                    attempt=attempt,
-                    max_attempts=max_attempts,
-                )
                 return await client.get(
                     base_url=base_url,
                     endpoint=endpoint,
@@ -193,13 +179,6 @@ async def get_activity(
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)
 
-                log_event(
-                    "info",
-                    "polymarket.rate_limit.attempt",
-                    endpoint=endpoint,
-                    attempt=attempt,
-                    max_attempts=max_attempts,
-                )
                 return await client.get(
                     base_url=base_url,
                     endpoint=endpoint,

@@ -44,7 +44,6 @@ from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
 from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.util.log import log_event
 
 
 class WhaleTracker:
@@ -56,12 +55,6 @@ class WhaleTracker:
         now = datetime.now(UTC)
 
         try:
-            log_event(
-                "info",
-                "polymarket.track_whales.start",
-                profile_version=self.profile.profile_version,
-                target=self.profile.target_wallet_count,
-            )
             pnl_entries, vol_entries, candidates, candidate_pool_summary = (
                 await self._fetch_candidate_entries(client=client)
             )
@@ -80,12 +73,6 @@ class WhaleTracker:
                 checked_wallet_count=checked_wallet_count,
                 candidate_wallet_count=len(candidates),
                 candidate_pool_summary=candidate_pool_summary,
-            )
-            log_event(
-                "info",
-                "polymarket.track_whales.done",
-                wallets=len(whales),
-                checked=checked_wallet_count,
             )
             return whales
 
@@ -116,13 +103,6 @@ class WhaleTracker:
         candidate_pool_summary = Counter(
             candidate["source"] for candidate in candidates
         )
-        log_event(
-            "info",
-            "polymarket.candidate_pool.built",
-            pnl_wallets=len(pnl_entries),
-            vol_wallets=len(vol_entries),
-            candidates=len(candidates),
-        )
         return pnl_entries, vol_entries, candidates, candidate_pool_summary
 
     async def _fetch_leaderboard_top(
@@ -143,23 +123,9 @@ class WhaleTracker:
                 order_by=order_by,
                 offset=offset,
             )
-            log_event(
-                "info",
-                "polymarket.leaderboard.fetch",
-                order_by=order_by,
-                offset=params.offset,
-                limit=params.limit,
-            )
             page = await get_leaderboard(client=client, params=params)
 
             if not isinstance(page, list) or not page:
-                log_event(
-                    "info",
-                    "polymarket.leaderboard.empty",
-                    order_by=order_by,
-                    offset=params.offset,
-                    stop="empty_or_invalid",
-                )
                 break
 
             for entry in page:
@@ -182,12 +148,6 @@ class WhaleTracker:
 
             offset += params.limit
 
-        log_event(
-            "info",
-            "polymarket.leaderboard.done",
-            order_by=order_by,
-            wallets=len(entries_by_wallet),
-        )
         return entries_by_wallet
 
     async def _process_candidate_batches(
@@ -211,13 +171,6 @@ class WhaleTracker:
                 break
 
             batch = candidates[batch_start:batch_start + self.profile.wallet_batch_size]
-            log_event(
-                "info",
-                "polymarket.wallet_batch.start",
-                start=batch_start,
-                size=len(batch),
-                qualified_wallets=len(whales),
-            )
             results = await asyncio.gather(
                 *[
                     self._validate_candidate(
@@ -238,21 +191,9 @@ class WhaleTracker:
 
                 if not whale:
                     reject_summary.update(reasons)
-                    log_event(
-                        "info",
-                        "polymarket.wallet.rejected",
-                        wallet=proxy_wallet,
-                        reasons=reasons,
-                    )
                     continue
 
                 whales[proxy_wallet] = whale
-                log_event(
-                    "info",
-                    "polymarket.wallet.qualified",
-                    wallet=proxy_wallet,
-                    qualified_wallets=len(whales),
-                )
 
                 if len(whales) >= self.profile.target_wallet_count:
                     break
@@ -383,13 +324,6 @@ class WhaleTracker:
                 proxy_wallet=proxy_wallet,
                 offset=offset,
             )
-            log_event(
-                "info",
-                "polymarket.current_positions.fetch",
-                wallet=proxy_wallet,
-                offset=params.offset,
-                limit=params.limit,
-            )
 
             try:
                 page = await get_current_positions(client=client, params=params)
@@ -428,13 +362,6 @@ class WhaleTracker:
                 profile=self.profile,
                 proxy_wallet=proxy_wallet,
                 offset=offset,
-            )
-            log_event(
-                "info",
-                "polymarket.closed_positions.fetch",
-                wallet=proxy_wallet,
-                offset=params.offset,
-                limit=params.limit,
             )
 
             try:
@@ -502,13 +429,6 @@ class WhaleTracker:
                 start=start,
                 end=end,
             )
-            log_event(
-                "info",
-                "polymarket.activity.fetch",
-                wallet=proxy_wallet,
-                offset=params.offset,
-                limit=params.limit,
-            )
 
             try:
                 page = await get_activity(client=client, params=params)
@@ -550,12 +470,4 @@ class WhaleTracker:
 
         with output_path.open("w", encoding="utf-8") as output_file:
             json.dump(payload, output_file, ensure_ascii=False, indent=2)
-
-        log_event(
-            "info",
-            "polymarket.whales_json.written",
-            path=str(output_path),
-            rows=len(whales),
-        )
-
 
