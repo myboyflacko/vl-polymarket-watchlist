@@ -152,7 +152,7 @@ def test_track_whales_filters_and_writes_v2_output(
     monkeypatch.setattr(module, "get_activity", fake_get_activity)
     monkeypatch.setattr(module, "datetime", FrozenDateTime)
 
-    whales = asyncio.run(module.track_whales(profile=profile))
+    whales = asyncio.run(module.WhaleTracker(profile=profile).run())
 
     assert list(whales) == [WALLET_ONE]
     assert output_path.exists()
@@ -213,9 +213,8 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
     monkeypatch.setattr(module, "get_activity", fake_get_activity)
 
     rows, is_complete = asyncio.run(
-        module._fetch_all_activity(
+        module.WhaleTracker(profile=profile)._fetch_all_activity(
             client=FakeHTTPClient(),
-            profile=profile,
             proxy_wallet=WALLET_ONE,
             start=datetime(2026, 5, 1, tzinfo=UTC),
             end=datetime(2026, 5, 20, tzinfo=UTC),
@@ -249,6 +248,20 @@ def test_incomplete_activity_is_not_a_reject_reason(tmp_path: Path) -> None:
     )
 
     assert reasons == []
+
+
+def test_whale_tracker_instances_keep_independent_profiles(tmp_path: Path) -> None:
+    first_profile = _profile(tmp_path / "first.json")
+    second_profile = _profile(tmp_path / "second.json")
+    second_profile.target_wallet_count = 3
+
+    first_tracker = module.WhaleTracker(profile=first_profile)
+    second_tracker = module.WhaleTracker(profile=second_profile)
+
+    assert first_tracker.profile.output_path == str(tmp_path / "first.json")
+    assert first_tracker.profile.target_wallet_count == 10
+    assert second_tracker.profile.output_path == str(tmp_path / "second.json")
+    assert second_tracker.profile.target_wallet_count == 3
 
 
 def test_build_candidate_pool_splits_core_specialists_and_profitable_volume() -> None:

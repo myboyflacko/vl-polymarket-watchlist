@@ -233,224 +233,6 @@ def _build_activity_params(
     )
 
 
-async def _fetch_leaderboard_top(
-    client: HTTPClient,
-    profile: WhaleTrackingProfile,
-    order_by: Literal["PNL", "VOL"],
-) -> dict[str, dict[str, Any]]:
-    entries_by_wallet: dict[str, dict[str, Any]] = {}
-    offset = 0
-    max_offset = _field_le(LeaderboardParams, "offset", default=1000)
-
-    while len(entries_by_wallet) < profile.candidate_pool.top_n and offset <= max_offset:
-        params = _build_leaderboard_params(
-            profile=profile,
-            order_by=order_by,
-            offset=offset,
-        )
-        log_event(
-            "info",
-            "polymarket.leaderboard.fetch",
-            order_by=order_by,
-            offset=params.offset,
-            limit=params.limit,
-        )
-        page = await get_leaderboard(client=client, params=params)
-
-        if not isinstance(page, list) or not page:
-            log_event(
-                "info",
-                "polymarket.leaderboard.empty",
-                order_by=order_by,
-                offset=params.offset,
-                stop="empty_or_invalid",
-            )
-            break
-
-        for entry in page:
-            if not isinstance(entry, dict):
-                continue
-
-            proxy_wallet = entry.get("proxyWallet")
-
-            if isinstance(proxy_wallet, str) and proxy_wallet not in entries_by_wallet:
-                entries_by_wallet[proxy_wallet] = entry
-
-            if len(entries_by_wallet) >= profile.candidate_pool.top_n:
-                break
-
-        if len(page) < params.limit:
-            break
-
-        offset += params.limit
-
-    log_event(
-        "info",
-        "polymarket.leaderboard.done",
-        order_by=order_by,
-        wallets=len(entries_by_wallet),
-    )
-    return entries_by_wallet
-
-
-async def _fetch_all_current_positions(
-    client: HTTPClient,
-    profile: WhaleTrackingProfile,
-    proxy_wallet: str,
-) -> tuple[list[dict[str, Any]], bool]:
-    current_positions: list[dict[str, Any]] = []
-    offset = 0
-    max_offset = _field_le(CurrentPositionsParams, "offset", default=10000)
-
-    while offset <= max_offset:
-        params = _build_current_positions_params(
-            profile=profile,
-            proxy_wallet=proxy_wallet,
-            offset=offset,
-        )
-        log_event(
-            "info",
-            "polymarket.current_positions.fetch",
-            wallet=proxy_wallet,
-            offset=params.offset,
-            limit=params.limit,
-        )
-
-        try:
-            page = await get_current_positions(client=client, params=params)
-        except PolymarketRateLimitError:
-            return current_positions, False
-
-        if not isinstance(page, list) or not page:
-            return current_positions, True
-
-        current_positions.extend(row for row in page if isinstance(row, dict))
-
-        if len(page) < params.limit:
-            return current_positions, True
-
-        offset += params.limit
-
-    return current_positions, True
-
-
-async def _fetch_all_closed_positions(
-    client: HTTPClient,
-    profile: WhaleTrackingProfile,
-    proxy_wallet: str,
-    cutoff: datetime,
-) -> tuple[list[dict[str, Any]], bool, int, bool]:
-    closed_positions: list[dict[str, Any]] = []
-    unknown_timestamp_count = 0
-    offset = 0
-    max_offset = _field_le(ClosedPositionsParams, "offset", default=100000)
-
-    while (
-        offset <= max_offset
-        and len(closed_positions) < profile.closed_positions.max_positions_per_wallet
-    ):
-        params = _build_closed_positions_params(
-            profile=profile,
-            proxy_wallet=proxy_wallet,
-            offset=offset,
-        )
-        log_event(
-            "info",
-            "polymarket.closed_positions.fetch",
-            wallet=proxy_wallet,
-            offset=params.offset,
-            limit=params.limit,
-        )
-
-        try:
-            page = await get_closed_positions(client=client, params=params)
-        except PolymarketRateLimitError:
-            return closed_positions, False, unknown_timestamp_count, False
-
-        if not isinstance(page, list) or not page:
-            return closed_positions, True, unknown_timestamp_count, False
-
-        reached_cutoff = False
-
-        for position in page:
-            if not isinstance(position, dict):
-                continue
-
-            position_timestamp = _parse_row_timestamp(position)
-
-            if position_timestamp is None:
-                unknown_timestamp_count += 1
-                continue
-
-            if position_timestamp < cutoff:
-                reached_cutoff = True
-                continue
-
-            closed_positions.append(position)
-
-        closed_positions = closed_positions[
-            :profile.closed_positions.max_positions_per_wallet
-        ]
-
-        if reached_cutoff:
-            return closed_positions, True, unknown_timestamp_count, False
-
-        if len(page) < params.limit:
-            return closed_positions, True, unknown_timestamp_count, False
-
-        if len(closed_positions) >= profile.closed_positions.max_positions_per_wallet:
-            return closed_positions, True, unknown_timestamp_count, True
-
-        offset += params.limit
-
-    return closed_positions, True, unknown_timestamp_count, False
-
-
-async def _fetch_all_activity(
-    client: HTTPClient,
-    profile: WhaleTrackingProfile,
-    proxy_wallet: str,
-    start: datetime,
-    end: datetime,
-) -> tuple[list[dict[str, Any]], bool]:
-    activity_rows: list[dict[str, Any]] = []
-    offset = 0
-    max_offset = _field_le(ActivityParams, "offset", default=3000)
-
-    while offset <= max_offset:
-        params = _build_activity_params(
-            profile=profile,
-            proxy_wallet=proxy_wallet,
-            offset=offset,
-            start=start,
-            end=end,
-        )
-        log_event(
-            "info",
-            "polymarket.activity.fetch",
-            wallet=proxy_wallet,
-            offset=params.offset,
-            limit=params.limit,
-        )
-
-        try:
-            page = await get_activity(client=client, params=params)
-        except PolymarketRateLimitError:
-            return activity_rows, False
-
-        if not isinstance(page, list) or not page:
-            return activity_rows, True
-
-        activity_rows.extend(row for row in page if isinstance(row, dict))
-
-        if len(page) < params.limit:
-            return activity_rows, True
-
-        offset += params.limit
-
-    return activity_rows, False
-
-
 def _aggregate_current_positions(
     current_positions: list[dict[str, Any]],
     is_complete: bool,
@@ -755,116 +537,6 @@ def _qualification_reasons(
     return reasons
 
 
-async def _validate_candidate(
-    client: HTTPClient,
-    profile: WhaleTrackingProfile,
-    candidate: dict[str, Any],
-    pnl_entry: dict[str, Any] | None,
-    vol_entry: dict[str, Any] | None,
-    now: datetime,
-) -> tuple[dict[str, Any] | None, list[str]]:
-    proxy_wallet = candidate["proxy_wallet"]
-    closed_cutoff = now - timedelta(days=profile.closed_positions.window_days)
-    activity_window_start = now - timedelta(
-        days=profile.activity.trade_count_window_days,
-    )
-    last_activity_cutoff = now - timedelta(
-        days=profile.activity.last_activity_max_age_days,
-    )
-    activity_fetch_start = min(
-        activity_window_start,
-        last_activity_cutoff,
-        now - timedelta(days=7),
-    )
-
-    current_positions, current_complete = await _fetch_all_current_positions(
-        client=client,
-        profile=profile,
-        proxy_wallet=proxy_wallet,
-    )
-    exposure_metrics = _aggregate_current_positions(
-        current_positions=current_positions,
-        is_complete=current_complete,
-    )
-
-    closed_positions, closed_complete, unknown_closed_timestamps, closed_truncated = (
-        await _fetch_all_closed_positions(
-            client=client,
-            profile=profile,
-            proxy_wallet=proxy_wallet,
-            cutoff=closed_cutoff,
-        )
-    )
-    closed_metrics = _aggregate_closed_positions(
-        closed_positions=closed_positions,
-        is_complete=closed_complete,
-        unknown_timestamp_count=unknown_closed_timestamps,
-        is_truncated=closed_truncated,
-    )
-
-    activity_rows, activity_complete = await _fetch_all_activity(
-        client=client,
-        profile=profile,
-        proxy_wallet=proxy_wallet,
-        start=activity_fetch_start,
-        end=now,
-    )
-    activity_metrics = _aggregate_activity(
-        activity_rows=activity_rows,
-        is_complete=activity_complete,
-        window_start=activity_window_start,
-        last_activity_cutoff=last_activity_cutoff,
-        now=now,
-    )
-
-    reasons = _qualification_reasons(
-        profile=profile,
-        exposure_metrics=exposure_metrics,
-        closed_metrics=closed_metrics,
-        activity_metrics=activity_metrics,
-    )
-
-    if reasons:
-        return None, reasons
-
-    identity_entry = pnl_entry or vol_entry or {}
-    whale = {
-        "metadata": {
-            "proxy_wallet": proxy_wallet,
-            "user_name": identity_entry.get("userName"),
-            "x_username": identity_entry.get("xUsername"),
-            "profile_image": identity_entry.get("profileImage"),
-            "verified_badge": identity_entry.get("verifiedBadge"),
-        },
-        "metrics": {
-            "leaderboard": _leaderboard_metrics(
-                proxy_wallet=proxy_wallet,
-                pnl_entry=pnl_entry,
-                vol_entry=vol_entry,
-                candidate_pool=candidate,
-            ),
-            "exposure": exposure_metrics,
-            "closed_positions": {
-                **closed_metrics,
-                "window_days": profile.closed_positions.window_days,
-                "cutoff": closed_cutoff.isoformat(),
-            },
-            "activity": {
-                **activity_metrics,
-                "trade_count_window_days": (
-                    profile.activity.trade_count_window_days
-                ),
-            },
-            "qualification": {
-                "passed": True,
-                "profile_version": profile.profile_version,
-                "thresholds": _qualification_thresholds(profile),
-            },
-        },
-    }
-    return whale, []
-
-
 def _build_payload(
     profile: WhaleTrackingProfile,
     whales: dict[str, dict[str, Any]],
@@ -892,63 +564,66 @@ def _build_payload(
     }
 
 
-def write_whales_to_json(
-    profile: WhaleTrackingProfile,
-    whales: dict[str, dict[str, Any]],
-    reject_summary: Counter[str],
-    checked_wallet_count: int,
-    candidate_wallet_count: int,
-    candidate_pool_summary: Counter[str] | None = None,
-    path: str | Path | None = None,
-) -> None:
-    output_path = _resolve_project_path(path or profile.output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = _build_payload(
-        profile=profile,
-        whales=whales,
-        reject_summary=reject_summary,
-        checked_wallet_count=checked_wallet_count,
-        candidate_wallet_count=candidate_wallet_count,
-        candidate_pool_summary=candidate_pool_summary or Counter(),
-        generated_at=datetime.now(UTC),
-    )
+class WhaleTracker:
+    def __init__(self, profile: WhaleTrackingProfile | None = None) -> None:
+        self.profile = profile or load_workflow_profile()
 
-    with output_path.open("w", encoding="utf-8") as output_file:
-        json.dump(payload, output_file, ensure_ascii=False, indent=2)
+    async def run(self) -> dict[str, dict[str, Any]]:
+        client = HTTPClient()
+        now = datetime.now(UTC)
 
-    log_event(
-        "info",
-        "polymarket.whales_json.written",
-        path=str(output_path),
-        rows=len(whales),
-    )
+        try:
+            log_event(
+                "info",
+                "polymarket.track_whales.start",
+                profile_version=self.profile.profile_version,
+                target=self.profile.target_wallet_count,
+            )
+            pnl_entries, vol_entries, candidates, candidate_pool_summary = (
+                await self._fetch_candidate_entries(client=client)
+            )
+            whales, reject_summary, checked_wallet_count = (
+                await self._process_candidate_batches(
+                    client=client,
+                    candidates=candidates,
+                    pnl_entries=pnl_entries,
+                    vol_entries=vol_entries,
+                    now=now,
+                )
+            )
+            self._write_whales_to_json(
+                whales=whales,
+                reject_summary=reject_summary,
+                checked_wallet_count=checked_wallet_count,
+                candidate_wallet_count=len(candidates),
+                candidate_pool_summary=candidate_pool_summary,
+            )
+            log_event(
+                "info",
+                "polymarket.track_whales.done",
+                wallets=len(whales),
+                checked=checked_wallet_count,
+            )
+            return whales
 
+        finally:
+            await client.close()
 
-async def track_whales(
-    profile: WhaleTrackingProfile | None = None,
-) -> dict[str, dict[str, Any]]:
-    active_profile = profile or load_workflow_profile()
-    client = HTTPClient()
-    whales: dict[str, dict[str, Any]] = {}
-    reject_summary: Counter[str] = Counter()
-    checked_wallet_count = 0
-    now = datetime.now(UTC)
-
-    try:
-        log_event(
-            "info",
-            "polymarket.track_whales.start",
-            profile_version=active_profile.profile_version,
-            target=active_profile.target_wallet_count,
-        )
-        pnl_entries = await _fetch_leaderboard_top(
+    async def _fetch_candidate_entries(
+        self,
+        client: HTTPClient,
+    ) -> tuple[
+        dict[str, dict[str, Any]],
+        dict[str, dict[str, Any]],
+        list[dict[str, Any]],
+        Counter[str],
+    ]:
+        pnl_entries = await self._fetch_leaderboard_top(
             client=client,
-            profile=active_profile,
             order_by="PNL",
         )
-        vol_entries = await _fetch_leaderboard_top(
+        vol_entries = await self._fetch_leaderboard_top(
             client=client,
-            profile=active_profile,
             order_by="VOL",
         )
         candidates = _build_candidate_pool(
@@ -965,18 +640,94 @@ async def track_whales(
             vol_wallets=len(vol_entries),
             candidates=len(candidates),
         )
+        return pnl_entries, vol_entries, candidates, candidate_pool_summary
+
+    async def _fetch_leaderboard_top(
+        self,
+        client: HTTPClient,
+        order_by: Literal["PNL", "VOL"],
+    ) -> dict[str, dict[str, Any]]:
+        entries_by_wallet: dict[str, dict[str, Any]] = {}
+        offset = 0
+        max_offset = _field_le(LeaderboardParams, "offset", default=1000)
+
+        while (
+            len(entries_by_wallet) < self.profile.candidate_pool.top_n
+            and offset <= max_offset
+        ):
+            params = _build_leaderboard_params(
+                profile=self.profile,
+                order_by=order_by,
+                offset=offset,
+            )
+            log_event(
+                "info",
+                "polymarket.leaderboard.fetch",
+                order_by=order_by,
+                offset=params.offset,
+                limit=params.limit,
+            )
+            page = await get_leaderboard(client=client, params=params)
+
+            if not isinstance(page, list) or not page:
+                log_event(
+                    "info",
+                    "polymarket.leaderboard.empty",
+                    order_by=order_by,
+                    offset=params.offset,
+                    stop="empty_or_invalid",
+                )
+                break
+
+            for entry in page:
+                if not isinstance(entry, dict):
+                    continue
+
+                proxy_wallet = entry.get("proxyWallet")
+
+                if (
+                    isinstance(proxy_wallet, str)
+                    and proxy_wallet not in entries_by_wallet
+                ):
+                    entries_by_wallet[proxy_wallet] = entry
+
+                if len(entries_by_wallet) >= self.profile.candidate_pool.top_n:
+                    break
+
+            if len(page) < params.limit:
+                break
+
+            offset += params.limit
+
+        log_event(
+            "info",
+            "polymarket.leaderboard.done",
+            order_by=order_by,
+            wallets=len(entries_by_wallet),
+        )
+        return entries_by_wallet
+
+    async def _process_candidate_batches(
+        self,
+        client: HTTPClient,
+        candidates: list[dict[str, Any]],
+        pnl_entries: dict[str, dict[str, Any]],
+        vol_entries: dict[str, dict[str, Any]],
+        now: datetime,
+    ) -> tuple[dict[str, dict[str, Any]], Counter[str], int]:
+        whales: dict[str, dict[str, Any]] = {}
+        reject_summary: Counter[str] = Counter()
+        checked_wallet_count = 0
 
         for batch_start in range(
             0,
             len(candidates),
-            active_profile.wallet_batch_size,
+            self.profile.wallet_batch_size,
         ):
-            if len(whales) >= active_profile.target_wallet_count:
+            if len(whales) >= self.profile.target_wallet_count:
                 break
 
-            batch = candidates[
-                batch_start:batch_start + active_profile.wallet_batch_size
-            ]
+            batch = candidates[batch_start:batch_start + self.profile.wallet_batch_size]
             log_event(
                 "info",
                 "polymarket.wallet_batch.start",
@@ -986,9 +737,8 @@ async def track_whales(
             )
             results = await asyncio.gather(
                 *[
-                    _validate_candidate(
+                    self._validate_candidate(
                         client=client,
-                        profile=active_profile,
                         candidate=candidate,
                         pnl_entry=pnl_entries.get(candidate["proxy_wallet"]),
                         vol_entry=vol_entries.get(candidate["proxy_wallet"]),
@@ -1021,31 +771,310 @@ async def track_whales(
                     qualified_wallets=len(whales),
                 )
 
-                if len(whales) >= active_profile.target_wallet_count:
+                if len(whales) >= self.profile.target_wallet_count:
                     break
 
-        write_whales_to_json(
-            profile=active_profile,
+        return whales, reject_summary, checked_wallet_count
+
+    async def _validate_candidate(
+        self,
+        client: HTTPClient,
+        candidate: dict[str, Any],
+        pnl_entry: dict[str, Any] | None,
+        vol_entry: dict[str, Any] | None,
+        now: datetime,
+    ) -> tuple[dict[str, Any] | None, list[str]]:
+        proxy_wallet = candidate["proxy_wallet"]
+        closed_cutoff = now - timedelta(days=self.profile.closed_positions.window_days)
+        activity_window_start = now - timedelta(
+            days=self.profile.activity.trade_count_window_days,
+        )
+        last_activity_cutoff = now - timedelta(
+            days=self.profile.activity.last_activity_max_age_days,
+        )
+        activity_fetch_start = min(
+            activity_window_start,
+            last_activity_cutoff,
+            now - timedelta(days=7),
+        )
+
+        current_positions, current_complete = await self._fetch_all_current_positions(
+            client=client,
+            proxy_wallet=proxy_wallet,
+        )
+        exposure_metrics = _aggregate_current_positions(
+            current_positions=current_positions,
+            is_complete=current_complete,
+        )
+
+        closed_positions, closed_complete, unknown_closed_timestamps, closed_truncated = (
+            await self._fetch_all_closed_positions(
+                client=client,
+                proxy_wallet=proxy_wallet,
+                cutoff=closed_cutoff,
+            )
+        )
+        closed_metrics = _aggregate_closed_positions(
+            closed_positions=closed_positions,
+            is_complete=closed_complete,
+            unknown_timestamp_count=unknown_closed_timestamps,
+            is_truncated=closed_truncated,
+        )
+
+        activity_rows, activity_complete = await self._fetch_all_activity(
+            client=client,
+            proxy_wallet=proxy_wallet,
+            start=activity_fetch_start,
+            end=now,
+        )
+        activity_metrics = _aggregate_activity(
+            activity_rows=activity_rows,
+            is_complete=activity_complete,
+            window_start=activity_window_start,
+            last_activity_cutoff=last_activity_cutoff,
+            now=now,
+        )
+
+        reasons = _qualification_reasons(
+            profile=self.profile,
+            exposure_metrics=exposure_metrics,
+            closed_metrics=closed_metrics,
+            activity_metrics=activity_metrics,
+        )
+
+        if reasons:
+            return None, reasons
+
+        identity_entry = pnl_entry or vol_entry or {}
+        whale = {
+            "metadata": {
+                "proxy_wallet": proxy_wallet,
+                "user_name": identity_entry.get("userName"),
+                "x_username": identity_entry.get("xUsername"),
+                "profile_image": identity_entry.get("profileImage"),
+                "verified_badge": identity_entry.get("verifiedBadge"),
+            },
+            "metrics": {
+                "leaderboard": _leaderboard_metrics(
+                    proxy_wallet=proxy_wallet,
+                    pnl_entry=pnl_entry,
+                    vol_entry=vol_entry,
+                    candidate_pool=candidate,
+                ),
+                "exposure": exposure_metrics,
+                "closed_positions": {
+                    **closed_metrics,
+                    "window_days": self.profile.closed_positions.window_days,
+                    "cutoff": closed_cutoff.isoformat(),
+                },
+                "activity": {
+                    **activity_metrics,
+                    "trade_count_window_days": (
+                        self.profile.activity.trade_count_window_days
+                    ),
+                },
+                "qualification": {
+                    "passed": True,
+                    "profile_version": self.profile.profile_version,
+                    "thresholds": _qualification_thresholds(self.profile),
+                },
+            },
+        }
+        return whale, []
+
+    async def _fetch_all_current_positions(
+        self,
+        client: HTTPClient,
+        proxy_wallet: str,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        current_positions: list[dict[str, Any]] = []
+        offset = 0
+        max_offset = _field_le(CurrentPositionsParams, "offset", default=10000)
+
+        while offset <= max_offset:
+            params = _build_current_positions_params(
+                profile=self.profile,
+                proxy_wallet=proxy_wallet,
+                offset=offset,
+            )
+            log_event(
+                "info",
+                "polymarket.current_positions.fetch",
+                wallet=proxy_wallet,
+                offset=params.offset,
+                limit=params.limit,
+            )
+
+            try:
+                page = await get_current_positions(client=client, params=params)
+            except PolymarketRateLimitError:
+                return current_positions, False
+
+            if not isinstance(page, list) or not page:
+                return current_positions, True
+
+            current_positions.extend(row for row in page if isinstance(row, dict))
+
+            if len(page) < params.limit:
+                return current_positions, True
+
+            offset += params.limit
+
+        return current_positions, True
+
+    async def _fetch_all_closed_positions(
+        self,
+        client: HTTPClient,
+        proxy_wallet: str,
+        cutoff: datetime,
+    ) -> tuple[list[dict[str, Any]], bool, int, bool]:
+        closed_positions: list[dict[str, Any]] = []
+        unknown_timestamp_count = 0
+        offset = 0
+        max_offset = _field_le(ClosedPositionsParams, "offset", default=100000)
+
+        while (
+            offset <= max_offset
+            and len(closed_positions)
+            < self.profile.closed_positions.max_positions_per_wallet
+        ):
+            params = _build_closed_positions_params(
+                profile=self.profile,
+                proxy_wallet=proxy_wallet,
+                offset=offset,
+            )
+            log_event(
+                "info",
+                "polymarket.closed_positions.fetch",
+                wallet=proxy_wallet,
+                offset=params.offset,
+                limit=params.limit,
+            )
+
+            try:
+                page = await get_closed_positions(client=client, params=params)
+            except PolymarketRateLimitError:
+                return closed_positions, False, unknown_timestamp_count, False
+
+            if not isinstance(page, list) or not page:
+                return closed_positions, True, unknown_timestamp_count, False
+
+            reached_cutoff = False
+
+            for position in page:
+                if not isinstance(position, dict):
+                    continue
+
+                position_timestamp = _parse_row_timestamp(position)
+
+                if position_timestamp is None:
+                    unknown_timestamp_count += 1
+                    continue
+
+                if position_timestamp < cutoff:
+                    reached_cutoff = True
+                    continue
+
+                closed_positions.append(position)
+
+            closed_positions = closed_positions[
+                :self.profile.closed_positions.max_positions_per_wallet
+            ]
+
+            if reached_cutoff:
+                return closed_positions, True, unknown_timestamp_count, False
+
+            if len(page) < params.limit:
+                return closed_positions, True, unknown_timestamp_count, False
+
+            if (
+                len(closed_positions)
+                >= self.profile.closed_positions.max_positions_per_wallet
+            ):
+                return closed_positions, True, unknown_timestamp_count, True
+
+            offset += params.limit
+
+        return closed_positions, True, unknown_timestamp_count, False
+
+    async def _fetch_all_activity(
+        self,
+        client: HTTPClient,
+        proxy_wallet: str,
+        start: datetime,
+        end: datetime,
+    ) -> tuple[list[dict[str, Any]], bool]:
+        activity_rows: list[dict[str, Any]] = []
+        offset = 0
+        max_offset = _field_le(ActivityParams, "offset", default=3000)
+
+        while offset <= max_offset:
+            params = _build_activity_params(
+                profile=self.profile,
+                proxy_wallet=proxy_wallet,
+                offset=offset,
+                start=start,
+                end=end,
+            )
+            log_event(
+                "info",
+                "polymarket.activity.fetch",
+                wallet=proxy_wallet,
+                offset=params.offset,
+                limit=params.limit,
+            )
+
+            try:
+                page = await get_activity(client=client, params=params)
+            except PolymarketRateLimitError:
+                return activity_rows, False
+
+            if not isinstance(page, list) or not page:
+                return activity_rows, True
+
+            activity_rows.extend(row for row in page if isinstance(row, dict))
+
+            if len(page) < params.limit:
+                return activity_rows, True
+
+            offset += params.limit
+
+        return activity_rows, False
+
+    def _write_whales_to_json(
+        self,
+        whales: dict[str, dict[str, Any]],
+        reject_summary: Counter[str],
+        checked_wallet_count: int,
+        candidate_wallet_count: int,
+        candidate_pool_summary: Counter[str] | None = None,
+        path: str | Path | None = None,
+    ) -> None:
+        output_path = _resolve_project_path(path or self.profile.output_path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = _build_payload(
+            profile=self.profile,
             whales=whales,
             reject_summary=reject_summary,
             checked_wallet_count=checked_wallet_count,
-            candidate_wallet_count=len(candidates),
-            candidate_pool_summary=candidate_pool_summary,
+            candidate_wallet_count=candidate_wallet_count,
+            candidate_pool_summary=candidate_pool_summary or Counter(),
+            generated_at=datetime.now(UTC),
         )
+
+        with output_path.open("w", encoding="utf-8") as output_file:
+            json.dump(payload, output_file, ensure_ascii=False, indent=2)
+
         log_event(
             "info",
-            "polymarket.track_whales.done",
-            wallets=len(whales),
-            checked=checked_wallet_count,
+            "polymarket.whales_json.written",
+            path=str(output_path),
+            rows=len(whales),
         )
-        return whales
-
-    finally:
-        await client.close()
 
 
 if __name__ == "__main__":
-    tracked_whales = asyncio.run(track_whales())
+    tracked_whales = asyncio.run(WhaleTracker().run())
     log_event(
         "info",
         "polymarket.track_whales.returned",
