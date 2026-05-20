@@ -557,3 +557,5 @@ class WhaleTracker:
             path=str(output_path),
             rows=len(whales),
         )
+
+
