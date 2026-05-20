@@ -45,9 +45,15 @@ Für Python-Arbeit gelten diese Defaults, sofern das Projekt keinen eigenen Stan
 Wenn das Arbeitsverzeichnis ein Git-Repository ist:
 
 - Nicht direkt auf `main` arbeiten oder pushen.
-- `dev` ist die Developer-/Integrations-Branch.
-- Feature-Branches entstehen von `dev`.
 - Vor Änderungen Git-Status prüfen.
+- Standard-Arbeitsbasis ist immer `dev`.
+- Wenn der Checkout nicht auf `dev` ist, vor neuen Änderungen nach `dev` wechseln, sofern das ohne Verlust oder Konflikt mit lokalen Änderungen möglich ist.
+- Wenn lokale Änderungen einen sicheren Wechsel nach `dev` verhindern, stoppen, den Zustand erklären und Flacko entscheiden lassen.
+- Größere Changes immer auf einer neuen Feature-Branch umsetzen.
+- Feature-Branches entstehen immer von `dev`.
+- Feature-Branches nach Möglichkeit direkt nach Abschluss committen.
+- Commit-Messages beschreiben die Änderung nach Funktionalität, nicht nach Dateinamen.
+- Pushen ist nur erlaubt, wenn die relevanten Tests vorher erfolgreich gelaufen sind.
 - Änderungen klein und thematisch halten.
 - Konflikte mit fremden Branches vermeiden; bei Unsicherheit stoppen und fragen.
 

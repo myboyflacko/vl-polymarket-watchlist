@@ -1,10 +1,14 @@
 import asyncio
 import json
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
 
 from void_liquidity.adapters.polymarket.api import (
+    get_activity,
     get_closed_positions,
     get_current_positions,
     get_leaderboard,
@@ -12,45 +16,93 @@ from void_liquidity.adapters.polymarket.api import (
 from void_liquidity.adapters.polymarket.api.profile import PolymarketRateLimitError
 from void_liquidity.adapters.polymarket.client import HTTPClient
 from void_liquidity.adapters.polymarket.params import (
+    ActivityParams,
     ClosedPositionsParams,
     CurrentPositionsParams,
     LeaderboardParams,
 )
-from void_liquidity.settings import Settings
 
 
-settings = Settings()
-whale_tracker_settings = settings.whale_tracker
+SERVICE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SERVICE_DIR.parents[4]
+DEFAULT_PROFILE_PATH = SERVICE_DIR / "config" / "whale_tracking_profile.json"
 
-TARGET_WHALE_COUNT = whale_tracker_settings.target_count
-LOOKBACK_DAYS = whale_tracker_settings.lookback_days
-MIN_TRADE_COUNT = whale_tracker_settings.min_trade_count
-MIN_WIN_RATE = whale_tracker_settings.min_win_rate
-MIN_LEADERBOARD_VOLUME = whale_tracker_settings.min_leaderboard_volume
-MIN_CURRENT_POSITION_VALUE = whale_tracker_settings.min_current_position_value
-MAX_CLOSED_POSITIONS_PER_WALLET = (
-    whale_tracker_settings.max_closed_positions_per_wallet
-)
-WALLET_BATCH_SIZE = whale_tracker_settings.batch_size
-DEFAULT_WHALES_OUTPUT_PATH = Path(whale_tracker_settings.output_path)
 
-DEFAULT_LEADERBOARD_PARAMS = LeaderboardParams(
-    timePeriod=whale_tracker_settings.leaderboard_time_period,
-    orderBy=whale_tracker_settings.leaderboard_order_by,
-    limit=whale_tracker_settings.leaderboard_limit,
-)
-DEFAULT_CLOSED_POSITIONS_PARAMS = ClosedPositionsParams(
-    user="0x0000000000000000000000000000000000000000",
-    limit=whale_tracker_settings.closed_positions_limit,
-    sortBy=whale_tracker_settings.closed_positions_sort_by,
-    sortDirection=whale_tracker_settings.closed_positions_sort_direction,
-)
-DEFAULT_CURRENT_POSITIONS_PARAMS = CurrentPositionsParams(
-    user="0x0000000000000000000000000000000000000000",
-    limit=500,
-    sortBy="CURRENT",
-    sortDirection="DESC",
-)
+class CandidatePoolConfig(BaseModel):
+    category: str = "OVERALL"
+    time_period: str = "MONTH"
+    top_n: int = Field(default=250, ge=1)
+    leaderboard_limit: int = Field(default=50, ge=1, le=50)
+
+
+class CurrentPositionsConfig(BaseModel):
+    limit: int = Field(default=500, ge=1, le=500)
+    sort_by: str = "CURRENT"
+    sort_direction: str = "DESC"
+
+
+class ClosedPositionsConfig(BaseModel):
+    window_days: int = Field(default=30, ge=1)
+    limit: int = Field(default=50, ge=1, le=50)
+    sort_by: str = "TIMESTAMP"
+    sort_direction: str = "DESC"
+    max_positions_per_wallet: int = Field(default=500, ge=1)
+
+
+class ActivityConfig(BaseModel):
+    trade_count_window_days: int = Field(default=30, ge=1)
+    min_trade_count: int = Field(default=10, ge=0)
+    last_activity_max_age_days: int = Field(default=7, ge=1)
+    limit: int = Field(default=500, ge=1, le=500)
+    sort_by: str = "TIMESTAMP"
+    sort_direction: str = "DESC"
+    type: list[str] = Field(default_factory=lambda: ["TRADE"])
+
+
+class WhaleFilterConfig(BaseModel):
+    min_current_position_value: float = Field(default=10_000.0, ge=0)
+    min_closed_trade_count: int = Field(default=50, ge=1)
+    min_win_rate: float = Field(default=0.70, ge=0, le=1)
+    min_closed_positions_pnl: float = 0.0
+
+
+class WhaleTrackingProfile(BaseModel):
+    profile_version: str = "whale_tracking_v2"
+    target_wallet_count: int = Field(default=50, ge=1)
+    wallet_batch_size: int = Field(default=4, ge=1)
+    output_path: str = (
+        "src/void_liquidity/adapters/polymarket/services/data/"
+        "polymarket_whales.json"
+    )
+    candidate_pool: CandidatePoolConfig = Field(default_factory=CandidatePoolConfig)
+    current_positions: CurrentPositionsConfig = Field(
+        default_factory=CurrentPositionsConfig,
+    )
+    closed_positions: ClosedPositionsConfig = Field(
+        default_factory=ClosedPositionsConfig,
+    )
+    activity: ActivityConfig = Field(default_factory=ActivityConfig)
+    filters: WhaleFilterConfig = Field(default_factory=WhaleFilterConfig)
+
+
+def load_workflow_profile(
+    path: str | Path = DEFAULT_PROFILE_PATH,
+) -> WhaleTrackingProfile:
+    profile_path = Path(path)
+
+    with profile_path.open("r", encoding="utf-8") as profile_file:
+        payload = json.load(profile_file)
+
+    return WhaleTrackingProfile.model_validate(payload)
+
+
+def _resolve_project_path(path: str | Path) -> Path:
+    resolved_path = Path(path)
+
+    if resolved_path.is_absolute():
+        return resolved_path
+
+    return PROJECT_ROOT / resolved_path
 
 
 def _to_float(value: Any) -> float:
@@ -75,14 +127,7 @@ def _field_le(model: type, field_name: str, default: int) -> int:
     return default
 
 
-def _parse_position_timestamp(position: dict[str, Any]) -> datetime | None:
-    value = (
-        position.get("timestamp")
-        or position.get("createdAt")
-        or position.get("updatedAt")
-        or position.get("closedAt")
-    )
-
+def _parse_timestamp(value: Any) -> datetime | None:
     if value is None:
         return None
 
@@ -112,85 +157,280 @@ def _parse_position_timestamp(position: dict[str, Any]) -> datetime | None:
     return None
 
 
+def _parse_row_timestamp(row: dict[str, Any]) -> datetime | None:
+    value = (
+        row.get("timestamp")
+        or row.get("createdAt")
+        or row.get("updatedAt")
+        or row.get("closedAt")
+    )
+    return _parse_timestamp(value)
+
+
+def _unix_seconds(value: datetime) -> int:
+    return int(value.timestamp())
+
+
 def _build_leaderboard_params(
-    base_params: LeaderboardParams,
+    profile: WhaleTrackingProfile,
+    order_by: Literal["PNL", "VOL"],
     offset: int,
 ) -> LeaderboardParams:
-    if offset > _field_le(LeaderboardParams, "offset", default=1000):
-        raise ValueError("leaderboard offset exceeds params limit")
-
-    return base_params.model_copy(
-        update={
-            "offset": offset,
-            "user": None,
-            "userName": None,
-        }
-    )
-
-
-def _build_wallet_leaderboard_params(
-    proxy_wallet: str,
-    base_params: LeaderboardParams,
-) -> LeaderboardParams:
-    return base_params.model_copy(
-        update={
-            "limit": 1,
-            "offset": 0,
-            "user": proxy_wallet,
-            "userName": None,
-        }
-    )
-
-
-def _build_closed_positions_params(
-    proxy_wallet: str,
-    offset: int,
-    base_params: ClosedPositionsParams | None,
-) -> ClosedPositionsParams:
-    if base_params:
-        return base_params.model_copy(
-            update={
-                "user": proxy_wallet,
-                "offset": offset,
-            }
-        )
-
-    return DEFAULT_CLOSED_POSITIONS_PARAMS.model_copy(
-        update={
-            "user": proxy_wallet,
-            "offset": offset,
-        }
+    return LeaderboardParams(
+        category=profile.candidate_pool.category,
+        timePeriod=profile.candidate_pool.time_period,
+        orderBy=order_by,
+        limit=profile.candidate_pool.leaderboard_limit,
+        offset=offset,
     )
 
 
 def _build_current_positions_params(
+    profile: WhaleTrackingProfile,
     proxy_wallet: str,
     offset: int,
-    base_params: CurrentPositionsParams | None,
 ) -> CurrentPositionsParams:
-    if base_params:
-        return base_params.model_copy(
-            update={
-                "user": proxy_wallet,
-                "offset": offset,
-            }
-        )
-
-    return DEFAULT_CURRENT_POSITIONS_PARAMS.model_copy(
-        update={
-            "user": proxy_wallet,
-            "offset": offset,
-        }
+    return CurrentPositionsParams(
+        user=proxy_wallet,
+        limit=profile.current_positions.limit,
+        offset=offset,
+        sortBy=profile.current_positions.sort_by,
+        sortDirection=profile.current_positions.sort_direction,
     )
 
 
-def _closed_positions_cutoff(leaderboard_params: LeaderboardParams) -> datetime:
-    now = datetime.now(UTC)
+def _build_closed_positions_params(
+    profile: WhaleTrackingProfile,
+    proxy_wallet: str,
+    offset: int,
+) -> ClosedPositionsParams:
+    return ClosedPositionsParams(
+        user=proxy_wallet,
+        limit=profile.closed_positions.limit,
+        offset=offset,
+        sortBy=profile.closed_positions.sort_by,
+        sortDirection=profile.closed_positions.sort_direction,
+    )
 
-    if leaderboard_params.timePeriod == "MONTH":
-        return now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-    return now - timedelta(days=LOOKBACK_DAYS)
+def _build_activity_params(
+    profile: WhaleTrackingProfile,
+    proxy_wallet: str,
+    offset: int,
+    start: datetime,
+    end: datetime,
+) -> ActivityParams:
+    return ActivityParams(
+        user=proxy_wallet,
+        type=profile.activity.type,
+        start=_unix_seconds(start),
+        end=_unix_seconds(end),
+        limit=profile.activity.limit,
+        offset=offset,
+        sortBy=profile.activity.sort_by,
+        sortDirection=profile.activity.sort_direction,
+    )
+
+
+async def _fetch_leaderboard_top(
+    client: HTTPClient,
+    profile: WhaleTrackingProfile,
+    order_by: Literal["PNL", "VOL"],
+) -> dict[str, dict[str, Any]]:
+    entries_by_wallet: dict[str, dict[str, Any]] = {}
+    offset = 0
+    max_offset = _field_le(LeaderboardParams, "offset", default=1000)
+
+    while len(entries_by_wallet) < profile.candidate_pool.top_n and offset <= max_offset:
+        params = _build_leaderboard_params(
+            profile=profile,
+            order_by=order_by,
+            offset=offset,
+        )
+        print(
+            "[leaderboard] "
+            f"order_by={order_by} offset={params.offset} limit={params.limit}"
+        )
+        page = await get_leaderboard(client=client, params=params)
+
+        if not isinstance(page, list) or not page:
+            print(
+                "[leaderboard] "
+                f"order_by={order_by} offset={params.offset} stop=empty_or_invalid"
+            )
+            break
+
+        for entry in page:
+            if not isinstance(entry, dict):
+                continue
+
+            proxy_wallet = entry.get("proxyWallet")
+
+            if isinstance(proxy_wallet, str) and proxy_wallet not in entries_by_wallet:
+                entries_by_wallet[proxy_wallet] = entry
+
+            if len(entries_by_wallet) >= profile.candidate_pool.top_n:
+                break
+
+        if len(page) < params.limit:
+            break
+
+        offset += params.limit
+
+    print(
+        "[leaderboard] "
+        f"order_by={order_by} wallets={len(entries_by_wallet)}"
+    )
+    return entries_by_wallet
+
+
+async def _fetch_all_current_positions(
+    client: HTTPClient,
+    profile: WhaleTrackingProfile,
+    proxy_wallet: str,
+) -> tuple[list[dict[str, Any]], bool]:
+    current_positions: list[dict[str, Any]] = []
+    offset = 0
+    max_offset = _field_le(CurrentPositionsParams, "offset", default=10000)
+
+    while offset <= max_offset:
+        params = _build_current_positions_params(
+            profile=profile,
+            proxy_wallet=proxy_wallet,
+            offset=offset,
+        )
+        print(
+            "[current_positions] "
+            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
+        )
+
+        try:
+            page = await get_current_positions(client=client, params=params)
+        except PolymarketRateLimitError:
+            return current_positions, False
+
+        if not isinstance(page, list) or not page:
+            return current_positions, True
+
+        current_positions.extend(row for row in page if isinstance(row, dict))
+
+        if len(page) < params.limit:
+            return current_positions, True
+
+        offset += params.limit
+
+    return current_positions, True
+
+
+async def _fetch_all_closed_positions(
+    client: HTTPClient,
+    profile: WhaleTrackingProfile,
+    proxy_wallet: str,
+    cutoff: datetime,
+) -> tuple[list[dict[str, Any]], bool, int, bool]:
+    closed_positions: list[dict[str, Any]] = []
+    unknown_timestamp_count = 0
+    offset = 0
+    max_offset = _field_le(ClosedPositionsParams, "offset", default=100000)
+
+    while (
+        offset <= max_offset
+        and len(closed_positions) < profile.closed_positions.max_positions_per_wallet
+    ):
+        params = _build_closed_positions_params(
+            profile=profile,
+            proxy_wallet=proxy_wallet,
+            offset=offset,
+        )
+        print(
+            "[closed_positions] "
+            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
+        )
+
+        try:
+            page = await get_closed_positions(client=client, params=params)
+        except PolymarketRateLimitError:
+            return closed_positions, False, unknown_timestamp_count, False
+
+        if not isinstance(page, list) or not page:
+            return closed_positions, True, unknown_timestamp_count, False
+
+        reached_cutoff = False
+
+        for position in page:
+            if not isinstance(position, dict):
+                continue
+
+            position_timestamp = _parse_row_timestamp(position)
+
+            if position_timestamp is None:
+                unknown_timestamp_count += 1
+                continue
+
+            if position_timestamp < cutoff:
+                reached_cutoff = True
+                continue
+
+            closed_positions.append(position)
+
+        closed_positions = closed_positions[
+            :profile.closed_positions.max_positions_per_wallet
+        ]
+
+        if reached_cutoff:
+            return closed_positions, True, unknown_timestamp_count, False
+
+        if len(page) < params.limit:
+            return closed_positions, True, unknown_timestamp_count, False
+
+        if len(closed_positions) >= profile.closed_positions.max_positions_per_wallet:
+            return closed_positions, True, unknown_timestamp_count, True
+
+        offset += params.limit
+
+    return closed_positions, True, unknown_timestamp_count, False
+
+
+async def _fetch_all_activity(
+    client: HTTPClient,
+    profile: WhaleTrackingProfile,
+    proxy_wallet: str,
+    start: datetime,
+    end: datetime,
+) -> tuple[list[dict[str, Any]], bool]:
+    activity_rows: list[dict[str, Any]] = []
+    offset = 0
+    max_offset = _field_le(ActivityParams, "offset", default=3000)
+
+    while offset <= max_offset:
+        params = _build_activity_params(
+            profile=profile,
+            proxy_wallet=proxy_wallet,
+            offset=offset,
+            start=start,
+            end=end,
+        )
+        print(
+            "[activity] "
+            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
+        )
+
+        try:
+            page = await get_activity(client=client, params=params)
+        except PolymarketRateLimitError:
+            return activity_rows, False
+
+        if not isinstance(page, list) or not page:
+            return activity_rows, True
+
+        activity_rows.extend(row for row in page if isinstance(row, dict))
+
+        if len(page) < params.limit:
+            return activity_rows, True
+
+        offset += params.limit
+
+    return activity_rows, False
 
 
 def _aggregate_current_positions(
@@ -222,20 +462,47 @@ def _aggregate_current_positions(
     }
 
 
-def _calculate_metrics(closed_positions: list[dict[str, Any]]) -> dict[str, float | int]:
+def _position_size(position: dict[str, Any]) -> float:
+    for field_name in ("initialValue", "totalValue", "usdcSize", "currentValue"):
+        size = _to_float(position.get(field_name))
+
+        if size > 0:
+            return size
+
+    return 0.0
+
+
+def _aggregate_closed_positions(
+    closed_positions: list[dict[str, Any]],
+    is_complete: bool,
+    unknown_timestamp_count: int,
+    is_truncated: bool = False,
+) -> dict[str, float | int | bool | None]:
     closed_trade_count = len(closed_positions)
     wins = 0
     losses = 0
+    breakevens = 0
     closed_positions_pnl = 0.0
+    closed_positions_volume = 0.0
+    gross_profit = 0.0
+    gross_loss = 0.0
+    largest_loss = 0.0
 
     for position in closed_positions:
         realized_pnl = _to_float(position.get("realizedPnl"))
         closed_positions_pnl += realized_pnl
+        closed_positions_volume += _position_size(position)
 
         if realized_pnl > 0:
             wins += 1
+            gross_profit += realized_pnl
         elif realized_pnl < 0:
             losses += 1
+            loss = abs(realized_pnl)
+            gross_loss += loss
+            largest_loss = max(largest_loss, loss)
+        else:
+            breakevens += 1
 
     win_rate = wins / closed_trade_count if closed_trade_count else 0.0
     avg_pnl_per_trade = (
@@ -243,847 +510,508 @@ def _calculate_metrics(closed_positions: list[dict[str, Any]]) -> dict[str, floa
         if closed_trade_count
         else 0.0
     )
+    roi = (
+        closed_positions_pnl / closed_positions_volume
+        if closed_positions_volume
+        else None
+    )
+    profit_factor = gross_profit / gross_loss if gross_loss else None
+    avg_win = gross_profit / wins if wins else 0.0
+    avg_loss = gross_loss / losses if losses else 0.0
 
     return {
         "closed_trade_count": closed_trade_count,
         "wins": wins,
         "losses": losses,
+        "breakevens": breakevens,
         "win_rate": win_rate,
         "closed_positions_pnl": closed_positions_pnl,
+        "closed_positions_volume": closed_positions_volume,
+        "roi": roi,
+        "gross_profit": gross_profit,
+        "gross_loss": gross_loss,
+        "profit_factor": profit_factor,
+        "avg_win": avg_win,
+        "avg_loss": avg_loss,
+        "largest_loss": largest_loss,
         "avg_pnl_per_trade": avg_pnl_per_trade,
+        "unknown_timestamp_count": unknown_timestamp_count,
+        "closed_positions_complete": is_complete,
+        "closed_positions_truncated": is_truncated,
     }
 
 
-def _is_qualified_whale(metrics: dict[str, float | int]) -> bool:
-    return (
-        metrics["closed_trade_count"] >= MIN_TRADE_COUNT
-        and metrics["win_rate"] >= MIN_WIN_RATE
+def _aggregate_activity(
+    activity_rows: list[dict[str, Any]],
+    is_complete: bool,
+    window_start: datetime,
+    last_activity_cutoff: datetime,
+    now: datetime,
+) -> dict[str, float | int | str | None | bool]:
+    trade_count_window = 0
+    trade_count_7d = 0
+    activity_volume_window = 0.0
+    activity_volume_7d = 0.0
+    unknown_timestamp_count = 0
+    newest_activity_at: datetime | None = None
+    seven_day_cutoff = now - timedelta(days=7)
+
+    for row in activity_rows:
+        row_timestamp = _parse_row_timestamp(row)
+
+        if row_timestamp is None:
+            unknown_timestamp_count += 1
+            continue
+
+        if newest_activity_at is None or row_timestamp > newest_activity_at:
+            newest_activity_at = row_timestamp
+
+        if row.get("type") == "TRADE":
+            if row_timestamp >= window_start:
+                trade_count_window += 1
+                activity_volume_window += _to_float(row.get("usdcSize"))
+
+            if row_timestamp >= seven_day_cutoff:
+                trade_count_7d += 1
+                activity_volume_7d += _to_float(row.get("usdcSize"))
+
+    last_activity_age_days = (
+        (now - newest_activity_at).total_seconds() / 86_400
+        if newest_activity_at
+        else None
     )
 
-
-def _leaderboard_volume(leaderboard_entry: dict[str, Any]) -> float:
-    return _to_float(leaderboard_entry.get("vol"))
-
-
-def _leaderboard_pnl(whale: dict[str, Any]) -> float:
-    leaderboard = whale.get("leaderboard") or whale.get("leaderboard_entry")
-
-    if not isinstance(leaderboard, dict):
-        return 0.0
-
-    return _to_float(leaderboard.get("pnl"))
-
-
-def _rank_whales(
-    whales: dict[str, dict[str, Any]],
-) -> dict[str, dict[str, Any]]:
-    ranked_whales = sorted(
-        whales.values(),
-        key=_leaderboard_pnl,
-        reverse=True,
-    )[:TARGET_WHALE_COUNT]
-
-    for rank, whale in enumerate(ranked_whales, start=1):
-        whale["rank"] = rank
-
     return {
-        whale["proxy_wallet"]: whale
-        for whale in ranked_whales
+        "trade_count_window": trade_count_window,
+        "trade_count_7d": trade_count_7d,
+        "avg_trades_per_day_window": (
+            trade_count_window / max((now - window_start).days, 1)
+        ),
+        "activity_volume_window": activity_volume_window,
+        "activity_volume_7d": activity_volume_7d,
+        "last_activity_at": (
+            newest_activity_at.isoformat() if newest_activity_at else None
+        ),
+        "last_activity_age_days": last_activity_age_days,
+        "last_activity_cutoff": last_activity_cutoff.isoformat(),
+        "unknown_timestamp_count": unknown_timestamp_count,
+        "activity_complete": is_complete,
+        "activity_capped": not is_complete,
     }
 
 
-def _build_whale_entry(
+def _leaderboard_metrics(
     proxy_wallet: str,
-    leaderboard_entry: dict[str, Any],
-    closed_positions: list[dict[str, Any]],
-    current_positions: list[dict[str, Any]],
-    current_position_metrics: dict[str, float | int | bool],
-    metrics: dict[str, float | int],
+    pnl_entry: dict[str, Any] | None,
+    vol_entry: dict[str, Any] | None,
+    candidate_pool: dict[str, Any],
 ) -> dict[str, Any]:
+    pnl_entry = pnl_entry or {}
+    vol_entry = vol_entry or {}
+
     return {
-        "proxy_wallet": proxy_wallet,
-        "user_name": leaderboard_entry.get("userName"),
-        "leaderboard": leaderboard_entry,
-        "closed_positions": closed_positions,
-        "current_positions": current_positions,
-        "current_position_metrics": current_position_metrics,
-        "metrics": metrics,
-        "rank": 0,
+        "candidate_pool_match": "core" in candidate_pool["matched_pools"],
+        "candidate_pool_source": candidate_pool["source"],
+        "matched_pools": candidate_pool["matched_pools"],
+        "pnl_rank": pnl_entry.get("rank"),
+        "vol_rank": vol_entry.get("rank"),
+        "pnl": _to_float(pnl_entry.get("pnl")),
+        "vol": _to_float(vol_entry.get("vol")),
+        "pnl_leaderboard_wallet": pnl_entry.get("proxyWallet") == proxy_wallet,
+        "vol_leaderboard_wallet": vol_entry.get("proxyWallet") == proxy_wallet,
     }
 
 
-def _normalize_cached_whale(
-    proxy_wallet: str,
-    whale: dict[str, Any],
-) -> dict[str, Any]:
-    leaderboard_entry = whale.get("leaderboard") or whale.get("leaderboard_entry")
+def _build_candidate_pool(
+    pnl_entries: dict[str, dict[str, Any]],
+    vol_entries: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    candidates_by_wallet: dict[str, dict[str, Any]] = {}
 
+    for proxy_wallet in pnl_entries:
+        if _to_float(pnl_entries[proxy_wallet].get("pnl")) <= 0:
+            continue
+
+        matched_pools = ["pnl_top"]
+        source = "pnl_specialist"
+
+        if proxy_wallet in vol_entries:
+            matched_pools = ["core", "pnl_top", "volume_top"]
+            source = "core"
+
+        candidates_by_wallet[proxy_wallet] = {
+            "proxy_wallet": proxy_wallet,
+            "source": source,
+            "matched_pools": matched_pools,
+        }
+
+    for proxy_wallet, entry in vol_entries.items():
+        if proxy_wallet in candidates_by_wallet:
+            continue
+
+        if _to_float(entry.get("pnl")) <= 0:
+            continue
+
+        candidates_by_wallet[proxy_wallet] = {
+            "proxy_wallet": proxy_wallet,
+            "source": "volume_profitable",
+            "matched_pools": ["volume_top"],
+        }
+
+    return [
+        *[
+            candidate
+            for candidate in candidates_by_wallet.values()
+            if candidate["source"] == "core"
+        ],
+        *[
+            candidate
+            for candidate in candidates_by_wallet.values()
+            if candidate["source"] == "pnl_specialist"
+        ],
+        *[
+            candidate
+            for candidate in candidates_by_wallet.values()
+            if candidate["source"] == "volume_profitable"
+        ],
+    ]
+
+
+def _qualification_thresholds(profile: WhaleTrackingProfile) -> dict[str, Any]:
     return {
-        "proxy_wallet": whale.get("proxy_wallet") or proxy_wallet,
-        "user_name": whale.get("user_name"),
-        "leaderboard": leaderboard_entry if isinstance(leaderboard_entry, dict) else {},
-        "current_position_metrics": (
-            whale.get("current_position_metrics")
-            if isinstance(whale.get("current_position_metrics"), dict)
-            else {}
+        "min_current_position_value": profile.filters.min_current_position_value,
+        "min_closed_trade_count": profile.filters.min_closed_trade_count,
+        "min_win_rate": profile.filters.min_win_rate,
+        "min_closed_positions_pnl": profile.filters.min_closed_positions_pnl,
+        "activity_trade_count_window_days": (
+            profile.activity.trade_count_window_days
         ),
-        "metrics": (
-            whale.get("metrics")
-            if isinstance(whale.get("metrics"), dict)
-            else {}
-        ),
-        "rank": whale.get("rank", 0),
+        "min_activity_trade_count": profile.activity.min_trade_count,
+        "last_activity_max_age_days": profile.activity.last_activity_max_age_days,
     }
 
 
-def _to_json_whale(whale: dict[str, Any]) -> dict[str, Any]:
-    leaderboard_entry = whale.get("leaderboard") or whale.get("leaderboard_entry")
+def _qualification_reasons(
+    profile: WhaleTrackingProfile,
+    exposure_metrics: dict[str, Any],
+    closed_metrics: dict[str, Any],
+    activity_metrics: dict[str, Any],
+) -> list[str]:
+    reasons: list[str] = []
 
-    return {
-        "proxy_wallet": whale.get("proxy_wallet"),
-        "user_name": whale.get("user_name"),
-        "rank": whale.get("rank", 0),
-        "leaderboard_entry": (
-            leaderboard_entry
-            if isinstance(leaderboard_entry, dict)
-            else {}
-        ),
-        "current_position_metrics": (
-            whale.get("current_position_metrics")
-            if isinstance(whale.get("current_position_metrics"), dict)
-            else {}
-        ),
-        "metrics": (
-            whale.get("metrics")
-            if isinstance(whale.get("metrics"), dict)
-            else {}
-        ),
-    }
+    if not exposure_metrics["current_positions_complete"]:
+        reasons.append("current_positions_incomplete")
 
-
-async def _fetch_all_closed_positions(
-    client: HTTPClient,
-    proxy_wallet: str,
-    closed_positions_params: ClosedPositionsParams | None,
-    cutoff: datetime,
-) -> tuple[list[dict[str, Any]], bool]:
-    closed_positions: list[dict[str, Any]] = []
-    offset = 0
-
-    max_offset = _field_le(ClosedPositionsParams, "offset", default=100000)
-    page_limit = (
-        closed_positions_params.limit
-        if closed_positions_params
-        else DEFAULT_CLOSED_POSITIONS_PARAMS.limit
-    )
-
-    while (
-        offset <= max_offset
-        and len(closed_positions) < MAX_CLOSED_POSITIONS_PER_WALLET
-    ):
-        params = _build_closed_positions_params(
-            proxy_wallet=proxy_wallet,
-            offset=offset,
-            base_params=closed_positions_params,
-        )
-        print(
-            "[closed_positions] "
-            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
-        )
-        try:
-            page = await get_closed_positions(
-                client=client,
-                params=params,
-            )
-        except PolymarketRateLimitError:
-            print(
-                "[closed_positions] "
-                f"wallet={proxy_wallet} stop=rate_limited "
-                f"total_positions={len(closed_positions)}"
-            )
-            return closed_positions, False
-
-        if not isinstance(page, list) or not page:
-            print(
-                "[closed_positions] "
-                f"wallet={proxy_wallet} stop=empty_or_invalid "
-                f"total_positions={len(closed_positions)}"
-            )
-            return closed_positions, True
-
-        reached_cutoff = False
-
-        for position in page:
-            if not isinstance(position, dict):
-                continue
-
-            position_timestamp = _parse_position_timestamp(position)
-
-            if position_timestamp and position_timestamp < cutoff:
-                reached_cutoff = True
-                continue
-
-            closed_positions.append(position)
-
-        closed_positions = closed_positions[:MAX_CLOSED_POSITIONS_PER_WALLET]
-        print(
-            "[closed_positions] "
-            f"wallet={proxy_wallet} received={len(page)} "
-            f"total_positions={len(closed_positions)}"
-        )
-
-        if reached_cutoff:
-            print(
-                "[closed_positions] "
-                f"wallet={proxy_wallet} stop=lookback_cutoff "
-                f"cutoff={cutoff.isoformat()} "
-                f"total_positions={len(closed_positions)}"
-            )
-            return closed_positions, True
-
-        if len(page) < page_limit:
-            print(
-                "[closed_positions] "
-                f"wallet={proxy_wallet} stop=last_page "
-                f"total_positions={len(closed_positions)}"
-            )
-            return closed_positions, True
-
-        if len(closed_positions) >= MAX_CLOSED_POSITIONS_PER_WALLET:
-            print(
-                "[closed_positions] "
-                f"wallet={proxy_wallet} stop=max_positions "
-                f"total_positions={len(closed_positions)}"
-            )
-            return closed_positions, True
-
-        offset += page_limit
-
-    print(
-        "[closed_positions] "
-        f"wallet={proxy_wallet} stop=max_offset "
-        f"total_positions={len(closed_positions)}"
-    )
-    return closed_positions, True
-
-
-async def _fetch_all_current_positions(
-    client: HTTPClient,
-    proxy_wallet: str,
-    current_positions_params: CurrentPositionsParams | None,
-) -> tuple[list[dict[str, Any]], bool]:
-    current_positions: list[dict[str, Any]] = []
-    offset = 0
-
-    max_offset = _field_le(CurrentPositionsParams, "offset", default=10000)
-    page_limit = (
-        current_positions_params.limit
-        if current_positions_params
-        else DEFAULT_CURRENT_POSITIONS_PARAMS.limit
-    )
-
-    while offset <= max_offset:
-        params = _build_current_positions_params(
-            proxy_wallet=proxy_wallet,
-            offset=offset,
-            base_params=current_positions_params,
-        )
-        print(
-            "[current_positions] "
-            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
-        )
-        try:
-            page = await get_current_positions(
-                client=client,
-                params=params,
-            )
-        except PolymarketRateLimitError:
-            print(
-                "[current_positions] "
-                f"wallet={proxy_wallet} stop=rate_limited "
-                f"total_positions={len(current_positions)}"
-            )
-            return current_positions, False
-
-        if not isinstance(page, list) or not page:
-            print(
-                "[current_positions] "
-                f"wallet={proxy_wallet} stop=empty_or_invalid "
-                f"total_positions={len(current_positions)}"
-            )
-            return current_positions, True
-
-        current_positions.extend(
-            position
-            for position in page
-            if isinstance(position, dict)
-        )
-        print(
-            "[current_positions] "
-            f"wallet={proxy_wallet} received={len(page)} "
-            f"total_positions={len(current_positions)}"
-        )
-
-        if len(page) < page_limit:
-            print(
-                "[current_positions] "
-                f"wallet={proxy_wallet} stop=last_page "
-                f"total_positions={len(current_positions)}"
-            )
-            return current_positions, True
-
-        offset += page_limit
-
-    print(
-        "[current_positions] "
-        f"wallet={proxy_wallet} stop=max_offset "
-        f"total_positions={len(current_positions)}"
-    )
-    return current_positions, True
-
-
-async def _fetch_wallet_leaderboard_entry(
-    client: HTTPClient,
-    proxy_wallet: str,
-    leaderboard_params: LeaderboardParams,
-) -> dict[str, Any] | None:
-    params = _build_wallet_leaderboard_params(
-        proxy_wallet=proxy_wallet,
-        base_params=leaderboard_params,
-    )
-    leaderboard = await get_leaderboard(
-        client=client,
-        params=params,
-    )
-
-    if not isinstance(leaderboard, list) or not leaderboard:
-        return None
-
-    entry = leaderboard[0]
-
-    if not isinstance(entry, dict):
-        return None
-
-    return entry
-
-
-async def _validate_wallet(
-    client: HTTPClient,
-    proxy_wallet: str,
-    leaderboard_entry: dict[str, Any],
-    closed_positions_params: ClosedPositionsParams | None,
-    current_positions_params: CurrentPositionsParams | None,
-    cutoff: datetime,
-) -> tuple[dict[str, Any] | None, str]:
-    closed_positions, is_complete = await _fetch_all_closed_positions(
-        client=client,
-        proxy_wallet=proxy_wallet,
-        closed_positions_params=closed_positions_params,
-        cutoff=cutoff,
-    )
-
-    if not is_complete:
-        return None, "incomplete_rate_limited"
-
-    metrics = _calculate_metrics(closed_positions)
-    leaderboard_volume = _leaderboard_volume(leaderboard_entry)
-
-    if not _is_qualified_whale(metrics):
-        reasons = []
-
-        if metrics["closed_trade_count"] < MIN_TRADE_COUNT:
-            reasons.append(f"trade_count<{MIN_TRADE_COUNT}")
-
-        if metrics["win_rate"] < MIN_WIN_RATE:
-            reasons.append(f"win_rate<{MIN_WIN_RATE}")
-
-        return None, ",".join(reasons)
-
-    if leaderboard_volume < MIN_LEADERBOARD_VOLUME:
-        return None, f"leaderboard_volume<{MIN_LEADERBOARD_VOLUME}"
-
-    current_positions, current_positions_complete = await _fetch_all_current_positions(
-        client=client,
-        proxy_wallet=proxy_wallet,
-        current_positions_params=current_positions_params,
-    )
-    current_position_metrics = _aggregate_current_positions(
-        current_positions=current_positions,
-        is_complete=current_positions_complete,
-    )
-    current_position_value = _to_float(
-        current_position_metrics.get("current_position_value")
-    )
+    if not closed_metrics["closed_positions_complete"]:
+        reasons.append("closed_positions_incomplete")
 
     if (
-        current_positions_complete
-        and current_position_value < MIN_CURRENT_POSITION_VALUE
+        exposure_metrics["current_position_value"]
+        < profile.filters.min_current_position_value
     ):
-        return None, f"current_position_value<{MIN_CURRENT_POSITION_VALUE}"
+        reasons.append("current_position_value_below_min")
 
-    return (
-        _build_whale_entry(
-            proxy_wallet=proxy_wallet,
-            leaderboard_entry=leaderboard_entry,
-            closed_positions=closed_positions,
-            current_positions=current_positions,
-            current_position_metrics=current_position_metrics,
-            metrics=metrics,
-        ),
-        "qualified" if current_positions_complete else "qualified_current_incomplete",
+    if closed_metrics["closed_trade_count"] < profile.filters.min_closed_trade_count:
+        reasons.append("closed_trade_count_below_min")
+
+    if closed_metrics["win_rate"] < profile.filters.min_win_rate:
+        reasons.append("win_rate_below_min")
+
+    if (
+        closed_metrics["closed_positions_pnl"]
+        <= profile.filters.min_closed_positions_pnl
+    ):
+        reasons.append("closed_positions_pnl_below_or_equal_min")
+
+    if activity_metrics["trade_count_window"] < profile.activity.min_trade_count:
+        reasons.append("activity_trade_count_below_min")
+
+    last_activity_age_days = activity_metrics["last_activity_age_days"]
+
+    if (
+        last_activity_age_days is None
+        or last_activity_age_days > profile.activity.last_activity_max_age_days
+    ):
+        reasons.append("last_activity_too_old")
+
+    return reasons
+
+
+async def _validate_candidate(
+    client: HTTPClient,
+    profile: WhaleTrackingProfile,
+    candidate: dict[str, Any],
+    pnl_entry: dict[str, Any] | None,
+    vol_entry: dict[str, Any] | None,
+    now: datetime,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    proxy_wallet = candidate["proxy_wallet"]
+    closed_cutoff = now - timedelta(days=profile.closed_positions.window_days)
+    activity_window_start = now - timedelta(
+        days=profile.activity.trade_count_window_days,
+    )
+    last_activity_cutoff = now - timedelta(
+        days=profile.activity.last_activity_max_age_days,
+    )
+    activity_fetch_start = min(
+        activity_window_start,
+        last_activity_cutoff,
+        now - timedelta(days=7),
     )
 
+    current_positions, current_complete = await _fetch_all_current_positions(
+        client=client,
+        profile=profile,
+        proxy_wallet=proxy_wallet,
+    )
+    exposure_metrics = _aggregate_current_positions(
+        current_positions=current_positions,
+        is_complete=current_complete,
+    )
 
-def load_whales_from_json(path: str | Path) -> dict[str, dict[str, Any]]:
-    json_path = Path(path)
-
-    if not json_path.exists():
-        print(f"[json] load path={json_path} status=missing")
-        return {}
-
-    try:
-        with json_path.open("r", encoding="utf-8") as json_file:
-            payload = json.load(json_file)
-    except (OSError, json.JSONDecodeError) as exc:
-        print(f"[json] load path={json_path} status=invalid error={exc}")
-        return {}
-
-    whales = payload.get("whales") if isinstance(payload, dict) else None
-
-    if not isinstance(whales, dict):
-        print(f"[json] load path={json_path} status=no_whales")
-        return {}
-
-    print(f"[json] load path={json_path} rows={len(whales)}")
-    return {
-        proxy_wallet: _normalize_cached_whale(
+    closed_positions, closed_complete, unknown_closed_timestamps, closed_truncated = (
+        await _fetch_all_closed_positions(
+            client=client,
+            profile=profile,
             proxy_wallet=proxy_wallet,
-            whale=whale,
+            cutoff=closed_cutoff,
         )
-        for proxy_wallet, whale in whales.items()
-        if isinstance(proxy_wallet, str) and isinstance(whale, dict)
-    }
+    )
+    closed_metrics = _aggregate_closed_positions(
+        closed_positions=closed_positions,
+        is_complete=closed_complete,
+        unknown_timestamp_count=unknown_closed_timestamps,
+        is_truncated=closed_truncated,
+    )
 
+    activity_rows, activity_complete = await _fetch_all_activity(
+        client=client,
+        profile=profile,
+        proxy_wallet=proxy_wallet,
+        start=activity_fetch_start,
+        end=now,
+    )
+    activity_metrics = _aggregate_activity(
+        activity_rows=activity_rows,
+        is_complete=activity_complete,
+        window_start=activity_window_start,
+        last_activity_cutoff=last_activity_cutoff,
+        now=now,
+    )
 
-def _build_whales_payload(
-    whales: dict[str, dict[str, Any]],
-    metadata: dict[str, Any] | None = None,
-) -> dict[str, Any]:
-    json_whales = {
-        proxy_wallet: _to_json_whale(whale)
-        for proxy_wallet, whale in whales.items()
-    }
-    base_metadata = {
+    reasons = _qualification_reasons(
+        profile=profile,
+        exposure_metrics=exposure_metrics,
+        closed_metrics=closed_metrics,
+        activity_metrics=activity_metrics,
+    )
+
+    if reasons:
+        return None, reasons
+
+    identity_entry = pnl_entry or vol_entry or {}
+    whale = {
         "metadata": {
-            "generated_at": datetime.now(UTC).isoformat(),
-            "lookback_days": LOOKBACK_DAYS,
-            "target_whale_count": TARGET_WHALE_COUNT,
-            "min_trade_count": MIN_TRADE_COUNT,
-            "min_win_rate": MIN_WIN_RATE,
-            "min_leaderboard_volume": MIN_LEADERBOARD_VOLUME,
-            "min_current_position_value": MIN_CURRENT_POSITION_VALUE,
-            "wallet_count": len(json_whales),
+            "proxy_wallet": proxy_wallet,
+            "user_name": identity_entry.get("userName"),
+            "x_username": identity_entry.get("xUsername"),
+            "profile_image": identity_entry.get("profileImage"),
+            "verified_badge": identity_entry.get("verifiedBadge"),
         },
-        "whales": json_whales,
+        "metrics": {
+            "leaderboard": _leaderboard_metrics(
+                proxy_wallet=proxy_wallet,
+                pnl_entry=pnl_entry,
+                vol_entry=vol_entry,
+                candidate_pool=candidate,
+            ),
+            "exposure": exposure_metrics,
+            "closed_positions": {
+                **closed_metrics,
+                "window_days": profile.closed_positions.window_days,
+                "cutoff": closed_cutoff.isoformat(),
+            },
+            "activity": {
+                **activity_metrics,
+                "trade_count_window_days": (
+                    profile.activity.trade_count_window_days
+                ),
+            },
+            "qualification": {
+                "passed": True,
+                "profile_version": profile.profile_version,
+                "thresholds": _qualification_thresholds(profile),
+            },
+        },
     }
+    return whale, []
 
-    if metadata:
-        base_metadata["metadata"].update(metadata)
 
-    return base_metadata
+def _build_payload(
+    profile: WhaleTrackingProfile,
+    whales: dict[str, dict[str, Any]],
+    reject_summary: Counter[str],
+    checked_wallet_count: int,
+    candidate_wallet_count: int,
+    candidate_pool_summary: Counter[str],
+    generated_at: datetime,
+) -> dict[str, Any]:
+    return {
+        "metadata": {
+            "generated_at": generated_at.isoformat(),
+            "mode": "fresh_discovery",
+            "profile_version": profile.profile_version,
+            "target_wallet_count": profile.target_wallet_count,
+            "wallet_count": len(whales),
+            "candidate_wallet_count": candidate_wallet_count,
+            "candidate_pool_summary": dict(sorted(candidate_pool_summary.items())),
+            "checked_wallet_count": checked_wallet_count,
+            "reject_summary": dict(sorted(reject_summary.items())),
+            "qualification_thresholds": _qualification_thresholds(profile),
+            "candidate_pool": profile.candidate_pool.model_dump(),
+        },
+        "whales": whales,
+    }
 
 
 def write_whales_to_json(
+    profile: WhaleTrackingProfile,
     whales: dict[str, dict[str, Any]],
-    path: str | Path,
-    metadata: dict[str, Any] | None = None,
+    reject_summary: Counter[str],
+    checked_wallet_count: int,
+    candidate_wallet_count: int,
+    candidate_pool_summary: Counter[str] | None = None,
+    path: str | Path | None = None,
 ) -> None:
-    json_path = Path(path)
-    json_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = _build_whales_payload(whales=whales, metadata=metadata)
+    output_path = _resolve_project_path(path or profile.output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _build_payload(
+        profile=profile,
+        whales=whales,
+        reject_summary=reject_summary,
+        checked_wallet_count=checked_wallet_count,
+        candidate_wallet_count=candidate_wallet_count,
+        candidate_pool_summary=candidate_pool_summary or Counter(),
+        generated_at=datetime.now(UTC),
+    )
 
-    with json_path.open("w", encoding="utf-8") as json_file:
-        json.dump(payload, json_file, ensure_ascii=False, indent=2)
+    with output_path.open("w", encoding="utf-8") as output_file:
+        json.dump(payload, output_file, ensure_ascii=False, indent=2)
 
-    print(f"[json] wrote path={json_path} rows={len(whales)}")
+    print(f"[json] wrote path={output_path} rows={len(whales)}")
 
 
 async def track_whales(
-    closed_positions_params: ClosedPositionsParams | None = None,
-    current_positions_params: CurrentPositionsParams | None = None,
-    leaderboard_params: LeaderboardParams | None = None,
+    profile: WhaleTrackingProfile | None = None,
 ) -> dict[str, dict[str, Any]]:
+    active_profile = profile or load_workflow_profile()
     client = HTTPClient()
-    whale_cache: dict[str, dict[str, Any]] = {}
-    seen_wallets: set[str] = set()
+    whales: dict[str, dict[str, Any]] = {}
+    reject_summary: Counter[str] = Counter()
+    checked_wallet_count = 0
+    now = datetime.now(UTC)
 
     try:
-        base_leaderboard_params = (
-            leaderboard_params
-            if leaderboard_params is not None
-            else DEFAULT_LEADERBOARD_PARAMS.model_copy()
-        )
-        cutoff = _closed_positions_cutoff(base_leaderboard_params)
-        max_leaderboard_offset = _field_le(LeaderboardParams, "offset", default=1000)
         print(
             "[track_whales] "
-            f"start target={TARGET_WHALE_COUNT} "
-            f"closed_positions_cutoff={cutoff.isoformat()} "
-            f"min_trades={MIN_TRADE_COUNT} "
-            f"min_win_rate={MIN_WIN_RATE} "
-            f"min_leaderboard_volume={MIN_LEADERBOARD_VOLUME} "
-            f"min_current_position_value={MIN_CURRENT_POSITION_VALUE} "
-            f"leaderboard_time_period={base_leaderboard_params.timePeriod} "
-            f"leaderboard_order_by={base_leaderboard_params.orderBy}"
+            f"start profile_version={active_profile.profile_version} "
+            f"target={active_profile.target_wallet_count}"
         )
-        offset = 0
+        pnl_entries = await _fetch_leaderboard_top(
+            client=client,
+            profile=active_profile,
+            order_by="PNL",
+        )
+        vol_entries = await _fetch_leaderboard_top(
+            client=client,
+            profile=active_profile,
+            order_by="VOL",
+        )
+        candidates = _build_candidate_pool(
+            pnl_entries=pnl_entries,
+            vol_entries=vol_entries,
+        )
+        candidate_pool_summary = Counter(
+            candidate["source"] for candidate in candidates
+        )
+        print(
+            "[candidate_pool] "
+            f"pnl_wallets={len(pnl_entries)} "
+            f"vol_wallets={len(vol_entries)} "
+            f"candidates={len(candidates)}"
+        )
 
-        while (
-            len(whale_cache) < TARGET_WHALE_COUNT
-            and offset <= max_leaderboard_offset
+        for batch_start in range(
+            0,
+            len(candidates),
+            active_profile.wallet_batch_size,
         ):
-            page_params = _build_leaderboard_params(
-                base_params=base_leaderboard_params,
-                offset=offset,
-            )
-            print(
-                "[leaderboard] "
-                f"offset={page_params.offset} limit={page_params.limit} "
-                f"qualified_wallets={len(whale_cache)}"
-            )
-            leaderboard = await get_leaderboard(
-                client=client,
-                params=page_params,
-            )
-
-            if not isinstance(leaderboard, list) or not leaderboard:
-                print(
-                    "[leaderboard] "
-                    f"offset={page_params.offset} stop=empty_or_invalid "
-                    f"qualified_wallets={len(whale_cache)}"
-                )
+            if len(whales) >= active_profile.target_wallet_count:
                 break
 
-            candidates: list[dict[str, Any]] = [
-                entry
-                for entry in leaderboard
-                if isinstance(entry, dict) and entry.get("proxyWallet")
+            batch = candidates[
+                batch_start:batch_start + active_profile.wallet_batch_size
             ]
-            proxy_wallets = [
-                entry["proxyWallet"]
-                for entry in candidates
-                if entry["proxyWallet"] not in seen_wallets
-            ]
-            seen_wallets.update(proxy_wallets)
             print(
-                "[leaderboard] "
-                f"offset={page_params.offset} raw_entries={len(leaderboard)} "
-                f"candidates={len(candidates)} new_wallets={len(proxy_wallets)}"
+                "[wallet_batch] "
+                f"start={batch_start} size={len(batch)} "
+                f"qualified_wallets={len(whales)}"
             )
-
-            entries_by_wallet = {
-                entry["proxyWallet"]: entry
-                for entry in candidates
-            }
-
-            for batch_start in range(0, len(proxy_wallets), WALLET_BATCH_SIZE):
-                batch = proxy_wallets[batch_start:batch_start + WALLET_BATCH_SIZE]
-                print(
-                    "[wallet_batch] "
-                    f"start={batch_start} size={len(batch)} "
-                    f"batch_size={WALLET_BATCH_SIZE}"
-                )
-                tasks = [
-                    _validate_wallet(
+            results = await asyncio.gather(
+                *[
+                    _validate_candidate(
                         client=client,
-                        proxy_wallet=proxy_wallet,
-                        leaderboard_entry=entries_by_wallet[proxy_wallet],
-                        closed_positions_params=closed_positions_params,
-                        current_positions_params=current_positions_params,
-                        cutoff=cutoff,
+                        profile=active_profile,
+                        candidate=candidate,
+                        pnl_entry=pnl_entries.get(candidate["proxy_wallet"]),
+                        vol_entry=vol_entries.get(candidate["proxy_wallet"]),
+                        now=now,
                     )
-                    for proxy_wallet in batch
+                    for candidate in batch
                 ]
-                results = await asyncio.gather(*tasks)
+            )
 
-                for proxy_wallet, result in zip(batch, results):
-                    whale, status = result
+            for candidate, result in zip(batch, results):
+                proxy_wallet = candidate["proxy_wallet"]
+                checked_wallet_count += 1
+                whale, reasons = result
 
-                    if status == "incomplete_rate_limited":
-                        print(
-                            "[skipped] "
-                            f"wallet={proxy_wallet} reason=incomplete_rate_limited "
-                        )
-                        continue
-
-                    if not whale:
-                        print(
-                            "[rejected] "
-                            f"wallet={proxy_wallet} reason={status}"
-                        )
-                        continue
-
-                    metrics = whale["metrics"]
-                    current_position_metrics = whale["current_position_metrics"]
-                    whale_cache[proxy_wallet] = whale
+                if not whale:
+                    reject_summary.update(reasons)
                     print(
-                        "[qualified] "
-                        f"wallet={proxy_wallet} "
-                        f"closed_trades={metrics['closed_trade_count']} "
-                        f"wins={metrics['wins']} "
-                        f"losses={metrics['losses']} "
-                        f"win_rate={metrics['win_rate']:.2%} "
-                        f"leaderboard_pnl={_leaderboard_pnl(whale):.2f} "
-                        f"closed_positions_pnl={metrics['closed_positions_pnl']:.2f} "
-                        f"avg_pnl_per_trade={metrics['avg_pnl_per_trade']:.2f} "
-                        f"current_position_value={current_position_metrics['current_position_value']:.2f} "
-                        f"open_positions={current_position_metrics['open_position_count']} "
-                        f"qualified_wallets={len(whale_cache)}"
+                        "[rejected] "
+                        f"wallet={proxy_wallet} reason={','.join(reasons)}"
                     )
+                    continue
 
-                if len(whale_cache) >= TARGET_WHALE_COUNT:
-                    break
-
-            offset += base_leaderboard_params.limit
-
-        ranked_whales = sorted(
-            whale_cache.values(),
-            key=_leaderboard_pnl,
-            reverse=True,
-        )[:TARGET_WHALE_COUNT]
-
-        for rank, whale in enumerate(ranked_whales, start=1):
-            whale["rank"] = rank
-            print(
-                "[done] "
-                f"rank={rank} wallet={whale['proxy_wallet']} "
-                f"leaderboard_pnl={_leaderboard_pnl(whale):.2f} "
-                f"avg_pnl_per_trade={whale['metrics']['avg_pnl_per_trade']:.2f} "
-                f"win_rate={whale['metrics']['win_rate']:.2%} "
-                f"closed_trades={whale['metrics']['closed_trade_count']}"
-            )
-
-        print(
-            "[done] "
-            f"qualified_wallets={len(ranked_whales)} "
-            f"seen_wallets={len(seen_wallets)}"
-        )
-
-        return {
-            whale["proxy_wallet"]: whale
-            for whale in ranked_whales
-        }
-
-    finally:
-        await client.close()
-
-
-async def refresh_whales(
-    path: str | Path = DEFAULT_WHALES_OUTPUT_PATH,
-    closed_positions_params: ClosedPositionsParams | None = None,
-    current_positions_params: CurrentPositionsParams | None = None,
-    leaderboard_params: LeaderboardParams | None = None,
-) -> dict[str, dict[str, Any]]:
-    cached_whales = load_whales_from_json(path)
-    refreshed_cache: dict[str, dict[str, Any]] = {}
-    checked_wallets: set[str] = set()
-    removed_wallet_count = 0
-    added_wallet_count = 0
-    kept_wallet_count = 0
-    incomplete_wallet_count = 0
-    client = HTTPClient()
-
-    try:
-        print(
-            "[refresh_whales] "
-            f"start cached_wallets={len(cached_whales)} "
-            f"target={TARGET_WHALE_COUNT}"
-        )
-        base_leaderboard_params = (
-            leaderboard_params
-            if leaderboard_params is not None
-            else DEFAULT_LEADERBOARD_PARAMS.model_copy()
-        )
-        cutoff = _closed_positions_cutoff(base_leaderboard_params)
-        max_leaderboard_offset = _field_le(LeaderboardParams, "offset", default=1000)
-
-        for proxy_wallet, cached_whale in cached_whales.items():
-            checked_wallets.add(proxy_wallet)
-            print(f"[refresh_existing] wallet={proxy_wallet}")
-
-            leaderboard_entry = await _fetch_wallet_leaderboard_entry(
-                client=client,
-                proxy_wallet=proxy_wallet,
-                leaderboard_params=base_leaderboard_params,
-            )
-
-            if leaderboard_entry is None:
-                removed_wallet_count += 1
+                whales[proxy_wallet] = whale
                 print(
-                    "[refresh_removed] "
-                    f"wallet={proxy_wallet} reason=missing_leaderboard_entry"
-                )
-                continue
-
-            whale, status = await _validate_wallet(
-                client=client,
-                proxy_wallet=proxy_wallet,
-                leaderboard_entry=leaderboard_entry,
-                closed_positions_params=closed_positions_params,
-                current_positions_params=current_positions_params,
-                cutoff=cutoff,
-            )
-
-            if whale:
-                refreshed_cache[proxy_wallet] = whale
-                kept_wallet_count += 1
-                print(
-                    "[refresh_kept] "
+                    "[qualified] "
                     f"wallet={proxy_wallet} "
-                    f"closed_trades={whale['metrics']['closed_trade_count']} "
-                    f"win_rate={whale['metrics']['win_rate']:.2%} "
-                    f"leaderboard_pnl={_leaderboard_pnl(whale):.2f} "
-                    f"current_position_value={whale['current_position_metrics']['current_position_value']:.2f} "
-                    f"open_positions={whale['current_position_metrics']['open_position_count']}"
+                    f"qualified_wallets={len(whales)}"
                 )
-                continue
 
-            if status == "incomplete_rate_limited":
-                refreshed_cache[proxy_wallet] = cached_whale
-                incomplete_wallet_count += 1
-                print(
-                    "[refresh_kept] "
-                    f"wallet={proxy_wallet} reason=incomplete_rate_limited"
-                )
-                continue
-
-            removed_wallet_count += 1
-            print(f"[refresh_removed] wallet={proxy_wallet} reason={status}")
-
-        offset = 0
-
-        while (
-            len(refreshed_cache) < TARGET_WHALE_COUNT
-            and offset <= max_leaderboard_offset
-        ):
-            page_params = _build_leaderboard_params(
-                base_params=base_leaderboard_params,
-                offset=offset,
-            )
-            print(
-                "[refresh_leaderboard] "
-                f"offset={page_params.offset} limit={page_params.limit} "
-                f"qualified_wallets={len(refreshed_cache)}"
-            )
-            leaderboard = await get_leaderboard(
-                client=client,
-                params=page_params,
-            )
-
-            if not isinstance(leaderboard, list) or not leaderboard:
-                print(
-                    "[refresh_leaderboard] "
-                    f"offset={page_params.offset} stop=empty_or_invalid"
-                )
-                break
-
-            candidates = [
-                entry
-                for entry in leaderboard
-                if isinstance(entry, dict) and entry.get("proxyWallet")
-            ]
-            proxy_wallets = [
-                entry["proxyWallet"]
-                for entry in candidates
-                if entry["proxyWallet"] not in refreshed_cache
-                and entry["proxyWallet"] not in checked_wallets
-            ]
-            checked_wallets.update(proxy_wallets)
-            entries_by_wallet = {
-                entry["proxyWallet"]: entry
-                for entry in candidates
-            }
-
-            for batch_start in range(0, len(proxy_wallets), WALLET_BATCH_SIZE):
-                batch = proxy_wallets[batch_start:batch_start + WALLET_BATCH_SIZE]
-                print(
-                    "[refresh_batch] "
-                    f"start={batch_start} size={len(batch)} "
-                    f"batch_size={WALLET_BATCH_SIZE}"
-                )
-                tasks = [
-                    _validate_wallet(
-                        client=client,
-                        proxy_wallet=proxy_wallet,
-                        leaderboard_entry=entries_by_wallet[proxy_wallet],
-                        closed_positions_params=closed_positions_params,
-                        current_positions_params=current_positions_params,
-                        cutoff=cutoff,
-                    )
-                    for proxy_wallet in batch
-                ]
-                results = await asyncio.gather(*tasks)
-
-                for proxy_wallet, result in zip(batch, results):
-                    whale, status = result
-
-                    if not whale:
-                        print(
-                            "[refresh_candidate_rejected] "
-                            f"wallet={proxy_wallet} reason={status}"
-                        )
-                        continue
-
-                    refreshed_cache[proxy_wallet] = whale
-                    added_wallet_count += 1
-                    print(
-                        "[refresh_added] "
-                        f"wallet={proxy_wallet} "
-                        f"closed_trades={whale['metrics']['closed_trade_count']} "
-                        f"win_rate={whale['metrics']['win_rate']:.2%} "
-                        f"leaderboard_pnl={_leaderboard_pnl(whale):.2f} "
-                        f"current_position_value={whale['current_position_metrics']['current_position_value']:.2f} "
-                        f"open_positions={whale['current_position_metrics']['open_position_count']} "
-                        f"qualified_wallets={len(refreshed_cache)}"
-                    )
-
-                if len(refreshed_cache) >= TARGET_WHALE_COUNT:
+                if len(whales) >= active_profile.target_wallet_count:
                     break
 
-            offset += base_leaderboard_params.limit
-
-        ranked_whales = _rank_whales(refreshed_cache)
         write_whales_to_json(
-            whales=ranked_whales,
-            path=path,
-            metadata={
-                "refreshed_at": datetime.now(UTC).isoformat(),
-                "mode": "refresh",
-                "leaderboard_time_period": base_leaderboard_params.timePeriod,
-                "leaderboard_order_by": base_leaderboard_params.orderBy,
-                "closed_positions_cutoff": cutoff.isoformat(),
-                "removed_wallet_count": removed_wallet_count,
-                "added_wallet_count": added_wallet_count,
-                "kept_wallet_count": kept_wallet_count,
-                "incomplete_wallet_count": incomplete_wallet_count,
-                "checked_wallet_count": len(checked_wallets),
-            },
+            profile=active_profile,
+            whales=whales,
+            reject_summary=reject_summary,
+            checked_wallet_count=checked_wallet_count,
+            candidate_wallet_count=len(candidates),
+            candidate_pool_summary=candidate_pool_summary,
         )
         print(
-            "[refresh_done] "
-            f"wallets={len(ranked_whales)} "
-            f"kept={kept_wallet_count} "
-            f"added={added_wallet_count} "
-            f"removed={removed_wallet_count} "
-            f"incomplete={incomplete_wallet_count}"
+            "[track_whales] "
+            f"done wallets={len(whales)} checked={checked_wallet_count}"
         )
-
-        return ranked_whales
+        return whales
 
     finally:
         await client.close()
 
 
 if __name__ == "__main__":
-    whales = asyncio.run(refresh_whales())
-    print(f"[refresh_whales] returned_wallets={len(whales)}")
+    tracked_whales = asyncio.run(track_whales())
+    print(f"[track_whales] returned_wallets={len(tracked_whales)}")

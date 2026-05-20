@@ -1,0 +1,39 @@
+{
+  "profile_version": "whale_tracking_v2",
+  "target_wallet_count": 50,
+  "wallet_batch_size": 4,
+  "output_path": "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json",
+  "candidate_pool": {
+    "category": "OVERALL",
+    "time_period": "MONTH",
+    "top_n": 250,
+    "leaderboard_limit": 50
+  },
+  "current_positions": {
+    "limit": 500,
+    "sort_by": "CURRENT",
+    "sort_direction": "DESC"
+  },
+  "closed_positions": {
+    "window_days": 30,
+    "limit": 50,
+    "sort_by": "TIMESTAMP",
+    "sort_direction": "DESC",
+    "max_positions_per_wallet": 500
+  },
+  "activity": {
+    "trade_count_window_days": 30,
+    "min_trade_count": 10,
+    "last_activity_max_age_days": 7,
+    "limit": 500,
+    "sort_by": "TIMESTAMP",
+    "sort_direction": "DESC",
+    "type": ["TRADE"]
+  },
+  "filters": {
+    "min_current_position_value": 10000.0,
+    "min_closed_trade_count": 50,
+    "min_win_rate": 0.7,
+    "min_closed_positions_pnl": 0.0
+  }
+}
