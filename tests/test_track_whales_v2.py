@@ -210,7 +210,18 @@ def test_track_whales_filters_and_writes_v2_output(
     assert "closed_positions" in payload["whales"][WALLET_ONE]["metrics"]
     assert "activity" in payload["whales"][WALLET_ONE]["metrics"]
     assert payload["whales"][WALLET_ONE]["metrics"]["qualification"]["passed"] is True
-    assert not (tmp_path / "logs" / DEFAULT_LOG_FILE_NAME).exists()
+
+    log_path = tmp_path / "logs" / DEFAULT_LOG_FILE_NAME
+    log_events = [
+        json.loads(line)["event"]
+        for line in log_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert log_events == [
+        "polymarket.track_whales.start",
+        "polymarket.candidate_pool.built",
+        "polymarket.wallet_batch.done",
+        "polymarket.track_whales.done",
+    ]
 
 
 def test_load_default_workflow_profile() -> None:
