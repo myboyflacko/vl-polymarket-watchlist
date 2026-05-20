@@ -1,0 +1,1622 @@
+{
+  "metadata": {
+    "generated_at": "2026-05-19T19:47:03.525329+00:00",
+    "lookback_days": 30,
+    "target_whale_count": 50,
+    "min_trade_count": 50,
+    "min_win_rate": 0.7,
+    "wallet_count": 50,
+    "refreshed_at": "2026-05-19T19:47:03.524967+00:00",
+    "mode": "refresh",
+    "leaderboard_time_period": "MONTH",
+    "leaderboard_order_by": "PNL",
+    "closed_positions_cutoff": "2026-05-01T00:00:00+00:00",
+    "removed_wallet_count": 1,
+    "added_wallet_count": 1,
+    "kept_wallet_count": 49,
+    "incomplete_wallet_count": 0,
+    "checked_wallet_count": 257
+  },
+  "whales": {
+    "0xa5ea13a81d2b7e8e424b182bdc1db08e756bd96a": {
+      "proxy_wallet": "0xa5ea13a81d2b7e8e424b182bdc1db08e756bd96a",
+      "user_name": "bossoskil1",
+      "rank": 1,
+      "leaderboard_entry": {
+        "rank": "1",
+        "proxyWallet": "0xa5ea13a81d2b7e8e424b182bdc1db08e756bd96a",
+        "userName": "bossoskil1",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 41617113.10734999,
+        "pnl": 3462378.452692488,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 5,
+        "current_position_value": 380518.6129,
+        "initial_position_value": 421330.6086,
+        "open_cash_pnl": -40811.995800000004,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 145205.4492,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 167,
+        "wins": 154,
+        "losses": 12,
+        "win_rate": 0.9221556886227545,
+        "closed_positions_pnl": 10967633.660377998,
+        "avg_pnl_per_trade": 65674.45305615567
+      }
+    },
+    "0x2a2c53bd278c04da9962fcf96490e17f3dfb9bc1": {
+      "proxy_wallet": "0x2a2c53bd278c04da9962fcf96490e17f3dfb9bc1",
+      "user_name": "0x2a2C53bD278c04DA9962Fcf96490E17F3DfB9Bc1-1772479215461",
+      "rank": 2,
+      "leaderboard_entry": {
+        "rank": "7",
+        "proxyWallet": "0x2a2c53bd278c04da9962fcf96490e17f3dfb9bc1",
+        "userName": "0x2a2C53bD278c04DA9962Fcf96490E17F3DfB9Bc1-1772479215461",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 45371576.29616,
+        "pnl": 1647962.771036305,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 46,
+        "current_position_value": 598991.6325,
+        "initial_position_value": 509012.03250000026,
+        "open_cash_pnl": 89979.5983,
+        "open_realized_pnl": 1177150.4737,
+        "largest_position_value": 116999.9959,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 359,
+        "wins": 256,
+        "losses": 96,
+        "win_rate": 0.713091922005571,
+        "closed_positions_pnl": 3805757.6559600024,
+        "avg_pnl_per_trade": 10600.996256155995
+      }
+    },
+    "0x5966db1fe50763c9e3c014d756369bad07e1f804": {
+      "proxy_wallet": "0x5966db1fe50763c9e3c014d756369bad07e1f804",
+      "user_name": "0x5966Db1fE50763C9e3C014d756369BAd07E1F804-1777648534241",
+      "rank": 3,
+      "leaderboard_entry": {
+        "rank": "14",
+        "proxyWallet": "0x5966db1fe50763c9e3c014d756369bad07e1f804",
+        "userName": "0x5966Db1fE50763C9e3C014d756369BAd07E1F804-1777648534241",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 9615861.856728,
+        "pnl": 978020.7524329002,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 2,
+        "current_position_value": 115694.6513,
+        "initial_position_value": 150759.3915,
+        "open_cash_pnl": -35064.7403,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 61066.4956,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 62,
+        "wins": 53,
+        "losses": 9,
+        "win_rate": 0.8548387096774194,
+        "closed_positions_pnl": 2205335.8255479997,
+        "avg_pnl_per_trade": 35569.93267012903
+      }
+    },
+    "0xea2b4224411e723499a803ce3f4758779fb31fc6": {
+      "proxy_wallet": "0xea2b4224411e723499a803ce3f4758779fb31fc6",
+      "user_name": "frankfrankfrank",
+      "rank": 4,
+      "leaderboard_entry": {
+        "rank": "20",
+        "proxyWallet": "0xea2b4224411e723499a803ce3f4758779fb31fc6",
+        "userName": "frankfrankfrank",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 6312526.274028,
+        "pnl": 714040.830474779,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 8,
+        "current_position_value": 253553.4286,
+        "initial_position_value": 162305.895,
+        "open_cash_pnl": 91247.5333,
+        "open_realized_pnl": 1161.5872,
+        "largest_position_value": 190405.1979,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 95,
+        "wins": 87,
+        "losses": 8,
+        "win_rate": 0.9157894736842105,
+        "closed_positions_pnl": 1558594.9465670001,
+        "avg_pnl_per_trade": 16406.262595442106
+      }
+    },
+    "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563": {
+      "proxy_wallet": "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563",
+      "user_name": "0x2c335066FE58fe9237c3d3Dc7b275C2a034a0563-1759935795465",
+      "rank": 5,
+      "leaderboard_entry": {
+        "rank": "28",
+        "proxyWallet": "0x2c335066fe58fe9237c3d3dc7b275c2a034a0563",
+        "userName": "0x2c335066FE58fe9237c3d3Dc7b275C2a034a0563-1759935795465",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 12158150.082108999,
+        "pnl": 579520.469753551,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 7,
+        "current_position_value": 196231.892,
+        "initial_position_value": 135035.9096,
+        "open_cash_pnl": 61195.98219999999,
+        "open_realized_pnl": 1434.0848,
+        "largest_position_value": 146537.2475,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 68,
+        "wins": 54,
+        "losses": 13,
+        "win_rate": 0.7941176470588235,
+        "closed_positions_pnl": 1912063.4781860001,
+        "avg_pnl_per_trade": 28118.580561558825
+      }
+    },
+    "0x37e4728b3c4607fb2b3b205386bb1d1fb1a8c991": {
+      "proxy_wallet": "0x37e4728b3c4607fb2b3b205386bb1d1fb1a8c991",
+      "user_name": "SemyonMarmeladov",
+      "rank": 6,
+      "leaderboard_entry": {
+        "rank": "47",
+        "proxyWallet": "0x37e4728b3c4607fb2b3b205386bb1d1fb1a8c991",
+        "userName": "SemyonMarmeladov",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 7728010.284522,
+        "pnl": 285277.945952309,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-102792-ee6f6ac0-da9f-45fc-bd69-173d5ddd17cf.jpeg"
+      },
+      "current_position_metrics": {
+        "open_position_count": 10,
+        "current_position_value": 435856.4437,
+        "initial_position_value": 277825.37810000003,
+        "open_cash_pnl": 158031.06500000003,
+        "open_realized_pnl": 70661.3071,
+        "largest_position_value": 136999.841,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 50,
+        "wins": 42,
+        "losses": 8,
+        "win_rate": 0.84,
+        "closed_positions_pnl": 1565578.0978160002,
+        "avg_pnl_per_trade": 31311.561956320005
+      }
+    },
+    "0xa49becb692927d455924583b5e3e5788246f4c40": {
+      "proxy_wallet": "0xa49becb692927d455924583b5e3e5788246f4c40",
+      "user_name": "sleepy-panda",
+      "rank": 7,
+      "leaderboard_entry": {
+        "rank": "62",
+        "proxyWallet": "0xa49becb692927d455924583b5e3e5788246f4c40",
+        "userName": "sleepy-panda",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 4154087.8477359996,
+        "pnl": 231059.22904944746,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-1412628-bdef78cc-bdb4-47a7-9d61-4060afbac81d.png"
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 240,
+        "wins": 235,
+        "losses": 5,
+        "win_rate": 0.9791666666666666,
+        "closed_positions_pnl": 231481.7673769998,
+        "avg_pnl_per_trade": 964.5073640708325
+      }
+    },
+    "0x68146921df11eab44296dc4e58025ca84741a9e7": {
+      "proxy_wallet": "0x68146921df11eab44296dc4e58025ca84741a9e7",
+      "user_name": "LynxTitan",
+      "rank": 8,
+      "leaderboard_entry": {
+        "rank": "69",
+        "proxyWallet": "0x68146921df11eab44296dc4e58025ca84741a9e7",
+        "userName": "LynxTitan",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 6416256.779561,
+        "pnl": 212090.1117610197,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 62,
+        "current_position_value": 118.07709999999992,
+        "initial_position_value": 1989.9212999999993,
+        "open_cash_pnl": -1871.8445999999997,
+        "open_realized_pnl": 18968.426499999994,
+        "largest_position_value": 35.6901,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 362,
+        "losses": 124,
+        "win_rate": 0.724,
+        "closed_positions_pnl": 372338.20452400035,
+        "avg_pnl_per_trade": 744.6764090480007
+      }
+    },
+    "0xbddf61af533ff524d27154e589d2d7a81510c684": {
+      "proxy_wallet": "0xbddf61af533ff524d27154e589d2d7a81510c684",
+      "user_name": "Countryside",
+      "rank": 9,
+      "leaderboard_entry": {
+        "rank": "78",
+        "proxyWallet": "0xbddf61af533ff524d27154e589d2d7a81510c684",
+        "userName": "Countryside",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 62990153.178532,
+        "pnl": 193926.40155765484,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 47,
+        "current_position_value": 840537.4548999999,
+        "initial_position_value": 892866.8405,
+        "open_cash_pnl": -52329.38709999998,
+        "open_realized_pnl": 121040.3288,
+        "largest_position_value": 308630.0619,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 96,
+        "wins": 82,
+        "losses": 14,
+        "win_rate": 0.8541666666666666,
+        "closed_positions_pnl": 4703033.387359999,
+        "avg_pnl_per_trade": 48989.93111833333
+      }
+    },
+    "0x033f0346c007323030eb420305ffede19a95618e": {
+      "proxy_wallet": "0x033f0346c007323030eb420305ffede19a95618e",
+      "user_name": "TheVeryGoodCow",
+      "rank": 10,
+      "leaderboard_entry": {
+        "rank": "82",
+        "proxyWallet": "0x033f0346c007323030eb420305ffede19a95618e",
+        "userName": "TheVeryGoodCow",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1414145.2837519995,
+        "pnl": 185908.5286909832,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-3027617-b61f3802-cd12-43b4-a357-b85be2e8f1b9.webp"
+      },
+      "current_position_metrics": {
+        "open_position_count": 71,
+        "current_position_value": 4282.091200000001,
+        "initial_position_value": 6498.4495,
+        "open_cash_pnl": -2216.359199999998,
+        "open_realized_pnl": 741.6252,
+        "largest_position_value": 848.8743,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 430,
+        "losses": 70,
+        "win_rate": 0.86,
+        "closed_positions_pnl": 30618.787910999996,
+        "avg_pnl_per_trade": 61.23757582199999
+      }
+    },
+    "0x13414a77a4be48988851c73dfd824d0168e70853": {
+      "proxy_wallet": "0x13414a77a4be48988851c73dfd824d0168e70853",
+      "user_name": "PineBluff",
+      "rank": 11,
+      "leaderboard_entry": {
+        "rank": "86",
+        "proxyWallet": "0x13414a77a4be48988851c73dfd824d0168e70853",
+        "userName": "PineBluff",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 10549767.071885,
+        "pnl": 181692.20002714763,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-4043939-8f6aa75d-49cc-4c1d-89a7-9e08ec2df2ae.png"
+      },
+      "current_position_metrics": {
+        "open_position_count": 21,
+        "current_position_value": 107561.00440000003,
+        "initial_position_value": 107514.62800000001,
+        "open_cash_pnl": 46.37499999999994,
+        "open_realized_pnl": 379.687,
+        "largest_position_value": 74456.6557,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 337,
+        "wins": 291,
+        "losses": 44,
+        "win_rate": 0.8635014836795252,
+        "closed_positions_pnl": 1844913.04949,
+        "avg_pnl_per_trade": 5474.519434688427
+      }
+    },
+    "0x38337de21ff0bb0a11a40761507d51e318d633d1": {
+      "proxy_wallet": "0x38337de21ff0bb0a11a40761507d51e318d633d1",
+      "user_name": "SineNooneEI",
+      "rank": 12,
+      "leaderboard_entry": {
+        "rank": "89",
+        "proxyWallet": "0x38337de21ff0bb0a11a40761507d51e318d633d1",
+        "userName": "SineNooneEI",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 2557356.145854,
+        "pnl": 179119.12206998008,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 1,
+        "current_position_value": 15399.9992,
+        "initial_position_value": 11386.6594,
+        "open_cash_pnl": 4013.3397,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 15399.9992,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 116,
+        "wins": 113,
+        "losses": 3,
+        "win_rate": 0.9741379310344828,
+        "closed_positions_pnl": 666422.6719560004,
+        "avg_pnl_per_trade": 5745.023034103451
+      }
+    },
+    "0x9703676286b93c2eca71ca96e8757104519a69c2": {
+      "proxy_wallet": "0x9703676286b93c2eca71ca96e8757104519a69c2",
+      "user_name": "TheMangler",
+      "rank": 13,
+      "leaderboard_entry": {
+        "rank": "100",
+        "proxyWallet": "0x9703676286b93c2eca71ca96e8757104519a69c2",
+        "userName": "TheMangler",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 4689602.688755,
+        "pnl": 161154.66045811557,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 280,
+        "current_position_value": 489460.43690000015,
+        "initial_position_value": 309720.95820000005,
+        "open_cash_pnl": 179739.46339999966,
+        "open_realized_pnl": 1862305.4407000002,
+        "largest_position_value": 33999.2964,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 396,
+        "losses": 96,
+        "win_rate": 0.792,
+        "closed_positions_pnl": 483320.73502699996,
+        "avg_pnl_per_trade": 966.6414700539999
+      }
+    },
+    "0x5c3a1a602848565bb16165fcd460b00c3d43020b": {
+      "proxy_wallet": "0x5c3a1a602848565bb16165fcd460b00c3d43020b",
+      "user_name": "VARsenal",
+      "rank": 14,
+      "leaderboard_entry": {
+        "rank": "102",
+        "proxyWallet": "0x5c3a1a602848565bb16165fcd460b00c3d43020b",
+        "userName": "VARsenal",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 4144681.0503779994,
+        "pnl": 156471.022498484,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-5270322-1627dc07-3ce6-48cb-8791-2c12959cbad5.png"
+      },
+      "current_position_metrics": {
+        "open_position_count": 8,
+        "current_position_value": 299612.8335999999,
+        "initial_position_value": 183063.41119999997,
+        "open_cash_pnl": 116549.42199999999,
+        "open_realized_pnl": 19.6472,
+        "largest_position_value": 252943.5458,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 59,
+        "wins": 57,
+        "losses": 2,
+        "win_rate": 0.9661016949152542,
+        "closed_positions_pnl": 709525.2763099999,
+        "avg_pnl_per_trade": 12025.852140847455
+      }
+    },
+    "0xee00ba338c59557141789b127927a55f5cc5cea1": {
+      "proxy_wallet": "0xee00ba338c59557141789b127927a55f5cc5cea1",
+      "user_name": "S-Works",
+      "rank": 15,
+      "leaderboard_entry": {
+        "rank": "119",
+        "proxyWallet": "0xee00ba338c59557141789b127927a55f5cc5cea1",
+        "userName": "S-Works",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 2308986.5201049997,
+        "pnl": 131874.08767647442,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 6,
+        "current_position_value": 118894.9893,
+        "initial_position_value": 18717.1087,
+        "open_cash_pnl": 100177.88019999999,
+        "open_realized_pnl": 9217.7161,
+        "largest_position_value": 74358.6212,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 56,
+        "wins": 40,
+        "losses": 16,
+        "win_rate": 0.7142857142857143,
+        "closed_positions_pnl": 116658.82377400003,
+        "avg_pnl_per_trade": 2083.193281678572
+      }
+    },
+    "0x9c76cdb43fb46454da005fbc82047a64a18ec926": {
+      "proxy_wallet": "0x9c76cdb43fb46454da005fbc82047a64a18ec926",
+      "user_name": "Bagwell306",
+      "rank": 16,
+      "leaderboard_entry": {
+        "rank": "122",
+        "proxyWallet": "0x9c76cdb43fb46454da005fbc82047a64a18ec926",
+        "userName": "Bagwell306",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 2560449.3404159998,
+        "pnl": 130245.00735738565,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 91,
+        "current_position_value": 39207.42190000001,
+        "initial_position_value": 36600.952699999994,
+        "open_cash_pnl": 2606.4624999999974,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 9900.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 442,
+        "losses": 42,
+        "win_rate": 0.884,
+        "closed_positions_pnl": 332079.437771,
+        "avg_pnl_per_trade": 664.158875542
+      }
+    },
+    "0x21ecbb95a15822bbdd4ab71345385a6056d95348": {
+      "proxy_wallet": "0x21ecbb95a15822bbdd4ab71345385a6056d95348",
+      "user_name": "0x21eCbb95a15822bBdD4Ab71345385a6056D95348-1763085902493",
+      "rank": 17,
+      "leaderboard_entry": {
+        "rank": "123",
+        "proxyWallet": "0x21ecbb95a15822bbdd4ab71345385a6056d95348",
+        "userName": "0x21eCbb95a15822bBdD4Ab71345385a6056D95348-1763085902493",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1213193.720645,
+        "pnl": 129633.90950928908,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 2,
+        "current_position_value": 4748.5889,
+        "initial_position_value": 9344.7497,
+        "open_cash_pnl": -4596.1609,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 4744.2207,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 67,
+        "wins": 51,
+        "losses": 16,
+        "win_rate": 0.7611940298507462,
+        "closed_positions_pnl": 249049.52512599993,
+        "avg_pnl_per_trade": 3717.157091432835
+      }
+    },
+    "0xf284ad6d607f777f34bc643cea587c33a886b9f9": {
+      "proxy_wallet": "0xf284ad6d607f777f34bc643cea587c33a886b9f9",
+      "user_name": "strike123",
+      "rank": 18,
+      "leaderboard_entry": {
+        "rank": "124",
+        "proxyWallet": "0xf284ad6d607f777f34bc643cea587c33a886b9f9",
+        "userName": "strike123",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 8799666.661223,
+        "pnl": 125745.85950300095,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 15,
+        "current_position_value": 219688.38350000005,
+        "initial_position_value": 226706.81270000004,
+        "open_cash_pnl": -7018.429899999999,
+        "open_realized_pnl": 25873.1407,
+        "largest_position_value": 92199.686,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 171,
+        "wins": 148,
+        "losses": 20,
+        "win_rate": 0.8654970760233918,
+        "closed_positions_pnl": 889067.3233910004,
+        "avg_pnl_per_trade": 5199.224113397663
+      }
+    },
+    "0xfbfd14dd4bb607373119de95f1d4b21c3b6c0029": {
+      "proxy_wallet": "0xfbfd14dd4bb607373119de95f1d4b21c3b6c0029",
+      "user_name": "XAE12Archangel",
+      "rank": 19,
+      "leaderboard_entry": {
+        "rank": "125",
+        "proxyWallet": "0xfbfd14dd4bb607373119de95f1d4b21c3b6c0029",
+        "userName": "XAE12Archangel",
+        "xUsername": "polymarketbet",
+        "verifiedBadge": false,
+        "vol": 3006653.548099,
+        "pnl": 124189.85584459374,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-127727-a3eee658-ea31-4924-8f10-fbc2bb5dc071.webp"
+      },
+      "current_position_metrics": {
+        "open_position_count": 63,
+        "current_position_value": 47888.48540000001,
+        "initial_position_value": 57034.21450000001,
+        "open_cash_pnl": -9145.731600000001,
+        "open_realized_pnl": -45949.1439,
+        "largest_position_value": 21519.3258,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 59,
+        "wins": 43,
+        "losses": 15,
+        "win_rate": 0.7288135593220338,
+        "closed_positions_pnl": 67062.76703299998,
+        "avg_pnl_per_trade": 1136.6570683559319
+      }
+    },
+    "0x3e5b23e9f71b2a2edcd5629d3f948f12f591073b": {
+      "proxy_wallet": "0x3e5b23e9f71b2a2edcd5629d3f948f12f591073b",
+      "user_name": "beenraping",
+      "rank": 20,
+      "leaderboard_entry": {
+        "rank": "127",
+        "proxyWallet": "0x3e5b23e9f71b2a2edcd5629d3f948f12f591073b",
+        "userName": "beenraping",
+        "xUsername": "keccakdog",
+        "verifiedBadge": false,
+        "vol": 5290862.655223,
+        "pnl": 122151.51524044183,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-110893-691987c0-2702-434c-bf35-21d5b5a50b94.png"
+      },
+      "current_position_metrics": {
+        "open_position_count": 13,
+        "current_position_value": 62905.1183,
+        "initial_position_value": 62725.692899999995,
+        "open_cash_pnl": 179.42470000000154,
+        "open_realized_pnl": 2240.443600000002,
+        "largest_position_value": 36500.0014,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 239,
+        "wins": 172,
+        "losses": 63,
+        "win_rate": 0.7196652719665272,
+        "closed_positions_pnl": 12932.253777000042,
+        "avg_pnl_per_trade": 54.10984843933072
+      }
+    },
+    "0x3f3aa7005f8006bfcc367d43a25cde25509fe8fd": {
+      "proxy_wallet": "0x3f3aa7005f8006bfcc367d43a25cde25509fe8fd",
+      "user_name": "us391",
+      "rank": 21,
+      "leaderboard_entry": {
+        "rank": "129",
+        "proxyWallet": "0x3f3aa7005f8006bfcc367d43a25cde25509fe8fd",
+        "userName": "us391",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 5149625.529012,
+        "pnl": 121050.35197228909,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 5,
+        "current_position_value": 35627.4319,
+        "initial_position_value": 34795.8127,
+        "open_cash_pnl": 831.6189000000007,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 15123.9276,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 403,
+        "wins": 349,
+        "losses": 54,
+        "win_rate": 0.8660049627791563,
+        "closed_positions_pnl": 1002394.1039809998,
+        "avg_pnl_per_trade": 2487.330282831265
+      }
+    },
+    "0x8a6c6811e8937f9e8afc1b9249fa540262c30b3f": {
+      "proxy_wallet": "0x8a6c6811e8937f9e8afc1b9249fa540262c30b3f",
+      "user_name": "0x8a6C6811e8937F9E8aFc1b9249FA540262c30b3f-1771776258725",
+      "rank": 22,
+      "leaderboard_entry": {
+        "rank": "142",
+        "proxyWallet": "0x8a6c6811e8937f9e8afc1b9249fa540262c30b3f",
+        "userName": "0x8a6C6811e8937F9E8aFc1b9249FA540262c30b3f-1771776258725",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 7147869.895268001,
+        "pnl": 104678.19988010904,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 106,
+        "wins": 82,
+        "losses": 23,
+        "win_rate": 0.7735849056603774,
+        "closed_positions_pnl": 1225139.1511489989,
+        "avg_pnl_per_trade": 11557.916520273575
+      }
+    },
+    "0x153a9196135ee9ac4c202d1d25c558862bc19d6d": {
+      "proxy_wallet": "0x153a9196135ee9ac4c202d1d25c558862bc19d6d",
+      "user_name": "Coach99",
+      "rank": 23,
+      "leaderboard_entry": {
+        "rank": "146",
+        "proxyWallet": "0x153a9196135ee9ac4c202d1d25c558862bc19d6d",
+        "userName": "Coach99",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 733422.74921,
+        "pnl": 100923.61094204876,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 74,
+        "wins": 58,
+        "losses": 16,
+        "win_rate": 0.7837837837837838,
+        "closed_positions_pnl": 147039.86951299998,
+        "avg_pnl_per_trade": 1987.025263689189
+      }
+    },
+    "0x03f8dbae3f553fc35521f2bd877e71b06bf4d85a": {
+      "proxy_wallet": "0x03f8dbae3f553fc35521f2bd877e71b06bf4d85a",
+      "user_name": "0x03F8DBAe3F553fC35521F2bd877E71B06BF4d85a-1778414185115",
+      "rank": 24,
+      "leaderboard_entry": {
+        "rank": "149",
+        "proxyWallet": "0x03f8dbae3f553fc35521f2bd877e71b06bf4d85a",
+        "userName": "0x03F8DBAe3F553fC35521F2bd877E71B06BF4d85a-1778414185115",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1111652.095193,
+        "pnl": 97768.99404706234,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 3,
+        "current_position_value": 4042.3745,
+        "initial_position_value": 4766.988899999999,
+        "open_cash_pnl": -724.6144,
+        "open_realized_pnl": -209.9768,
+        "largest_position_value": 1868.1977,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 86,
+        "wins": 79,
+        "losses": 7,
+        "win_rate": 0.9186046511627907,
+        "closed_positions_pnl": 158173.05938199995,
+        "avg_pnl_per_trade": 1839.2216207209296
+      }
+    },
+    "0xf3ce7f04dde4f8c5aed19a20e5ecd8520e5ca57a": {
+      "proxy_wallet": "0xf3ce7f04dde4f8c5aed19a20e5ecd8520e5ca57a",
+      "user_name": "0xf3ce7f04dde4f8c5aed19a20e5ecd8520e5ca57a",
+      "rank": 25,
+      "leaderboard_entry": {
+        "rank": "151",
+        "proxyWallet": "0xf3ce7f04dde4f8c5aed19a20e5ecd8520e5ca57a",
+        "userName": "0xf3ce7f04dde4f8c5aed19a20e5ecd8520e5ca57a",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1019591.9160000001,
+        "pnl": 95954.7119499975,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 2,
+        "current_position_value": 19468.2107,
+        "initial_position_value": 11822.9827,
+        "open_cash_pnl": 7645.227800000001,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 9781.6929,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 103,
+        "wins": 102,
+        "losses": 0,
+        "win_rate": 0.9902912621359223,
+        "closed_positions_pnl": 277026.0965519999,
+        "avg_pnl_per_trade": 2689.573752932038
+      }
+    },
+    "0x6075106cd4f0155a68a0eb4cfd3b78f241aa3a62": {
+      "proxy_wallet": "0x6075106cd4f0155a68a0eb4cfd3b78f241aa3a62",
+      "user_name": "0x6075106cD4f0155a68A0eb4CFd3b78F241Aa3a62-1777444298131",
+      "rank": 26,
+      "leaderboard_entry": {
+        "rank": "158",
+        "proxyWallet": "0x6075106cd4f0155a68a0eb4cfd3b78f241aa3a62",
+        "userName": "0x6075106cD4f0155a68A0eb4CFd3b78F241Aa3a62-1777444298131",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 824018.9814520001,
+        "pnl": 92455.99632437853,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 66,
+        "wins": 61,
+        "losses": 5,
+        "win_rate": 0.9242424242424242,
+        "closed_positions_pnl": 174994.18316000004,
+        "avg_pnl_per_trade": 2651.4270175757583
+      }
+    },
+    "0x23073ad0c9dff45353cedb11760570b995663934": {
+      "proxy_wallet": "0x23073ad0c9dff45353cedb11760570b995663934",
+      "user_name": "Deep7",
+      "rank": 27,
+      "leaderboard_entry": {
+        "rank": "161",
+        "proxyWallet": "0x23073ad0c9dff45353cedb11760570b995663934",
+        "userName": "Deep7",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 2086653.528779,
+        "pnl": 91046.68504374847,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 91,
+        "wins": 80,
+        "losses": 11,
+        "win_rate": 0.8791208791208791,
+        "closed_positions_pnl": 429323.1044220001,
+        "avg_pnl_per_trade": 4717.836312329671
+      }
+    },
+    "0x7013c01a7eeb0c694c7e8bc5e289021ae33147ac": {
+      "proxy_wallet": "0x7013c01a7eeb0c694c7e8bc5e289021ae33147ac",
+      "user_name": "goodman877",
+      "rank": 28,
+      "leaderboard_entry": {
+        "rank": "163",
+        "proxyWallet": "0x7013c01a7eeb0c694c7e8bc5e289021ae33147ac",
+        "userName": "goodman877",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1877581.5744600003,
+        "pnl": 90345.77409909322,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 70,
+        "wins": 65,
+        "losses": 5,
+        "win_rate": 0.9285714285714286,
+        "closed_positions_pnl": 90378.66742100003,
+        "avg_pnl_per_trade": 1291.1238203000005
+      }
+    },
+    "0x43372356634781eea88d61bbdd7824cdce958882": {
+      "proxy_wallet": "0x43372356634781eea88d61bbdd7824cdce958882",
+      "user_name": "Anjun",
+      "rank": 29,
+      "leaderboard_entry": {
+        "rank": "164",
+        "proxyWallet": "0x43372356634781eea88d61bbdd7824cdce958882",
+        "userName": "Anjun",
+        "xUsername": "AnjunPoly",
+        "verifiedBadge": false,
+        "vol": 4486513.205433001,
+        "pnl": 89561.04119909392,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/luffy_%E6%88%91%E5%96%9C%E6%AC%A2%E4%BD%A0%E5%93%A6_1706802143401.png"
+      },
+      "current_position_metrics": {
+        "open_position_count": 291,
+        "current_position_value": 794808.8529000008,
+        "initial_position_value": 763416.2853000022,
+        "open_cash_pnl": 31392.55209999997,
+        "open_realized_pnl": -35448.22040000002,
+        "largest_position_value": 281978.8827,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 360,
+        "losses": 138,
+        "win_rate": 0.72,
+        "closed_positions_pnl": 471586.91095200006,
+        "avg_pnl_per_trade": 943.1738219040001
+      }
+    },
+    "0xfd691577dc6a9d21e9611b93ef9177d36738a2e1": {
+      "proxy_wallet": "0xfd691577dc6a9d21e9611b93ef9177d36738a2e1",
+      "user_name": "petanimal",
+      "rank": 30,
+      "leaderboard_entry": {
+        "rank": "165",
+        "proxyWallet": "0xfd691577dc6a9d21e9611b93ef9177d36738a2e1",
+        "userName": "petanimal",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1070022.3921049999,
+        "pnl": 89490.76559807108,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 86,
+        "current_position_value": 14179.574299999997,
+        "initial_position_value": 15196.557499999994,
+        "open_cash_pnl": -1016.9862000000005,
+        "open_realized_pnl": 67256.54169999999,
+        "largest_position_value": 3182.5,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 59,
+        "wins": 42,
+        "losses": 17,
+        "win_rate": 0.711864406779661,
+        "closed_positions_pnl": 150156.24860900003,
+        "avg_pnl_per_trade": 2545.0211628644074
+      }
+    },
+    "0x9a4cf053d6788a095da9be5e811e73131f491f30": {
+      "proxy_wallet": "0x9a4cf053d6788a095da9be5e811e73131f491f30",
+      "user_name": "to100posbe",
+      "rank": 31,
+      "leaderboard_entry": {
+        "rank": "173",
+        "proxyWallet": "0x9a4cf053d6788a095da9be5e811e73131f491f30",
+        "userName": "to100posbe",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1035335.8911129999,
+        "pnl": 84837.18555810557,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 1,
+        "current_position_value": 1032.3,
+        "initial_position_value": 1023.0,
+        "open_cash_pnl": 9.2999,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 1032.3,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 82,
+        "wins": 62,
+        "losses": 20,
+        "win_rate": 0.7560975609756098,
+        "closed_positions_pnl": 153284.405471,
+        "avg_pnl_per_trade": 1869.3220179390244
+      }
+    },
+    "0x6a32a31f2b28c31c016c6a222f2942240d8d0086": {
+      "proxy_wallet": "0x6a32a31f2b28c31c016c6a222f2942240d8d0086",
+      "user_name": "0x6A32A31F2B28c31c016C6A222f2942240d8D0086-1756820952447",
+      "rank": 32,
+      "leaderboard_entry": {
+        "rank": "188",
+        "proxyWallet": "0x6a32a31f2b28c31c016c6a222f2942240d8d0086",
+        "userName": "0x6A32A31F2B28c31c016C6A222f2942240d8D0086-1756820952447",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 586905.65872,
+        "pnl": 77075.07506789317,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 79,
+        "wins": 70,
+        "losses": 8,
+        "win_rate": 0.8860759493670886,
+        "closed_positions_pnl": 151643.200794,
+        "avg_pnl_per_trade": 1919.5341872658228
+      }
+    },
+    "0xd1ed12197b7dc22dede923727e9b714024dbd7cb": {
+      "proxy_wallet": "0xd1ed12197b7dc22dede923727e9b714024dbd7cb",
+      "user_name": "curie",
+      "rank": 33,
+      "leaderboard_entry": {
+        "rank": "190",
+        "proxyWallet": "0xd1ed12197b7dc22dede923727e9b714024dbd7cb",
+        "userName": "curie",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 2515070.8577690003,
+        "pnl": 75817.74603067638,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 366,
+        "losses": 130,
+        "win_rate": 0.732,
+        "closed_positions_pnl": 106656.01599600003,
+        "avg_pnl_per_trade": 213.31203199200007
+      }
+    },
+    "0x27f738fe203827445690339104aae35b20bc44b0": {
+      "proxy_wallet": "0x27f738fe203827445690339104aae35b20bc44b0",
+      "user_name": "ic4cream",
+      "rank": 34,
+      "leaderboard_entry": {
+        "rank": "193",
+        "proxyWallet": "0x27f738fe203827445690339104aae35b20bc44b0",
+        "userName": "ic4cream",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 4647402.749177,
+        "pnl": 75438.96448852643,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 36,
+        "current_position_value": 58688.68520000001,
+        "initial_position_value": 52773.15860000001,
+        "open_cash_pnl": 5915.5257999999985,
+        "open_realized_pnl": 14.4,
+        "largest_position_value": 14976.28,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 497,
+        "wins": 454,
+        "losses": 42,
+        "win_rate": 0.9134808853118712,
+        "closed_positions_pnl": 907233.5416010013,
+        "avg_pnl_per_trade": 1825.4196008068436
+      }
+    },
+    "0xec8d7bf83a1db5f06b9535985e58ffd17708dd71": {
+      "proxy_wallet": "0xec8d7bf83a1db5f06b9535985e58ffd17708dd71",
+      "user_name": "gardiner",
+      "rank": 35,
+      "leaderboard_entry": {
+        "rank": "220",
+        "proxyWallet": "0xec8d7bf83a1db5f06b9535985e58ffd17708dd71",
+        "userName": "gardiner",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1282518.450941,
+        "pnl": 63656.262969852796,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 6,
+        "current_position_value": 16210.394900000001,
+        "initial_position_value": 11362.109999999999,
+        "open_cash_pnl": 4848.284700000001,
+        "open_realized_pnl": 1628.8632999999995,
+        "largest_position_value": 12987.8834,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 121,
+        "wins": 103,
+        "losses": 16,
+        "win_rate": 0.8512396694214877,
+        "closed_positions_pnl": 199456.32001599998,
+        "avg_pnl_per_trade": 1648.3993389752065
+      }
+    },
+    "0x134a63b764ac7b008356e8db1857db94e6b09e42": {
+      "proxy_wallet": "0x134a63b764ac7b008356e8db1857db94e6b09e42",
+      "user_name": "Bertapotamous",
+      "rank": 36,
+      "leaderboard_entry": {
+        "rank": "221",
+        "proxyWallet": "0x134a63b764ac7b008356e8db1857db94e6b09e42",
+        "userName": "Bertapotamous",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 383900.76543200004,
+        "pnl": 63653.46190621799,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-1188952-527c7895-fbe1-4f31-a4cd-8c14dc4f0899.webp"
+      },
+      "current_position_metrics": {
+        "open_position_count": 28,
+        "current_position_value": 171818.72540000002,
+        "initial_position_value": 140940.55020000003,
+        "open_cash_pnl": 30878.173500000008,
+        "open_realized_pnl": 685.0405000000001,
+        "largest_position_value": 89802.0541,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 75,
+        "wins": 69,
+        "losses": 2,
+        "win_rate": 0.92,
+        "closed_positions_pnl": 17044.316967999996,
+        "avg_pnl_per_trade": 227.25755957333328
+      }
+    },
+    "0x83d9c8fe37f1b5141f3219219403d87f4513651b": {
+      "proxy_wallet": "0x83d9c8fe37f1b5141f3219219403d87f4513651b",
+      "user_name": "4buc0",
+      "rank": 37,
+      "leaderboard_entry": {
+        "rank": "225",
+        "proxyWallet": "0x83d9c8fe37f1b5141f3219219403d87f4513651b",
+        "userName": "4buc0",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1535829.312878,
+        "pnl": 62516.18278372346,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 14,
+        "current_position_value": 4161.7424,
+        "initial_position_value": 3942.7420999999995,
+        "open_cash_pnl": 218.99979999999994,
+        "open_realized_pnl": 106.7985,
+        "largest_position_value": 930.8005,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 233,
+        "wins": 181,
+        "losses": 51,
+        "win_rate": 0.776824034334764,
+        "closed_positions_pnl": 97754.27444899997,
+        "avg_pnl_per_trade": 419.54624227038613
+      }
+    },
+    "0x40604cb1f958c03bea0b18aa43e4cb0d62f33ec3": {
+      "proxy_wallet": "0x40604cb1f958c03bea0b18aa43e4cb0d62f33ec3",
+      "user_name": "C03B",
+      "rank": 38,
+      "leaderboard_entry": {
+        "rank": "227",
+        "proxyWallet": "0x40604cb1f958c03bea0b18aa43e4cb0d62f33ec3",
+        "userName": "C03B",
+        "xUsername": "Kaanha__",
+        "verifiedBadge": false,
+        "vol": 2797037.344591,
+        "pnl": 61814.50444816817,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 26,
+        "current_position_value": 70802.86809999999,
+        "initial_position_value": 70263.54620000003,
+        "open_cash_pnl": 539.3207999999997,
+        "open_realized_pnl": 3762.3591,
+        "largest_position_value": 17713.9025,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 216,
+        "wins": 175,
+        "losses": 41,
+        "win_rate": 0.8101851851851852,
+        "closed_positions_pnl": 68283.42036199996,
+        "avg_pnl_per_trade": 316.1269461203702
+      }
+    },
+    "0xc97485a44146b5db0b8b121358f57cf297cdb33b": {
+      "proxy_wallet": "0xc97485a44146b5db0b8b121358f57cf297cdb33b",
+      "user_name": "lu1zzz",
+      "rank": 39,
+      "leaderboard_entry": {
+        "rank": "229",
+        "proxyWallet": "0xc97485a44146b5db0b8b121358f57cf297cdb33b",
+        "userName": "lu1zzz",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 2388525.121385,
+        "pnl": 61538.24176048351,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 5,
+        "current_position_value": 68382.51090000001,
+        "initial_position_value": 40400.1389,
+        "open_cash_pnl": 27982.371900000002,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 66184.8408,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 56,
+        "wins": 51,
+        "losses": 3,
+        "win_rate": 0.9107142857142857,
+        "closed_positions_pnl": 478835.4818549999,
+        "avg_pnl_per_trade": 8550.63360455357
+      }
+    },
+    "0x63d43bbb87f85af03b8f2f9e2fad7b54334fa2f1": {
+      "proxy_wallet": "0x63d43bbb87f85af03b8f2f9e2fad7b54334fa2f1",
+      "user_name": "wokerjoesleeper",
+      "rank": 40,
+      "leaderboard_entry": {
+        "rank": "233",
+        "proxyWallet": "0x63d43bbb87f85af03b8f2f9e2fad7b54334fa2f1",
+        "userName": "wokerjoesleeper",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 489962.68619400007,
+        "pnl": 59369.63843228983,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 1760,
+        "current_position_value": 607090.8063999984,
+        "initial_position_value": 561474.7472999974,
+        "open_cash_pnl": 45615.980999999876,
+        "open_realized_pnl": 43855.366800000076,
+        "largest_position_value": 458937.3912,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 127,
+        "wins": 103,
+        "losses": 24,
+        "win_rate": 0.8110236220472441,
+        "closed_positions_pnl": 131309.47785999998,
+        "avg_pnl_per_trade": 1033.932896535433
+      }
+    },
+    "0x87da2f16cf98af9b3e2f6ba6d9c4c470815b53d1": {
+      "proxy_wallet": "0x87da2f16cf98af9b3e2f6ba6d9c4c470815b53d1",
+      "user_name": "GeorgeRe",
+      "rank": 41,
+      "leaderboard_entry": {
+        "rank": "244",
+        "proxyWallet": "0x87da2f16cf98af9b3e2f6ba6d9c4c470815b53d1",
+        "userName": "GeorgeRe",
+        "xUsername": "Grek1n",
+        "verifiedBadge": false,
+        "vol": 2192269.192538,
+        "pnl": 57254.88134934123,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 2,
+        "current_position_value": 1235.4351,
+        "initial_position_value": 5330.3239,
+        "open_cash_pnl": -4094.8887999999997,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 1234.466,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 105,
+        "wins": 103,
+        "losses": 2,
+        "win_rate": 0.9809523809523809,
+        "closed_positions_pnl": 335674.73376399983,
+        "avg_pnl_per_trade": 3196.902226323808
+      }
+    },
+    "0x49163ccb344e925aed3db257cacf2c72b0895442": {
+      "proxy_wallet": "0x49163ccb344e925aed3db257cacf2c72b0895442",
+      "user_name": "grokAgent01",
+      "rank": 42,
+      "leaderboard_entry": {
+        "rank": "245",
+        "proxyWallet": "0x49163ccb344e925aed3db257cacf2c72b0895442",
+        "userName": "grokAgent01",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1135407.785468,
+        "pnl": 56947.00735873541,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 79,
+        "wins": 68,
+        "losses": 11,
+        "win_rate": 0.8607594936708861,
+        "closed_positions_pnl": 59403.164168,
+        "avg_pnl_per_trade": 751.9387869367089
+      }
+    },
+    "0x61302a1303ea5d9ea80cd9e142e3d51c9a28a7a6": {
+      "proxy_wallet": "0x61302a1303ea5d9ea80cd9e142e3d51c9a28a7a6",
+      "user_name": "pateekk",
+      "rank": 43,
+      "leaderboard_entry": {
+        "rank": "246",
+        "proxyWallet": "0x61302a1303ea5d9ea80cd9e142e3d51c9a28a7a6",
+        "userName": "pateekk",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 756319.267755,
+        "pnl": 56889.99751489,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 54,
+        "wins": 47,
+        "losses": 7,
+        "win_rate": 0.8703703703703703,
+        "closed_positions_pnl": 62588.212492000006,
+        "avg_pnl_per_trade": 1159.0409720740743
+      }
+    },
+    "0x38f0b76ed812c24166a4f6293f991ac4b9972768": {
+      "proxy_wallet": "0x38f0b76ed812c24166a4f6293f991ac4b9972768",
+      "user_name": "initial77a",
+      "rank": 44,
+      "leaderboard_entry": {
+        "rank": "251",
+        "proxyWallet": "0x38f0b76ed812c24166a4f6293f991ac4b9972768",
+        "userName": "initial77a",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 3130571.3510720003,
+        "pnl": 56174.04851708186,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 3,
+        "current_position_value": 18199.1495,
+        "initial_position_value": 18180.282,
+        "open_cash_pnl": 18.86759999999981,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 7739.0573,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 63,
+        "wins": 56,
+        "losses": 7,
+        "win_rate": 0.8888888888888888,
+        "closed_positions_pnl": 756242.9840439999,
+        "avg_pnl_per_trade": 12003.8568895873
+      }
+    },
+    "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5": {
+      "proxy_wallet": "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5",
+      "user_name": "bobe2",
+      "rank": 45,
+      "leaderboard_entry": {
+        "rank": "253",
+        "proxyWallet": "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5",
+        "userName": "bobe2",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 11289311.971480003,
+        "pnl": 56023.50823890246,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 61,
+        "current_position_value": 2870300.2959999987,
+        "initial_position_value": 2805682.7534000003,
+        "open_cash_pnl": 64617.53829999999,
+        "open_realized_pnl": 6748.4922000000015,
+        "largest_position_value": 466530.9317,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 137,
+        "wins": 124,
+        "losses": 13,
+        "win_rate": 0.9051094890510949,
+        "closed_positions_pnl": 84683.07001599998,
+        "avg_pnl_per_trade": 618.1245986569342
+      }
+    },
+    "0x73c5701afdefba2814193168448b2992306b2f80": {
+      "proxy_wallet": "0x73c5701afdefba2814193168448b2992306b2f80",
+      "user_name": "n.magas",
+      "rank": 46,
+      "leaderboard_entry": {
+        "rank": "265",
+        "proxyWallet": "0x73c5701afdefba2814193168448b2992306b2f80",
+        "userName": "n.magas",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 3500260.610913,
+        "pnl": 54046.9000719188,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 159,
+        "wins": 115,
+        "losses": 44,
+        "win_rate": 0.7232704402515723,
+        "closed_positions_pnl": 53733.56375200001,
+        "avg_pnl_per_trade": 337.94694183647806
+      }
+    },
+    "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294": {
+      "proxy_wallet": "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294",
+      "user_name": "VeryLucky888",
+      "rank": 47,
+      "leaderboard_entry": {
+        "rank": "266",
+        "proxyWallet": "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294",
+        "userName": "VeryLucky888",
+        "xUsername": "TheVeryLucky888",
+        "verifiedBadge": false,
+        "vol": 24217823.381032992,
+        "pnl": 53847.829144571995,
+        "profileImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-3980992-50a3f24e-e4d8-4388-86ae-d9c063867f3e.webp"
+      },
+      "current_position_metrics": {
+        "open_position_count": 331,
+        "current_position_value": 103172.25939999991,
+        "initial_position_value": 107472.23569999989,
+        "open_cash_pnl": -4299.999900000003,
+        "open_realized_pnl": 175.46500000000026,
+        "largest_position_value": 9045.7299,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 500,
+        "wins": 391,
+        "losses": 93,
+        "win_rate": 0.782,
+        "closed_positions_pnl": 68162.29341200004,
+        "avg_pnl_per_trade": 136.32458682400008
+      }
+    },
+    "0x8f3c569792ebe53e2fb7b09464896afd33bb2f57": {
+      "proxy_wallet": "0x8f3c569792ebe53e2fb7b09464896afd33bb2f57",
+      "user_name": "romanh31",
+      "rank": 48,
+      "leaderboard_entry": {
+        "rank": "268",
+        "proxyWallet": "0x8f3c569792ebe53e2fb7b09464896afd33bb2f57",
+        "userName": "romanh31",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 1688786.718838,
+        "pnl": 53435.09246180339,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 6,
+        "current_position_value": 76427.6816,
+        "initial_position_value": 76101.528,
+        "open_cash_pnl": 326.15320000000065,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 55106.1012,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 60,
+        "wins": 59,
+        "losses": 1,
+        "win_rate": 0.9833333333333333,
+        "closed_positions_pnl": 246956.91640400005,
+        "avg_pnl_per_trade": 4115.948606733334
+      }
+    },
+    "0xbf1507f54ce14730c68e7e0bac98d25924472aa9": {
+      "proxy_wallet": "0xbf1507f54ce14730c68e7e0bac98d25924472aa9",
+      "user_name": "Vovanister123",
+      "rank": 49,
+      "leaderboard_entry": {
+        "rank": "275",
+        "proxyWallet": "0xbf1507f54ce14730c68e7e0bac98d25924472aa9",
+        "userName": "Vovanister123",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 381219.68528000003,
+        "pnl": 51461.817124175905,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 0,
+        "current_position_value": 0.0,
+        "initial_position_value": 0.0,
+        "open_cash_pnl": 0.0,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 0.0,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 59,
+        "wins": 50,
+        "losses": 9,
+        "win_rate": 0.847457627118644,
+        "closed_positions_pnl": 57794.087416999995,
+        "avg_pnl_per_trade": 979.560803677966
+      }
+    },
+    "0xe16d3f2a5807999b358affd9445c3a09e45e5e30": {
+      "proxy_wallet": "0xe16d3f2a5807999b358affd9445c3a09e45e5e30",
+      "user_name": "0xE16D3F2A5807999b358aFfD9445C3a09E45E5e30-1776429210592",
+      "rank": 50,
+      "leaderboard_entry": {
+        "rank": "1761085",
+        "proxyWallet": "0xe16d3f2a5807999b358affd9445c3a09e45e5e30",
+        "userName": "0xE16D3F2A5807999b358aFfD9445C3a09E45E5e30-1776429210592",
+        "xUsername": "",
+        "verifiedBadge": false,
+        "vol": 7704995.683075,
+        "pnl": -17392.118998416816,
+        "profileImage": ""
+      },
+      "current_position_metrics": {
+        "open_position_count": 3,
+        "current_position_value": 71108.7392,
+        "initial_position_value": 74699.6493,
+        "open_cash_pnl": -3590.9102999999996,
+        "open_realized_pnl": 0.0,
+        "largest_position_value": 35782.4207,
+        "current_positions_complete": true
+      },
+      "metrics": {
+        "closed_trade_count": 153,
+        "wins": 150,
+        "losses": 2,
+        "win_rate": 0.9803921568627451,
+        "closed_positions_pnl": 1561319.1117189995,
+        "avg_pnl_per_trade": 10204.700076594767
+      }
+    }
+  }
+}
