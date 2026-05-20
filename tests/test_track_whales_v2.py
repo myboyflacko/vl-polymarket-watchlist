@@ -86,6 +86,7 @@ def test_track_whales_filters_and_writes_v2_output(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
     now = datetime(2026, 5, 20, tzinfo=UTC)
     FrozenDateTime.frozen_now = now
     output_path = tmp_path / "whales.json"
@@ -194,6 +195,7 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
     output_path = tmp_path / "whales.json"
     profile = _profile(output_path)
     page = [

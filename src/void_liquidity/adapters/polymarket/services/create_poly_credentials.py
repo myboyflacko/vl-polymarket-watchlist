@@ -1,6 +1,9 @@
-from py_clob_client_v2 import ClobClient
-from void_liquidity.settings import get_settings
 from functools import lru_cache
+
+from py_clob_client_v2 import ClobClient
+
+from void_liquidity.settings import get_settings
+from void_liquidity.util.log import log_event
 
 
 @lru_cache(maxsize=1)
@@ -14,9 +17,7 @@ def get_clob_client() -> ClobClient:
     )
 
     # Creates new credentials or derives existing ones
-    credentials = client.create_or_derive_api_key()
-    
-    print(credentials)
-    
-    
+    client.create_or_derive_api_key()
+    log_event("info", "polymarket.credentials.created")
+
     return client

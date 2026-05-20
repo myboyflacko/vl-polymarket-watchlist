@@ -21,6 +21,7 @@ from void_liquidity.adapters.polymarket.params import (
     CurrentPositionsParams,
     LeaderboardParams,
 )
+from void_liquidity.util.log import log_event
 
 
 SERVICE_DIR = Path(__file__).resolve().parent
@@ -247,16 +248,22 @@ async def _fetch_leaderboard_top(
             order_by=order_by,
             offset=offset,
         )
-        print(
-            "[leaderboard] "
-            f"order_by={order_by} offset={params.offset} limit={params.limit}"
+        log_event(
+            "info",
+            "polymarket.leaderboard.fetch",
+            order_by=order_by,
+            offset=params.offset,
+            limit=params.limit,
         )
         page = await get_leaderboard(client=client, params=params)
 
         if not isinstance(page, list) or not page:
-            print(
-                "[leaderboard] "
-                f"order_by={order_by} offset={params.offset} stop=empty_or_invalid"
+            log_event(
+                "info",
+                "polymarket.leaderboard.empty",
+                order_by=order_by,
+                offset=params.offset,
+                stop="empty_or_invalid",
             )
             break
 
@@ -277,9 +284,11 @@ async def _fetch_leaderboard_top(
 
         offset += params.limit
 
-    print(
-        "[leaderboard] "
-        f"order_by={order_by} wallets={len(entries_by_wallet)}"
+    log_event(
+        "info",
+        "polymarket.leaderboard.done",
+        order_by=order_by,
+        wallets=len(entries_by_wallet),
     )
     return entries_by_wallet
 
@@ -299,9 +308,12 @@ async def _fetch_all_current_positions(
             proxy_wallet=proxy_wallet,
             offset=offset,
         )
-        print(
-            "[current_positions] "
-            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
+        log_event(
+            "info",
+            "polymarket.current_positions.fetch",
+            wallet=proxy_wallet,
+            offset=params.offset,
+            limit=params.limit,
         )
 
         try:
@@ -342,9 +354,12 @@ async def _fetch_all_closed_positions(
             proxy_wallet=proxy_wallet,
             offset=offset,
         )
-        print(
-            "[closed_positions] "
-            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
+        log_event(
+            "info",
+            "polymarket.closed_positions.fetch",
+            wallet=proxy_wallet,
+            offset=params.offset,
+            limit=params.limit,
         )
 
         try:
@@ -410,9 +425,12 @@ async def _fetch_all_activity(
             start=start,
             end=end,
         )
-        print(
-            "[activity] "
-            f"wallet={proxy_wallet} offset={params.offset} limit={params.limit}"
+        log_event(
+            "info",
+            "polymarket.activity.fetch",
+            wallet=proxy_wallet,
+            offset=params.offset,
+            limit=params.limit,
         )
 
         try:
@@ -898,7 +916,12 @@ def write_whales_to_json(
     with output_path.open("w", encoding="utf-8") as output_file:
         json.dump(payload, output_file, ensure_ascii=False, indent=2)
 
-    print(f"[json] wrote path={output_path} rows={len(whales)}")
+    log_event(
+        "info",
+        "polymarket.whales_json.written",
+        path=str(output_path),
+        rows=len(whales),
+    )
 
 
 async def track_whales(
@@ -912,10 +935,11 @@ async def track_whales(
     now = datetime.now(UTC)
 
     try:
-        print(
-            "[track_whales] "
-            f"start profile_version={active_profile.profile_version} "
-            f"target={active_profile.target_wallet_count}"
+        log_event(
+            "info",
+            "polymarket.track_whales.start",
+            profile_version=active_profile.profile_version,
+            target=active_profile.target_wallet_count,
         )
         pnl_entries = await _fetch_leaderboard_top(
             client=client,
@@ -934,11 +958,12 @@ async def track_whales(
         candidate_pool_summary = Counter(
             candidate["source"] for candidate in candidates
         )
-        print(
-            "[candidate_pool] "
-            f"pnl_wallets={len(pnl_entries)} "
-            f"vol_wallets={len(vol_entries)} "
-            f"candidates={len(candidates)}"
+        log_event(
+            "info",
+            "polymarket.candidate_pool.built",
+            pnl_wallets=len(pnl_entries),
+            vol_wallets=len(vol_entries),
+            candidates=len(candidates),
         )
 
         for batch_start in range(
@@ -952,10 +977,12 @@ async def track_whales(
             batch = candidates[
                 batch_start:batch_start + active_profile.wallet_batch_size
             ]
-            print(
-                "[wallet_batch] "
-                f"start={batch_start} size={len(batch)} "
-                f"qualified_wallets={len(whales)}"
+            log_event(
+                "info",
+                "polymarket.wallet_batch.start",
+                start=batch_start,
+                size=len(batch),
+                qualified_wallets=len(whales),
             )
             results = await asyncio.gather(
                 *[
@@ -978,17 +1005,20 @@ async def track_whales(
 
                 if not whale:
                     reject_summary.update(reasons)
-                    print(
-                        "[rejected] "
-                        f"wallet={proxy_wallet} reason={','.join(reasons)}"
+                    log_event(
+                        "info",
+                        "polymarket.wallet.rejected",
+                        wallet=proxy_wallet,
+                        reasons=reasons,
                     )
                     continue
 
                 whales[proxy_wallet] = whale
-                print(
-                    "[qualified] "
-                    f"wallet={proxy_wallet} "
-                    f"qualified_wallets={len(whales)}"
+                log_event(
+                    "info",
+                    "polymarket.wallet.qualified",
+                    wallet=proxy_wallet,
+                    qualified_wallets=len(whales),
                 )
 
                 if len(whales) >= active_profile.target_wallet_count:
@@ -1002,9 +1032,11 @@ async def track_whales(
             candidate_wallet_count=len(candidates),
             candidate_pool_summary=candidate_pool_summary,
         )
-        print(
-            "[track_whales] "
-            f"done wallets={len(whales)} checked={checked_wallet_count}"
+        log_event(
+            "info",
+            "polymarket.track_whales.done",
+            wallets=len(whales),
+            checked=checked_wallet_count,
         )
         return whales
 
@@ -1014,4 +1046,8 @@ async def track_whales(
 
 if __name__ == "__main__":
     tracked_whales = asyncio.run(track_whales())
-    print(f"[track_whales] returned_wallets={len(tracked_whales)}")
+    log_event(
+        "info",
+        "polymarket.track_whales.returned",
+        returned_wallets=len(tracked_whales),
+    )

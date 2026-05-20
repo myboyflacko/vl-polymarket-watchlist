@@ -11,7 +11,7 @@ from void_liquidity.adapters.polymarket.params import (
 )
 from void_liquidity.adapters.polymarket.params.base import BaseParams
 from void_liquidity.settings import Settings
-from void_liquidity.util.log import log_error
+from void_liquidity.util.log import log_error, log_event
 
 settings = Settings()
 profile_request_semaphore = asyncio.Semaphore(
@@ -47,9 +47,12 @@ async def get_closed_positions(
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)
 
-                print(
-                    "[rate_limit] "
-                    f"endpoint={endpoint} attempt={attempt}/{max_attempts}"
+                log_event(
+                    "info",
+                    "polymarket.rate_limit.attempt",
+                    endpoint=endpoint,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
                 )
                 return await client.get(
                     base_url=base_url,
@@ -68,11 +71,13 @@ async def get_closed_positions(
 
             if is_rate_limited and attempt < max_attempts:
                 wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                print(
-                    "[rate_limit] "
-                    f"endpoint={endpoint} status=retry "
-                    f"attempt={attempt}/{max_attempts} "
-                    f"sleep_seconds={wait_seconds}"
+                log_event(
+                    "warning",
+                    "polymarket.rate_limit.retry",
+                    endpoint=endpoint,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    sleep_seconds=wait_seconds,
                 )
                 await asyncio.sleep(wait_seconds)
                 continue
@@ -115,9 +120,12 @@ async def get_current_positions(
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)
 
-                print(
-                    "[rate_limit] "
-                    f"endpoint={endpoint} attempt={attempt}/{max_attempts}"
+                log_event(
+                    "info",
+                    "polymarket.rate_limit.attempt",
+                    endpoint=endpoint,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
                 )
                 return await client.get(
                     base_url=base_url,
@@ -136,11 +144,13 @@ async def get_current_positions(
 
             if is_rate_limited and attempt < max_attempts:
                 wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                print(
-                    "[rate_limit] "
-                    f"endpoint={endpoint} status=retry "
-                    f"attempt={attempt}/{max_attempts} "
-                    f"sleep_seconds={wait_seconds}"
+                log_event(
+                    "warning",
+                    "polymarket.rate_limit.retry",
+                    endpoint=endpoint,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    sleep_seconds=wait_seconds,
                 )
                 await asyncio.sleep(wait_seconds)
                 continue
@@ -183,9 +193,12 @@ async def get_activity(
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)
 
-                print(
-                    "[rate_limit] "
-                    f"endpoint={endpoint} attempt={attempt}/{max_attempts}"
+                log_event(
+                    "info",
+                    "polymarket.rate_limit.attempt",
+                    endpoint=endpoint,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
                 )
                 return await client.get(
                     base_url=base_url,
@@ -204,11 +217,13 @@ async def get_activity(
 
             if is_rate_limited and attempt < max_attempts:
                 wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                print(
-                    "[rate_limit] "
-                    f"endpoint={endpoint} status=retry "
-                    f"attempt={attempt}/{max_attempts} "
-                    f"sleep_seconds={wait_seconds}"
+                log_event(
+                    "warning",
+                    "polymarket.rate_limit.retry",
+                    endpoint=endpoint,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    sleep_seconds=wait_seconds,
                 )
                 await asyncio.sleep(wait_seconds)
                 continue
