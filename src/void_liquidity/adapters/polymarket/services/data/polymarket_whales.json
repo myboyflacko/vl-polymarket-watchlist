@@ -1,17 +1,24 @@
 {
   "metadata": {
-    "generated_at": "2026-05-20T19:25:18.490938+00:00",
+    "generated_at": "2026-05-20T23:17:33.819367+00:00",
     "mode": "fresh_discovery",
     "profile_version": "whale_tracking_v2",
     "target_wallet_count": 50,
-    "wallet_count": 10,
-    "candidate_wallet_count": 77,
-    "checked_wallet_count": 77,
+    "wallet_count": 50,
+    "candidate_wallet_count": 355,
+    "candidate_pool_summary": {
+      "core": 78,
+      "pnl_specialist": 172,
+      "volume_profitable": 105
+    },
+    "checked_wallet_count": 348,
     "reject_summary": {
-      "closed_positions_pnl_below_or_equal_min": 6,
-      "closed_trade_count_below_min": 8,
-      "current_position_value_below_min": 25,
-      "win_rate_below_min": 60
+      "activity_trade_count_below_min": 3,
+      "closed_positions_pnl_below_or_equal_min": 36,
+      "closed_trade_count_below_min": 100,
+      "current_position_value_below_min": 173,
+      "last_activity_too_old": 26,
+      "win_rate_below_min": 203
     },
     "qualification_thresholds": {
       "min_current_position_value": 10000.0,
@@ -41,46 +48,62 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
           "pnl_rank": "1",
           "vol_rank": "12",
-          "pnl": 3372160.331311514,
-          "vol": 43333104.854472004,
+          "pnl": 3373963.5814648364,
+          "vol": 43375248.80761399,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 6,
-          "current_position_value": 457242.7813,
-          "initial_position_value": 403022.0485,
-          "open_cash_pnl": 54220.7326,
+          "open_position_count": 8,
+          "current_position_value": 469583.2574,
+          "initial_position_value": 432969.37889999995,
+          "open_cash_pnl": 36613.87810000001,
           "open_realized_pnl": 0.0,
           "largest_position_value": 143860.9543,
           "current_positions_complete": true
         },
         "closed_positions": {
-          "closed_trade_count": 297,
-          "wins": 271,
+          "closed_trade_count": 298,
+          "wins": 272,
           "losses": 25,
           "breakevens": 1,
-          "win_rate": 0.9124579124579124,
-          "closed_positions_pnl": 15194959.556446012,
-          "avg_pnl_per_trade": 51161.47998803371,
+          "win_rate": 0.912751677852349,
+          "closed_positions_pnl": 15240541.806032013,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 15608587.602028014,
+          "gross_loss": 368045.79599599994,
+          "profit_factor": 42.40936256258081,
+          "avg_win": 57384.51324275005,
+          "avg_loss": 14721.831839839997,
+          "largest_loss": 58499.954206,
+          "avg_pnl_per_trade": 51142.75773836246,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
           "trade_count_7d": 3500,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 1717250.987066026,
-          "activity_volume_7d": 1717250.987066026,
-          "last_activity_at": "2026-05-20T18:50:02+00:00",
-          "last_activity_age_days": 0.019878820844907406,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 1794158.7392010193,
+          "activity_volume_7d": 1794158.7392010193,
+          "last_activity_at": "2026-05-20T23:02:04+00:00",
+          "last_activity_age_days": 0.0003346162037037037,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -109,20 +132,26 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "15",
-          "vol_rank": "50",
-          "pnl": 896746.4584051754,
-          "vol": 13226662.564648,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "16",
+          "vol_rank": "47",
+          "pnl": 879534.5360629532,
+          "vol": 13691968.727942,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 11,
-          "current_position_value": 56940.98500000001,
-          "initial_position_value": 67771.34850000001,
-          "open_cash_pnl": -10830.363700000002,
+          "open_position_count": 10,
+          "current_position_value": 65997.36660000001,
+          "initial_position_value": 82597.5505,
+          "open_cash_pnl": -16600.1843,
           "open_realized_pnl": 0.0,
-          "largest_position_value": 18475.4227,
+          "largest_position_value": 18675.157,
           "current_positions_complete": true
         },
         "closed_positions": {
@@ -132,23 +161,33 @@
           "breakevens": 1,
           "win_rate": 0.7956989247311828,
           "closed_positions_pnl": 2299338.9324980006,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2464542.1284399997,
+          "gross_loss": 165203.19594200002,
+          "profit_factor": 14.918247279582035,
+          "avg_win": 33304.62335729729,
+          "avg_loss": 9177.955330111112,
+          "largest_loss": 53586.484927,
           "avg_pnl_per_trade": 24724.074542989252,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
-          "trade_count_window": 2790,
-          "trade_count_7d": 2790,
-          "avg_trades_per_day_window": 93.0,
-          "activity_volume_window": 6644653.181725001,
-          "activity_volume_7d": 6644653.181725001,
-          "last_activity_at": "2026-05-20T19:17:43+00:00",
-          "last_activity_age_days": 0.0006542838078703704,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 6610478.972147009,
+          "activity_volume_7d": 6610478.972147009,
+          "last_activity_at": "2026-05-20T23:02:14+00:00",
+          "last_activity_age_days": 0.00021887546296296296,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -177,20 +216,26 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "16",
-          "vol_rank": "149",
-          "pnl": 876673.4587963582,
-          "vol": 6453718.058717,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "17",
+          "vol_rank": "151",
+          "pnl": 830786.2515023444,
+          "vol": 6461220.432994,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 9,
-          "current_position_value": 79846.218,
-          "initial_position_value": 60913.75429999999,
-          "open_cash_pnl": 18932.463399999997,
-          "open_realized_pnl": 1261.5863,
-          "largest_position_value": 35134.7891,
+          "open_position_count": 7,
+          "current_position_value": 19611.1405,
+          "initial_position_value": 15784.2582,
+          "open_cash_pnl": 3826.8819,
+          "open_realized_pnl": 1161.5872,
+          "largest_position_value": 10004.4911,
           "current_positions_complete": true
         },
         "closed_positions": {
@@ -200,23 +245,33 @@
           "breakevens": 1,
           "win_rate": 0.9225352112676056,
           "closed_positions_pnl": 2328465.3399350015,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2472246.8083770014,
+          "gross_loss": 143781.46844199998,
+          "profit_factor": 17.1944746090438,
+          "avg_win": 18872.113041045814,
+          "avg_loss": 14378.146844199999,
+          "largest_loss": 60300.0,
           "avg_pnl_per_trade": 16397.643238978882,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
-          "trade_count_7d": 802,
+          "trade_count_7d": 803,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 2151701.9510240066,
-          "activity_volume_7d": 1003934.2460269993,
-          "last_activity_at": "2026-05-20T18:56:10+00:00",
-          "last_activity_age_days": 0.015619561585648149,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 2154335.299898006,
+          "activity_volume_7d": 1002966.8418249995,
+          "last_activity_at": "2026-05-20T21:57:19+00:00",
+          "last_activity_age_days": 0.04529989398148148,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -245,20 +300,26 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "30",
-          "vol_rank": "110",
-          "pnl": 536239.6119879411,
-          "vol": 7933117.0034099985,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "32",
+          "vol_rank": "108",
+          "pnl": 485817.99205815146,
+          "vol": 8097182.495886,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 14,
-          "current_position_value": 112100.4228,
-          "initial_position_value": 124593.04000000001,
-          "open_cash_pnl": -12492.617699999997,
+          "open_position_count": 16,
+          "current_position_value": 125616.68050000003,
+          "initial_position_value": 258192.76079999996,
+          "open_cash_pnl": -132576.0806,
           "open_realized_pnl": 0.0,
-          "largest_position_value": 22249.9912,
+          "largest_position_value": 49500.0,
           "current_positions_complete": true
         },
         "closed_positions": {
@@ -268,23 +329,33 @@
           "breakevens": 0,
           "win_rate": 0.8701298701298701,
           "closed_positions_pnl": 2541430.1399270003,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2599659.1337880003,
+          "gross_loss": 58228.993861,
+          "profit_factor": 44.645441410059675,
+          "avg_win": 38800.88259385075,
+          "avg_loss": 5822.8993861,
+          "largest_loss": 19464.582851,
           "avg_pnl_per_trade": 33005.58623281818,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
-          "trade_count_7d": 1240,
+          "trade_count_7d": 1407,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 4250679.221537041,
-          "activity_volume_7d": 1661346.1078479998,
-          "last_activity_at": "2026-05-20T19:13:52+00:00",
-          "last_activity_age_days": 0.0033278949189814817,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 4303247.194782031,
+          "activity_volume_7d": 1798197.4422989977,
+          "last_activity_at": "2026-05-20T22:34:34+00:00",
+          "last_activity_age_days": 0.019431838425925926,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -313,19 +384,25 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "39",
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "38",
           "vol_rank": "5",
-          "pnl": 407540.78389354656,
-          "vol": 67903744.78821799,
+          "pnl": 407263.5268448356,
+          "vol": 68533697.49886699,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
           "open_position_count": 47,
-          "current_position_value": 473725.2049,
-          "initial_position_value": 522565.35849999986,
-          "open_cash_pnl": -48840.155099999996,
-          "open_realized_pnl": 122462.14189999999,
+          "current_position_value": 487042.2676000001,
+          "initial_position_value": 540812.5366999998,
+          "open_cash_pnl": -53770.270400000045,
+          "open_realized_pnl": 122257.44830000002,
           "largest_position_value": 67865.2793,
           "current_positions_complete": true
         },
@@ -336,23 +413,33 @@
           "breakevens": 0,
           "win_rate": 0.8760330578512396,
           "closed_positions_pnl": 5987278.426801997,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 6185817.393213998,
+          "gross_loss": 198538.96641200004,
+          "profit_factor": 31.1566918323602,
+          "avg_win": 58356.76786050941,
+          "avg_loss": 13235.931094133335,
+          "largest_loss": 79741.89489,
           "avg_pnl_per_trade": 49481.639890925595,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
           "trade_count_7d": 3500,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 78017.42437299994,
-          "activity_volume_7d": 78017.42437299994,
-          "last_activity_at": "2026-05-20T19:17:46+00:00",
-          "last_activity_age_days": 0.0006195615856481482,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 104887.32897399987,
+          "activity_volume_7d": 104887.32897399987,
+          "last_activity_at": "2026-05-20T23:02:23+00:00",
+          "last_activity_age_days": 0.0001147087962962963,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -381,46 +468,62 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "54",
-          "vol_rank": "59",
-          "pnl": 296459.5766703638,
-          "vol": 11540997.330338001,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "48",
+          "vol_rank": "60",
+          "pnl": 316727.42846070527,
+          "vol": 11545129.175259998,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 26,
-          "current_position_value": 232189.09349999996,
-          "initial_position_value": 209725.00400000004,
-          "open_cash_pnl": 22464.088300000003,
+          "open_position_count": 30,
+          "current_position_value": 242620.82609999995,
+          "initial_position_value": 221264.5882,
+          "open_cash_pnl": 21356.236500000003,
           "open_realized_pnl": 379.687,
           "largest_position_value": 74456.6557,
           "current_positions_complete": true
         },
         "closed_positions": {
           "closed_trade_count": 500,
-          "wins": 439,
+          "wins": 438,
           "losses": 59,
-          "breakevens": 2,
-          "win_rate": 0.878,
-          "closed_positions_pnl": 2408541.3083250024,
-          "avg_pnl_per_trade": 4817.082616650005,
+          "breakevens": 3,
+          "win_rate": 0.876,
+          "closed_positions_pnl": 2408541.3026960026,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2902001.3497300046,
+          "gross_loss": 493460.04703399993,
+          "profit_factor": 5.880924640551606,
+          "avg_win": 6625.57385783106,
+          "avg_loss": 8363.729610745762,
+          "largest_loss": 72347.584935,
+          "avg_pnl_per_trade": 4817.0826053920055,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": true,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
           "trade_count_7d": 3500,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 1383603.0553490138,
-          "activity_volume_7d": 1383603.0553490138,
-          "last_activity_at": "2026-05-20T16:52:30+00:00",
-          "last_activity_age_days": 0.10149919121527777,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 1398095.2817400165,
+          "activity_volume_7d": 1398095.2817400165,
+          "last_activity_at": "2026-05-20T23:01:24+00:00",
+          "last_activity_age_days": 0.0007975791666666666,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -449,46 +552,62 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "96",
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "81",
           "vol_rank": "228",
-          "pnl": 180670.17381816095,
-          "vol": 4987220.024813,
+          "pnl": 203989.49725380557,
+          "vol": 5022856.584659001,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 264,
-          "current_position_value": 447454.2135000002,
-          "initial_position_value": 268060.90479999996,
-          "open_cash_pnl": 179393.2941999996,
-          "open_realized_pnl": 1840557.5102,
+          "open_position_count": 265,
+          "current_position_value": 451583.6523,
+          "initial_position_value": 270356.2834999999,
+          "open_cash_pnl": 181227.35419999965,
+          "open_realized_pnl": 1840554.0464,
           "largest_position_value": 34818.5566,
           "current_positions_complete": true
         },
         "closed_positions": {
           "closed_trade_count": 500,
-          "wins": 397,
-          "losses": 98,
+          "wins": 399,
+          "losses": 96,
           "breakevens": 5,
-          "win_rate": 0.794,
-          "closed_positions_pnl": 487155.6670759999,
-          "avg_pnl_per_trade": 974.3113341519997,
+          "win_rate": 0.798,
+          "closed_positions_pnl": 504016.00655499997,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 561711.2154679997,
+          "gross_loss": 57695.20891300002,
+          "profit_factor": 9.735838140650769,
+          "avg_win": 1407.7975325012524,
+          "avg_loss": 600.9917595104168,
+          "largest_loss": 13242.053029,
+          "avg_pnl_per_trade": 1008.03201311,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": true,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
           "trade_count_7d": 3500,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 312664.1212310001,
-          "activity_volume_7d": 312664.1212310001,
-          "last_activity_at": "2026-05-20T19:18:07+00:00",
-          "last_activity_age_days": 0.0003765060300925926,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 312705.7624969992,
+          "activity_volume_7d": 312705.7624969992,
+          "last_activity_at": "2026-05-20T23:02:07+00:00",
+          "last_activity_age_days": 0.0002998939814814815,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -517,20 +636,26 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "102",
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "98",
           "vol_rank": "80",
-          "pnl": 169182.99137396133,
-          "vol": 9465867.280972999,
+          "pnl": 180361.3764948367,
+          "vol": 9481436.390745,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
           "open_position_count": 19,
-          "current_position_value": 257263.52249999996,
-          "initial_position_value": 259115.87180000005,
-          "open_cash_pnl": -1852.350400000003,
-          "open_realized_pnl": 37087.524,
-          "largest_position_value": 114937.2294,
+          "current_position_value": 275044.8326,
+          "initial_position_value": 236246.9151,
+          "open_cash_pnl": 38797.9162,
+          "open_realized_pnl": 38934.0394,
+          "largest_position_value": 112213.569,
           "current_positions_complete": true
         },
         "closed_positions": {
@@ -540,23 +665,117 @@
           "breakevens": 3,
           "win_rate": 0.8700564971751412,
           "closed_positions_pnl": 930707.2248700004,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 1022672.0558820002,
+          "gross_loss": 91964.831012,
+          "profit_factor": 11.120251563867466,
+          "avg_win": 6640.7276355974045,
+          "avg_loss": 4598.2415506,
+          "largest_loss": 24615.328465,
           "avg_pnl_per_trade": 5258.232908870059,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
           "trade_count_7d": 3500,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 1338249.1291040066,
-          "activity_volume_7d": 1338249.1291040066,
-          "last_activity_at": "2026-05-20T19:12:38+00:00",
-          "last_activity_age_days": 0.004184376400462963,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 1341805.0044580072,
+          "activity_volume_7d": 1341805.0044580072,
+          "last_activity_at": "2026-05-20T22:53:38+00:00",
+          "last_activity_age_days": 0.006191097685185185,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x3f3aa7005f8006bfcc367d43a25cde25509fe8fd": {
+      "metadata": {
+        "proxy_wallet": "0x3f3aa7005f8006bfcc367d43a25cde25509fe8fd",
+        "user_name": "us391",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": true,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "128",
+          "vol_rank": "217",
+          "pnl": 129102.494619659,
+          "vol": 5205930.984553,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 2,
+          "current_position_value": 11854.7351,
+          "initial_position_value": 13646.7435,
+          "open_cash_pnl": -1792.0085,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 6956.8727,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 423,
+          "wins": 368,
+          "losses": 55,
+          "breakevens": 0,
+          "win_rate": 0.8699763593380615,
+          "closed_positions_pnl": 1088330.0931579997,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 1285908.2797529998,
+          "gross_loss": 197578.18659500004,
+          "profit_factor": 6.508351462850916,
+          "avg_win": 3494.3159775896734,
+          "avg_loss": 3592.330665363637,
+          "largest_loss": 28474.208527,
+          "avg_pnl_per_trade": 2572.884380988179,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3223,
+          "trade_count_7d": 1005,
+          "avg_trades_per_day_window": 107.43333333333334,
+          "activity_volume_window": 2927619.0931190057,
+          "activity_volume_7d": 799997.7066380002,
+          "last_activity_at": "2026-05-20T20:49:44+00:00",
+          "last_activity_age_days": 0.09223276435185185,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
           "activity_complete": true,
+          "activity_capped": false,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -585,20 +804,26 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
           "pnl_rank": "145",
-          "vol_rank": "207",
-          "pnl": 108887.42493450032,
-          "vol": 5306391.615851,
+          "vol_rank": "211",
+          "pnl": 108950.11420082691,
+          "vol": 5306531.005851001,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
           "open_position_count": 12,
-          "current_position_value": 49581.342,
-          "initial_position_value": 63009.931499999984,
-          "open_cash_pnl": -13428.590099999998,
-          "open_realized_pnl": 2457.326,
-          "largest_position_value": 23500.0009,
+          "current_position_value": 50612.890999999996,
+          "initial_position_value": 63008.881899999986,
+          "open_cash_pnl": -12395.991399999997,
+          "open_realized_pnl": 2457.631,
+          "largest_position_value": 24500.0009,
           "current_positions_complete": true
         },
         "closed_positions": {
@@ -608,23 +833,33 @@
           "breakevens": 18,
           "win_rate": 0.7142857142857143,
           "closed_positions_pnl": 14789.81332800003,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 186143.90741899988,
+          "gross_loss": 171354.09409100024,
+          "profit_factor": 1.086311409169747,
+          "avg_win": 590.9330394253965,
+          "avg_loss": 1586.6119823240763,
+          "largest_loss": 59860.59,
           "avg_pnl_per_trade": 33.53699167346945,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": false,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
-          "trade_count_7d": 2122,
+          "trade_count_7d": 2071,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 101880.67963100075,
-          "activity_volume_7d": 73659.31785700013,
-          "last_activity_at": "2026-05-20T18:45:08+00:00",
-          "last_activity_age_days": 0.023281598622685185,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 101873.79649300074,
+          "activity_volume_7d": 70669.37484000009,
+          "last_activity_at": "2026-05-20T21:53:49+00:00",
+          "last_activity_age_days": 0.047730449537037034,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
-          "activity_complete": true,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {
@@ -653,19 +888,25 @@
       "metrics": {
         "leaderboard": {
           "candidate_pool_match": true,
-          "pnl_rank": "181",
-          "vol_rank": "240",
-          "pnl": 88623.57540327714,
-          "vol": 4802871.729440002,
+          "candidate_pool_source": "core",
+          "matched_pools": [
+            "core",
+            "pnl_top",
+            "volume_top"
+          ],
+          "pnl_rank": "189",
+          "vol_rank": "239",
+          "pnl": 83031.77927804278,
+          "vol": 4830204.504438,
           "pnl_leaderboard_wallet": true,
           "vol_leaderboard_wallet": true
         },
         "exposure": {
-          "open_position_count": 355,
-          "current_position_value": 814208.4244000003,
-          "initial_position_value": 787154.1975000015,
-          "open_cash_pnl": 27054.209300000024,
-          "open_realized_pnl": -62569.91830000002,
+          "open_position_count": 369,
+          "current_position_value": 808006.5548000011,
+          "initial_position_value": 782193.0723000015,
+          "open_cash_pnl": 25813.464000000025,
+          "open_realized_pnl": -84771.68470000004,
           "largest_position_value": 281978.8827,
           "current_positions_complete": true
         },
@@ -675,24 +916,3232 @@
           "losses": 141,
           "breakevens": 4,
           "win_rate": 0.71,
-          "closed_positions_pnl": 463706.00889100024,
-          "avg_pnl_per_trade": 927.4120177820005,
+          "closed_positions_pnl": 477902.39577900025,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 547435.7956349999,
+          "gross_loss": 69533.39985599999,
+          "profit_factor": 7.872990487574469,
+          "avg_win": 1542.072663760563,
+          "avg_loss": 493.14467982978715,
+          "largest_loss": 9355.16384,
+          "avg_pnl_per_trade": 955.8047915580005,
           "unknown_timestamp_count": 0,
           "closed_positions_complete": true,
+          "closed_positions_truncated": true,
           "window_days": 30,
-          "cutoff": "2026-04-20T19:18:39.530121+00:00"
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
         },
         "activity": {
           "trade_count_window": 3500,
           "trade_count_7d": 3500,
           "avg_trades_per_day_window": 116.66666666666667,
-          "activity_volume_window": 1109564.266502998,
-          "activity_volume_7d": 1109564.266502998,
-          "last_activity_at": "2026-05-20T19:15:56+00:00",
-          "last_activity_age_days": 0.0018927097337962963,
-          "last_activity_cutoff": "2026-05-13T19:18:39.530121+00:00",
+          "activity_volume_window": 1098054.7501009987,
+          "activity_volume_7d": 1098054.7501009987,
+          "last_activity_at": "2026-05-20T22:53:17+00:00",
+          "last_activity_age_days": 0.0064341532407407405,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x5c3a1a602848565bb16165fcd460b00c3d43020b": {
+      "metadata": {
+        "proxy_wallet": "0x5c3a1a602848565bb16165fcd460b00c3d43020b",
+        "user_name": "VARsenal",
+        "x_username": "",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-5270322-1627dc07-3ce6-48cb-8791-2c12959cbad5.png",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "45",
+          "vol_rank": null,
+          "pnl": 352975.1421105062,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 6,
+          "current_position_value": 28523.2828,
+          "initial_position_value": 29503.7134,
+          "open_cash_pnl": -980.4309,
+          "open_realized_pnl": 19.6472,
+          "largest_position_value": 12765.0525,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 152,
+          "wins": 113,
+          "losses": 39,
+          "breakevens": 0,
+          "win_rate": 0.743421052631579,
+          "closed_positions_pnl": 1089325.909551,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 1617961.4435919998,
+          "gross_loss": 528635.534041,
+          "profit_factor": 3.0606369405854466,
+          "avg_win": 14318.242863646015,
+          "avg_loss": 13554.757283102563,
+          "largest_loss": 61799.88,
+          "avg_pnl_per_trade": 7166.617825993421,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 239,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1883076.737610037,
+          "activity_volume_7d": 469479.3195190007,
+          "last_activity_at": "2026-05-20T14:49:21+00:00",
+          "last_activity_age_days": 0.3424989680555556,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xd1ed12197b7dc22dede923727e9b714024dbd7cb": {
+      "metadata": {
+        "proxy_wallet": "0xd1ed12197b7dc22dede923727e9b714024dbd7cb",
+        "user_name": "curie",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "56",
+          "vol_rank": null,
+          "pnl": 277891.25478685956,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 15,
+          "current_position_value": 11606.794499999998,
+          "initial_position_value": 11125.0093,
+          "open_cash_pnl": 481.7844999999999,
+          "open_realized_pnl": -217.8412,
+          "largest_position_value": 11083.8237,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 370,
+          "losses": 127,
+          "breakevens": 3,
+          "win_rate": 0.74,
+          "closed_positions_pnl": 295562.2921999999,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 307348.0882310002,
+          "gross_loss": 11785.796031,
+          "profit_factor": 26.07783873253764,
+          "avg_win": 830.670508732433,
+          "avg_loss": 92.8015435511811,
+          "largest_loss": 1286.0,
+          "avg_pnl_per_trade": 591.1245843999998,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 2491,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1048816.3087010006,
+          "activity_volume_7d": 900116.6004669993,
+          "last_activity_at": "2026-05-20T22:52:49+00:00",
+          "last_activity_age_days": 0.006758227314814815,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xee00ba338c59557141789b127927a55f5cc5cea1": {
+      "metadata": {
+        "proxy_wallet": "0xee00ba338c59557141789b127927a55f5cc5cea1",
+        "user_name": "S-Works",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "70",
+          "vol_rank": null,
+          "pnl": 228616.18926189328,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 5,
+          "current_position_value": 120354.5942,
+          "initial_position_value": 18667.4088,
+          "open_cash_pnl": 101687.185,
+          "open_realized_pnl": 9217.7161,
+          "largest_position_value": 76150.3953,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 135,
+          "wins": 95,
+          "losses": 40,
+          "breakevens": 0,
+          "win_rate": 0.7037037037037037,
+          "closed_positions_pnl": 549170.620083,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 1512507.8553339993,
+          "gross_loss": 963337.2352509999,
+          "profit_factor": 1.5700709990099277,
+          "avg_win": 15921.135319305255,
+          "avg_loss": 24083.430881275,
+          "largest_loss": 152503.454283,
+          "avg_pnl_per_trade": 4067.9305191333337,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 1628,
+          "trade_count_7d": 432,
+          "avg_trades_per_day_window": 54.266666666666666,
+          "activity_volume_window": 3710877.2325790003,
+          "activity_volume_7d": 1256361.1946309982,
+          "last_activity_at": "2026-05-20T09:50:36+00:00",
+          "last_activity_age_days": 0.5499642458333333,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
           "unknown_timestamp_count": 0,
           "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xefddbb135e2cc2648e3ca6a6b3d4fa4994d5017f": {
+      "metadata": {
+        "proxy_wallet": "0xefddbb135e2cc2648e3ca6a6b3d4fa4994d5017f",
+        "user_name": "maxgreen",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "75",
+          "vol_rank": null,
+          "pnl": 215749.5806894783,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 2,
+          "current_position_value": 35216.0799,
+          "initial_position_value": 25243.7872,
+          "open_cash_pnl": 9972.2925,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 28381.925,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 55,
+          "wins": 53,
+          "losses": 1,
+          "breakevens": 1,
+          "win_rate": 0.9636363636363636,
+          "closed_positions_pnl": 601901.799381,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 604642.607375,
+          "gross_loss": 2740.807994,
+          "profit_factor": 220.6074298887936,
+          "avg_win": 11408.35108254717,
+          "avg_loss": 2740.807994,
+          "largest_loss": 2740.807994,
+          "avg_pnl_per_trade": 10943.669079654544,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 2952,
+          "trade_count_7d": 1210,
+          "avg_trades_per_day_window": 98.4,
+          "activity_volume_window": 939750.5076849964,
+          "activity_volume_7d": 376028.2152710005,
+          "last_activity_at": "2026-05-20T21:59:20+00:00",
+          "last_activity_age_days": 0.043899431018518516,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xe5efd6543002653b2eef940d8254911862ad9e7a": {
+      "metadata": {
+        "proxy_wallet": "0xe5efd6543002653b2eef940d8254911862ad9e7a",
+        "user_name": "0xE5efD6543002653B2EEF940d8254911862aD9e7A-1729599643232",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "92",
+          "vol_rank": null,
+          "pnl": 192134.45916820932,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 2,
+          "current_position_value": 32490.0356,
+          "initial_position_value": 29999.9917,
+          "open_cash_pnl": 2490.0438,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 19800.0,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 59,
+          "wins": 57,
+          "losses": 2,
+          "breakevens": 0,
+          "win_rate": 0.9661016949152542,
+          "closed_positions_pnl": 533675.1103409998,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 533881.0995409999,
+          "gross_loss": 205.98919999999998,
+          "profit_factor": 2591.791703356292,
+          "avg_win": 9366.335079666664,
+          "avg_loss": 102.99459999999999,
+          "largest_loss": 173.849,
+          "avg_pnl_per_trade": 9045.340853237285,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 1132,
+          "trade_count_7d": 347,
+          "avg_trades_per_day_window": 37.733333333333334,
+          "activity_volume_window": 1798007.6933409977,
+          "activity_volume_7d": 560405.2497659997,
+          "last_activity_at": "2026-05-20T22:26:10+00:00",
+          "last_activity_age_days": 0.02526517175925926,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x033f0346c007323030eb420305ffede19a95618e": {
+      "metadata": {
+        "proxy_wallet": "0x033f0346c007323030eb420305ffede19a95618e",
+        "user_name": "TheVeryGoodCow",
+        "x_username": "",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-3027617-b61f3802-cd12-43b4-a357-b85be2e8f1b9.webp",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "94",
+          "vol_rank": null,
+          "pnl": 190102.5846000643,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 71,
+          "current_position_value": 17306.241100000007,
+          "initial_position_value": 17074.277400000006,
+          "open_cash_pnl": 231.96230000000006,
+          "open_realized_pnl": 741.6252,
+          "largest_position_value": 13192.9618,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 430,
+          "losses": 70,
+          "breakevens": 0,
+          "win_rate": 0.86,
+          "closed_positions_pnl": 34320.429381999966,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 45309.33282699996,
+          "gross_loss": 10988.903445,
+          "profit_factor": 4.123189638873013,
+          "avg_win": 105.37054145813944,
+          "avg_loss": 156.98433492857143,
+          "largest_loss": 3875.945833,
+          "avg_pnl_per_trade": 68.64085876399993,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1251,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1164029.9868370034,
+          "activity_volume_7d": 485523.17695799854,
+          "last_activity_at": "2026-05-20T20:51:05+00:00",
+          "last_activity_age_days": 0.09129526435185184,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x9d84ce0306f8551e02efef1680475fc0f1dc1344": {
+      "metadata": {
+        "proxy_wallet": "0x9d84ce0306f8551e02efef1680475fc0f1dc1344",
+        "user_name": "ImJustKen",
+        "x_username": "Domahhhh",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-82662-8ddbc8e8-0500-44b7-bb13-c0b32a40a45d.jpg",
+        "verified_badge": true
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "100",
+          "vol_rank": null,
+          "pnl": 169726.98558271004,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 442,
+          "current_position_value": 715752.6706000005,
+          "initial_position_value": 649455.2128000003,
+          "open_cash_pnl": 66297.43629999987,
+          "open_realized_pnl": 116466.41169999998,
+          "largest_position_value": 161334.1587,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 62,
+          "wins": 48,
+          "losses": 14,
+          "breakevens": 0,
+          "win_rate": 0.7741935483870968,
+          "closed_positions_pnl": 144820.44926599995,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 187721.96671900005,
+          "gross_loss": 42901.51745299999,
+          "profit_factor": 4.375648645171014,
+          "avg_win": 3910.874306645834,
+          "avg_loss": 3064.394103785714,
+          "largest_loss": 23701.087535,
+          "avg_pnl_per_trade": 2335.813697838709,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3269,
+          "trade_count_7d": 423,
+          "avg_trades_per_day_window": 108.96666666666667,
+          "activity_volume_window": 1417860.534439,
+          "activity_volume_7d": 209665.29518300018,
+          "last_activity_at": "2026-05-20T16:22:13+00:00",
+          "last_activity_age_days": 0.27800822731481484,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x9c76cdb43fb46454da005fbc82047a64a18ec926": {
+      "metadata": {
+        "proxy_wallet": "0x9c76cdb43fb46454da005fbc82047a64a18ec926",
+        "user_name": "Bagwell306",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "109",
+          "vol_rank": null,
+          "pnl": 158487.02752418438,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 84,
+          "current_position_value": 58622.03679999998,
+          "initial_position_value": 43258.80479999996,
+          "open_cash_pnl": 15363.225400000003,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 29985.0,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 448,
+          "losses": 36,
+          "breakevens": 16,
+          "win_rate": 0.896,
+          "closed_positions_pnl": 344301.59312899987,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 365621.41734299995,
+          "gross_loss": 21319.824214,
+          "profit_factor": 17.149363600423538,
+          "avg_win": 816.1192351406249,
+          "avg_loss": 592.2173392777778,
+          "largest_loss": 3620.668245,
+          "avg_pnl_per_trade": 688.6031862579997,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1758,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 867795.9254689993,
+          "activity_volume_7d": 499551.8234379998,
+          "last_activity_at": "2026-05-20T22:36:36+00:00",
+          "last_activity_age_days": 0.01801980138888889,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x63d43bbb87f85af03b8f2f9e2fad7b54334fa2f1": {
+      "metadata": {
+        "proxy_wallet": "0x63d43bbb87f85af03b8f2f9e2fad7b54334fa2f1",
+        "user_name": "wokerjoesleeper",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "126",
+          "vol_rank": null,
+          "pnl": 132286.78611401748,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 1714,
+          "current_position_value": 609222.4134999977,
+          "initial_position_value": 562164.9888999973,
+          "open_cash_pnl": 47057.34819999988,
+          "open_realized_pnl": 40962.91580000005,
+          "largest_position_value": 461352.8511,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 175,
+          "wins": 147,
+          "losses": 27,
+          "breakevens": 1,
+          "win_rate": 0.84,
+          "closed_positions_pnl": 247990.81424699991,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 265474.732628,
+          "gross_loss": 17483.918381,
+          "profit_factor": 15.183937996215702,
+          "avg_win": 1805.9505620952382,
+          "avg_loss": 647.5525326296296,
+          "largest_loss": 12407.612177,
+          "avg_pnl_per_trade": 1417.0903671257138,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 520,
+          "trade_count_7d": 19,
+          "avg_trades_per_day_window": 17.333333333333332,
+          "activity_volume_window": 581885.6284289998,
+          "activity_volume_7d": 38275.695078,
+          "last_activity_at": "2026-05-20T21:16:10+00:00",
+          "last_activity_age_days": 0.07387628287037036,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xc96e5287ab294ac0388c2ddb00180fc464cff1f9": {
+      "metadata": {
+        "proxy_wallet": "0xc96e5287ab294ac0388c2ddb00180fc464cff1f9",
+        "user_name": "wigglew",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "136",
+          "vol_rank": null,
+          "pnl": 120481.48253444508,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 17,
+          "current_position_value": 50052.4648,
+          "initial_position_value": 49437.0192,
+          "open_cash_pnl": 615.4443000000001,
+          "open_realized_pnl": -15.330999999999968,
+          "largest_position_value": 13953.6206,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 87,
+          "wins": 61,
+          "losses": 26,
+          "breakevens": 0,
+          "win_rate": 0.7011494252873564,
+          "closed_positions_pnl": 307501.7639169999,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 486634.68360399996,
+          "gross_loss": 179132.919687,
+          "profit_factor": 2.7166122477895165,
+          "avg_win": 7977.617764,
+          "avg_loss": 6889.72768026923,
+          "largest_loss": 37685.92574,
+          "avg_pnl_per_trade": 3534.5030335287347,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 1488,
+          "trade_count_7d": 333,
+          "avg_trades_per_day_window": 49.6,
+          "activity_volume_window": 1366195.5163039991,
+          "activity_volume_7d": 373478.54612499994,
+          "last_activity_at": "2026-05-20T22:07:00+00:00",
+          "last_activity_age_days": 0.038575356944444444,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xc97485a44146b5db0b8b121358f57cf297cdb33b": {
+      "metadata": {
+        "proxy_wallet": "0xc97485a44146b5db0b8b121358f57cf297cdb33b",
+        "user_name": "lu1zzz",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "164",
+          "vol_rank": null,
+          "pnl": 98360.29591151491,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 4,
+          "current_position_value": 25915.282,
+          "initial_position_value": 26678.386899999998,
+          "open_cash_pnl": -763.1049,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 24865.5,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 105,
+          "wins": 97,
+          "losses": 6,
+          "breakevens": 2,
+          "win_rate": 0.9238095238095239,
+          "closed_positions_pnl": 937707.5872899999,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 972664.285953,
+          "gross_loss": 34956.698663,
+          "profit_factor": 27.82483252580481,
+          "avg_win": 10027.466865494845,
+          "avg_loss": 5826.1164438333335,
+          "largest_loss": 29637.7448,
+          "avg_pnl_per_trade": 8930.548450380951,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 2298,
+          "trade_count_7d": 588,
+          "avg_trades_per_day_window": 76.6,
+          "activity_volume_window": 1969482.0412479884,
+          "activity_volume_7d": 482368.6035699994,
+          "last_activity_at": "2026-05-20T22:48:25+00:00",
+          "last_activity_age_days": 0.009813782870370371,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x84cb17a50bc2487e8d64029783c3d2abcba328ad": {
+      "metadata": {
+        "proxy_wallet": "0x84cb17a50bc2487e8d64029783c3d2abcba328ad",
+        "user_name": "Mikee12",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "181",
+          "vol_rank": null,
+          "pnl": 87890.67453547065,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 3,
+          "current_position_value": 105635.9285,
+          "initial_position_value": 158742.8968,
+          "open_cash_pnl": -53106.96829999999,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 91904.2974,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 67,
+          "wins": 66,
+          "losses": 1,
+          "breakevens": 0,
+          "win_rate": 0.9850746268656716,
+          "closed_positions_pnl": 499543.0229170001,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 500577.1468400001,
+          "gross_loss": 1034.123923,
+          "profit_factor": 484.05914968858144,
+          "avg_win": 7584.502224848487,
+          "avg_loss": 1034.123923,
+          "largest_loss": 1034.123923,
+          "avg_pnl_per_trade": 7455.866013686569,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 178,
+          "trade_count_7d": 13,
+          "avg_trades_per_day_window": 5.933333333333334,
+          "activity_volume_window": 1709080.886034,
+          "activity_volume_7d": 83663.19392,
+          "last_activity_at": "2026-05-20T21:56:26+00:00",
+          "last_activity_age_days": 0.04591331990740741,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x0979bad57d7a1403db89cbcd9c52bf43f2138d9b": {
+      "metadata": {
+        "proxy_wallet": "0x0979bad57d7a1403db89cbcd9c52bf43f2138d9b",
+        "user_name": "askilika",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "187",
+          "vol_rank": null,
+          "pnl": 84661.93519099157,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 4,
+          "current_position_value": 11683.552500000002,
+          "initial_position_value": 14999.9694,
+          "open_cash_pnl": -3316.4170000000004,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 7936.9182,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 79,
+          "wins": 72,
+          "losses": 7,
+          "breakevens": 0,
+          "win_rate": 0.9113924050632911,
+          "closed_positions_pnl": 651174.644633,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 691607.467856,
+          "gross_loss": 40432.823223,
+          "profit_factor": 17.105099588063954,
+          "avg_win": 9605.659275777776,
+          "avg_loss": 5776.117603285714,
+          "largest_loss": 13299.961568000002,
+          "avg_pnl_per_trade": 8242.717020670887,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 720,
+          "trade_count_7d": 93,
+          "avg_trades_per_day_window": 24.0,
+          "activity_volume_window": 1891444.3392450002,
+          "activity_volume_7d": 177402.159935,
+          "last_activity_at": "2026-05-20T20:12:08+00:00",
+          "last_activity_age_days": 0.11834387546296297,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xecb14ac6e9ca447ce2f2912e6217b43d7b655da3": {
+      "metadata": {
+        "proxy_wallet": "0xecb14ac6e9ca447ce2f2912e6217b43d7b655da3",
+        "user_name": "SaylorMoon",
+        "x_username": "FhantomBets",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "213",
+          "vol_rank": null,
+          "pnl": 73690.11256660722,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 32,
+          "current_position_value": 285039.48799999995,
+          "initial_position_value": 267004.86349999986,
+          "open_cash_pnl": 18034.622500000005,
+          "open_realized_pnl": -1820.8156000000001,
+          "largest_position_value": 50155.7776,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 66,
+          "wins": 48,
+          "losses": 12,
+          "breakevens": 6,
+          "win_rate": 0.7272727272727273,
+          "closed_positions_pnl": 182920.41434,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 203232.761297,
+          "gross_loss": 20312.346957,
+          "profit_factor": 10.005380556330165,
+          "avg_win": 4234.015860354167,
+          "avg_loss": 1692.6955797500002,
+          "largest_loss": 14545.549199,
+          "avg_pnl_per_trade": 2771.5214293939393,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 2571,
+          "trade_count_7d": 1164,
+          "avg_trades_per_day_window": 85.7,
+          "activity_volume_window": 1028906.6689499969,
+          "activity_volume_7d": 332564.73901799927,
+          "last_activity_at": "2026-05-20T22:43:29+00:00",
+          "last_activity_age_days": 0.013239708796296296,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x614dc8d3542c12103d2c6a3553fd761e391d1546": {
+      "metadata": {
+        "proxy_wallet": "0x614dc8d3542c12103d2c6a3553fd761e391d1546",
+        "user_name": "mr.ozi",
+        "x_username": "MrOziPM",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/Capture_2c5e68de-e9d9-41e8-b25d-2dcc67eefc45_1721219990648.PNG",
+        "verified_badge": true
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "215",
+          "vol_rank": null,
+          "pnl": 72592.19664303663,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 26,
+          "current_position_value": 516847.53459999996,
+          "initial_position_value": 455133.17370000004,
+          "open_cash_pnl": 61714.35879999998,
+          "open_realized_pnl": 13058.8095,
+          "largest_position_value": 95150.0697,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 75,
+          "wins": 54,
+          "losses": 21,
+          "breakevens": 0,
+          "win_rate": 0.72,
+          "closed_positions_pnl": 87739.193366,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 153195.30431200002,
+          "gross_loss": 65456.110946,
+          "profit_factor": 2.3404278393255464,
+          "avg_win": 2836.9500798518525,
+          "avg_loss": 3116.957664095238,
+          "largest_loss": 17166.147348,
+          "avg_pnl_per_trade": 1169.8559115466667,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 1945,
+          "trade_count_7d": 203,
+          "avg_trades_per_day_window": 64.83333333333333,
+          "activity_volume_window": 2016394.8674580033,
+          "activity_volume_7d": 199726.76635100043,
+          "last_activity_at": "2026-05-20T22:57:43+00:00",
+          "last_activity_age_days": 0.003355449537037037,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x36257cb65f199caa86f7d30625bbc1250a981187": {
+      "metadata": {
+        "proxy_wallet": "0x36257cb65f199caa86f7d30625bbc1250a981187",
+        "user_name": "0x36257cb65f199caa86f7d30625bbc1250a981187",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "221",
+          "vol_rank": null,
+          "pnl": 71422.492136418,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 10,
+          "current_position_value": 40660.05439999999,
+          "initial_position_value": 36499.957500000004,
+          "open_cash_pnl": 4160.0963,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 9453.125,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 156,
+          "wins": 150,
+          "losses": 4,
+          "breakevens": 2,
+          "win_rate": 0.9615384615384616,
+          "closed_positions_pnl": 32863.74882899978,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 772691.8894669998,
+          "gross_loss": 739828.140638,
+          "profit_factor": 1.0444207877800638,
+          "avg_win": 5151.279263113332,
+          "avg_loss": 184957.0351595,
+          "largest_loss": 733828.152624,
+          "avg_pnl_per_trade": 210.66505659615243,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 480,
+          "trade_count_7d": 66,
+          "avg_trades_per_day_window": 16.0,
+          "activity_volume_window": 2630224.0403970107,
+          "activity_volume_7d": 268418.2931110001,
+          "last_activity_at": "2026-05-20T10:46:13+00:00",
+          "last_activity_age_days": 0.5113415606481481,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xb3cfe7615d64db8dfa743a1b1a2b976911460ebd": {
+      "metadata": {
+        "proxy_wallet": "0xb3cfe7615d64db8dfa743a1b1a2b976911460ebd",
+        "user_name": "omoi0i0",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "231",
+          "vol_rank": null,
+          "pnl": 68289.8030665395,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 18,
+          "current_position_value": 214041.89169999998,
+          "initial_position_value": 214778.7772,
+          "open_cash_pnl": -736.8862999999997,
+          "open_realized_pnl": 3837.109,
+          "largest_position_value": 61847.7181,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 368,
+          "wins": 266,
+          "losses": 99,
+          "breakevens": 3,
+          "win_rate": 0.7228260869565217,
+          "closed_positions_pnl": 140171.86380700007,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 324161.7484719998,
+          "gross_loss": 183989.88466500002,
+          "profit_factor": 1.761845489833411,
+          "avg_win": 1218.6531897443601,
+          "avg_loss": 1858.4836834848486,
+          "largest_loss": 33108.338205,
+          "avg_pnl_per_trade": 380.9018038233698,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1183,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1075146.3328660002,
+          "activity_volume_7d": 419638.2658690006,
+          "last_activity_at": "2026-05-20T22:29:34+00:00",
+          "last_activity_age_days": 0.022904060648148147,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x40604cb1f958c03bea0b18aa43e4cb0d62f33ec3": {
+      "metadata": {
+        "proxy_wallet": "0x40604cb1f958c03bea0b18aa43e4cb0d62f33ec3",
+        "user_name": "C03B",
+        "x_username": "Kaanha__",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "232",
+          "vol_rank": null,
+          "pnl": 67924.09417238447,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 23,
+          "current_position_value": 51915.098399999995,
+          "initial_position_value": 46636.241200000004,
+          "open_cash_pnl": 5278.855599999999,
+          "open_realized_pnl": 2682.094,
+          "largest_position_value": 22305.4723,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 337,
+          "wins": 259,
+          "losses": 76,
+          "breakevens": 2,
+          "win_rate": 0.7685459940652819,
+          "closed_positions_pnl": 113475.05656299993,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 143911.89149599994,
+          "gross_loss": 30436.834933000002,
+          "profit_factor": 4.728214737596413,
+          "avg_win": 555.6443687104245,
+          "avg_loss": 400.48467017105264,
+          "largest_loss": 9253.69138,
+          "avg_pnl_per_trade": 336.7212360919879,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1153,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 2885584.384194999,
+          "activity_volume_7d": 886207.2890409994,
+          "last_activity_at": "2026-05-20T23:02:30+00:00",
+          "last_activity_age_days": 3.3690277777777774e-05,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x134a63b764ac7b008356e8db1857db94e6b09e42": {
+      "metadata": {
+        "proxy_wallet": "0x134a63b764ac7b008356e8db1857db94e6b09e42",
+        "user_name": "Bertapotamous",
+        "x_username": "",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-1188952-527c7895-fbe1-4f31-a4cd-8c14dc4f0899.webp",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "233",
+          "vol_rank": null,
+          "pnl": 67827.12777459249,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 28,
+          "current_position_value": 158756.4732,
+          "initial_position_value": 128162.85900000003,
+          "open_cash_pnl": 30593.6126,
+          "open_realized_pnl": 5077.2899,
+          "largest_position_value": 90347.1348,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 121,
+          "wins": 112,
+          "losses": 5,
+          "breakevens": 4,
+          "win_rate": 0.9256198347107438,
+          "closed_positions_pnl": 22300.726969999996,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 27824.57423199999,
+          "gross_loss": 5523.847262,
+          "profit_factor": 5.037172990537331,
+          "avg_win": 248.43369849999993,
+          "avg_loss": 1104.7694524,
+          "largest_loss": 4535.728291,
+          "avg_pnl_per_trade": 184.3035286776859,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 852,
+          "trade_count_7d": 402,
+          "avg_trades_per_day_window": 28.4,
+          "activity_volume_window": 505527.6490069996,
+          "activity_volume_7d": 185683.04280800006,
+          "last_activity_at": "2026-05-20T22:51:23+00:00",
+          "last_activity_age_days": 0.007753597685185186,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xa9c4b118095a4f67ba9ba461aadf6a9cfe5e7433": {
+      "metadata": {
+        "proxy_wallet": "0xa9c4b118095a4f67ba9ba461aadf6a9cfe5e7433",
+        "user_name": "0xA9C4b118095A4F67BA9ba461aAdF6a9cfE5e7433-1721318888203",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "pnl_specialist",
+          "matched_pools": [
+            "pnl_top"
+          ],
+          "pnl_rank": "237",
+          "vol_rank": null,
+          "pnl": 67188.82232223041,
+          "vol": 0.0,
+          "pnl_leaderboard_wallet": true,
+          "vol_leaderboard_wallet": false
+        },
+        "exposure": {
+          "open_position_count": 6,
+          "current_position_value": 35253.1861,
+          "initial_position_value": 26363.6645,
+          "open_cash_pnl": 8889.5213,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 34291.8782,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 66,
+          "wins": 54,
+          "losses": 10,
+          "breakevens": 2,
+          "win_rate": 0.8181818181818182,
+          "closed_positions_pnl": 232804.23444700002,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 262381.8858110001,
+          "gross_loss": 29577.651364,
+          "profit_factor": 8.87095065737215,
+          "avg_win": 4858.923811314816,
+          "avg_loss": 2957.7651364000003,
+          "largest_loss": 16832.112625,
+          "avg_pnl_per_trade": 3527.3368855606063,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 1865,
+          "trade_count_7d": 1059,
+          "avg_trades_per_day_window": 62.166666666666664,
+          "activity_volume_window": 452414.4418680011,
+          "activity_volume_7d": 253200.39012100102,
+          "last_activity_at": "2026-05-20T22:50:20+00:00",
+          "last_activity_age_days": 0.008482764351851852,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294": {
+      "metadata": {
+        "proxy_wallet": "0x6d3c5bd13984b2de47c3a88ddc455309aab3d294",
+        "user_name": "VeryLucky888",
+        "x_username": "TheVeryLucky888",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-3980992-50a3f24e-e4d8-4388-86ae-d9c063867f3e.webp",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "26",
+          "pnl": 0.0,
+          "vol": 25245035.030618995,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 343,
+          "current_position_value": 136473.93249999985,
+          "initial_position_value": 137159.96649999998,
+          "open_cash_pnl": -686.0565000000012,
+          "open_realized_pnl": -2189.4063,
+          "largest_position_value": 9045.7299,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 396,
+          "losses": 86,
+          "breakevens": 18,
+          "win_rate": 0.792,
+          "closed_positions_pnl": 43895.20239499996,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 55857.85128499999,
+          "gross_loss": 11962.648890000004,
+          "profit_factor": 4.669354738956981,
+          "avg_win": 141.05518001262624,
+          "avg_loss": 139.10056848837215,
+          "largest_loss": 1761.652585,
+          "avg_pnl_per_trade": 87.79040478999991,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 260758.503792999,
+          "activity_volume_7d": 260758.503792999,
+          "last_activity_at": "2026-05-20T23:02:23+00:00",
+          "last_activity_age_days": 0.0001147087962962963,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xa61ef8773ec2e821962306ca87d4b57e39ff0abd": {
+      "metadata": {
+        "proxy_wallet": "0xa61ef8773ec2e821962306ca87d4b57e39ff0abd",
+        "user_name": "risk-manager",
+        "x_username": "",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-910447-e4276f18-6c7b-4e99-8a46-2177423035a0.PNG",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "53",
+          "pnl": 0.0,
+          "vol": 12145926.818156,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 59,
+          "current_position_value": 248468.7451,
+          "initial_position_value": 261181.79720000003,
+          "open_cash_pnl": -12713.055499999999,
+          "open_realized_pnl": 40822.7636,
+          "largest_position_value": 34379.9925,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 57,
+          "wins": 40,
+          "losses": 13,
+          "breakevens": 4,
+          "win_rate": 0.7017543859649122,
+          "closed_positions_pnl": 250980.96457500014,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 444177.132772,
+          "gross_loss": 193196.168197,
+          "profit_factor": 2.299099081090871,
+          "avg_win": 11104.4283193,
+          "avg_loss": 14861.243707461537,
+          "largest_loss": 62688.24,
+          "avg_pnl_per_trade": 4403.174817105266,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 7862.036335000009,
+          "activity_volume_7d": 7862.036335000009,
+          "last_activity_at": "2026-05-20T23:01:29+00:00",
+          "last_activity_age_days": 0.0007397087962962963,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5": {
+      "metadata": {
+        "proxy_wallet": "0xed107a85a4585a381e48c7f7ca4144909e7dd2e5",
+        "user_name": "bobe2",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "59",
+          "pnl": 0.0,
+          "vol": 11547373.424463002,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 63,
+          "current_position_value": 2624780.4976000004,
+          "initial_position_value": 2560820.6742,
+          "open_cash_pnl": 63959.81889999999,
+          "open_realized_pnl": 7415.2291000000005,
+          "largest_position_value": 462332.4355,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 172,
+          "wins": 146,
+          "losses": 24,
+          "breakevens": 2,
+          "win_rate": 0.8488372093023255,
+          "closed_positions_pnl": 115395.32975400003,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 140764.15038000006,
+          "gross_loss": 25368.820626,
+          "profit_factor": 5.548706912915521,
+          "avg_win": 964.1380163013703,
+          "avg_loss": 1057.03419275,
+          "largest_loss": 11168.483857,
+          "avg_pnl_per_trade": 670.9030799651165,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1984,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 10305105.771474015,
+          "activity_volume_7d": 2602964.4214960043,
+          "last_activity_at": "2026-05-20T22:53:42+00:00",
+          "last_activity_age_days": 0.006144801388888889,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x0a543bb97015206f67e1bc5ead7c2d60baf64a03": {
+      "metadata": {
+        "proxy_wallet": "0x0a543bb97015206f67e1bc5ead7c2d60baf64a03",
+        "user_name": "yyyy77777yyyyy777yyy",
+        "x_username": "",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-6996845-72b4ff1b-1859-4295-97bd-e34ec426702a.png",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "66",
+          "pnl": 0.0,
+          "vol": 10762872.960474998,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 25,
+          "current_position_value": 11755.059999999998,
+          "initial_position_value": 7512.441700000002,
+          "open_cash_pnl": 4242.617300000001,
+          "open_realized_pnl": -214.2073,
+          "largest_position_value": 4124.8063,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 248,
+          "wins": 229,
+          "losses": 14,
+          "breakevens": 5,
+          "win_rate": 0.9233870967741935,
+          "closed_positions_pnl": 15478.074816999995,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 39523.526893,
+          "gross_loss": 24045.452076000005,
+          "profit_factor": 1.6437007201228215,
+          "avg_win": 172.5918204934498,
+          "avg_loss": 1717.5322911428575,
+          "largest_loss": 7599.972259,
+          "avg_pnl_per_trade": 62.41159200403224,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 2136,
+          "trade_count_7d": 374,
+          "avg_trades_per_day_window": 71.2,
+          "activity_volume_window": 11887090.57018298,
+          "activity_volume_7d": 745594.385771,
+          "last_activity_at": "2026-05-18T16:59:28+00:00",
+          "last_activity_age_days": 2.252140171759259,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": true,
+          "activity_capped": false,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xe16d3f2a5807999b358affd9445c3a09e45e5e30": {
+      "metadata": {
+        "proxy_wallet": "0xe16d3f2a5807999b358affd9445c3a09e45e5e30",
+        "user_name": "0xE16D3F2A5807999b358aFfD9445C3a09E45E5e30-1776429210592",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "98",
+          "pnl": 0.0,
+          "vol": 8589077.973273,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 2,
+          "current_position_value": 181034.7679,
+          "initial_position_value": 62098.8373,
+          "open_cash_pnl": 118935.93040000001,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 159227.3498,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 198,
+          "wins": 190,
+          "losses": 7,
+          "breakevens": 1,
+          "win_rate": 0.9595959595959596,
+          "closed_positions_pnl": 2744999.3229630003,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2880158.359405,
+          "gross_loss": 135159.036442,
+          "profit_factor": 21.309402872525993,
+          "avg_win": 15158.728207394737,
+          "avg_loss": 19308.433777428574,
+          "largest_loss": 39999.748113,
+          "avg_pnl_per_trade": 13863.632944257577,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1643,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 4799006.922325983,
+          "activity_volume_7d": 3147855.090127995,
+          "last_activity_at": "2026-05-20T20:29:47+00:00",
+          "last_activity_age_days": 0.10608693101851853,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x1117eade222413335b7ec959e5b48c1d3dbc3532": {
+      "metadata": {
+        "proxy_wallet": "0x1117eade222413335b7ec959e5b48c1d3dbc3532",
+        "user_name": "benwyatt",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "119",
+          "pnl": 0.0,
+          "vol": 7368087.185969999,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 12,
+          "current_position_value": 138538.70660000003,
+          "initial_position_value": 144523.4355,
+          "open_cash_pnl": -5984.7293,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 18149.9949,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 249,
+          "wins": 224,
+          "losses": 24,
+          "breakevens": 1,
+          "win_rate": 0.8995983935742972,
+          "closed_positions_pnl": 2935801.8944400013,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 3102160.2620250015,
+          "gross_loss": 166358.367585,
+          "profit_factor": 18.64745553264682,
+          "avg_win": 13848.929741183043,
+          "avg_loss": 6931.598649375,
+          "largest_loss": 38610.662562,
+          "avg_pnl_per_trade": 11790.369053975908,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 903825.4758319965,
+          "activity_volume_7d": 903825.4758319965,
+          "last_activity_at": "2026-05-20T22:59:11+00:00",
+          "last_activity_age_days": 0.0023369310185185187,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xf3ce251f9c4ae0f3940a9f32de5dd1a1d05b8bc6": {
+      "metadata": {
+        "proxy_wallet": "0xf3ce251f9c4ae0f3940a9f32de5dd1a1d05b8bc6",
+        "user_name": "0xF3Ce251F9c4ae0f3940A9f32dE5Dd1A1d05B8Bc6-1778725794122",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "131",
+          "pnl": 0.0,
+          "vol": 6967420.058000001,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 37,
+          "current_position_value": 111454.0826,
+          "initial_position_value": 111977.41880000001,
+          "open_cash_pnl": -523.3387,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 48989.443,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 494,
+          "losses": 2,
+          "breakevens": 4,
+          "win_rate": 0.988,
+          "closed_positions_pnl": 2814.185782000001,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 3612.125782000003,
+          "gross_loss": 797.94,
+          "profit_factor": 4.526813772965389,
+          "avg_win": 7.311995510121463,
+          "avg_loss": 398.97,
+          "largest_loss": 635.58,
+          "avg_pnl_per_trade": 5.628371564000002,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 675174.4873499966,
+          "activity_volume_7d": 675174.4873499966,
+          "last_activity_at": "2026-05-20T23:02:16+00:00",
+          "last_activity_age_days": 0.00019572731481481482,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5": {
+      "metadata": {
+        "proxy_wallet": "0xa697d0b3fff7d285a0f92d6ee03a7f97809e59d5",
+        "user_name": "0xa697d0b3FFf7D285a0F92d6Ee03a7f97809E59d5-1774326306031",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "133",
+          "pnl": 0.0,
+          "vol": 6914643.334716999,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 65,
+          "current_position_value": 29464.928699999993,
+          "initial_position_value": 30116.79590000001,
+          "open_cash_pnl": -651.8701000000003,
+          "open_realized_pnl": -2225.0765000000006,
+          "largest_position_value": 2036.4596,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 372,
+          "losses": 122,
+          "breakevens": 6,
+          "win_rate": 0.744,
+          "closed_positions_pnl": 8828.424281000001,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 45224.73399000001,
+          "gross_loss": 36396.309708999994,
+          "profit_factor": 1.2425637201020119,
+          "avg_win": 121.57186556451614,
+          "avg_loss": 298.3304074508196,
+          "largest_loss": 1846.579204,
+          "avg_pnl_per_trade": 17.656848562000004,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 292568.7373000003,
+          "activity_volume_7d": 292568.7373000003,
+          "last_activity_at": "2026-05-20T23:02:21+00:00",
+          "last_activity_age_days": 0.00013785694444444445,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x751a2b86cab503496efd325c8344e10159349ea1": {
+      "metadata": {
+        "proxy_wallet": "0x751a2b86cab503496efd325c8344e10159349ea1",
+        "user_name": "Sharky6999",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "136",
+          "pnl": 0.0,
+          "vol": 6792072.903984001,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 8,
+          "current_position_value": 51841.0845,
+          "initial_position_value": 50893.577999999994,
+          "open_cash_pnl": 947.506,
+          "open_realized_pnl": 706.351,
+          "largest_position_value": 24389.9089,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 492,
+          "losses": 8,
+          "breakevens": 0,
+          "win_rate": 0.984,
+          "closed_positions_pnl": 13851.27172499999,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 23707.059354999994,
+          "gross_loss": 9855.78763,
+          "profit_factor": 2.405394702584515,
+          "avg_win": 48.185079989837384,
+          "avg_loss": 1231.97345375,
+          "largest_loss": 7523.93,
+          "avg_pnl_per_trade": 27.70254344999998,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1594224.1284500312,
+          "activity_volume_7d": 1594224.1284500312,
+          "last_activity_at": "2026-05-20T23:02:00+00:00",
+          "last_activity_age_days": 0.0003809125,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xba8c5fbcc5f58b0e4ae0c1413e0413f8c803e77d": {
+      "metadata": {
+        "proxy_wallet": "0xba8c5fbcc5f58b0e4ae0c1413e0413f8c803e77d",
+        "user_name": "Rock.San",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "140",
+          "pnl": 0.0,
+          "vol": 6738270.506886001,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 11,
+          "current_position_value": 16908.9404,
+          "initial_position_value": 16909.133100000003,
+          "open_cash_pnl": -0.19319999999999915,
+          "open_realized_pnl": 53.8115,
+          "largest_position_value": 14992.5,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 439,
+          "losses": 60,
+          "breakevens": 1,
+          "win_rate": 0.878,
+          "closed_positions_pnl": 3842.203116,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 9804.345939999997,
+          "gross_loss": 5962.1428240000005,
+          "profit_factor": 1.6444332565354856,
+          "avg_win": 22.33336205011389,
+          "avg_loss": 99.36904706666668,
+          "largest_loss": 2357.11675,
+          "avg_pnl_per_trade": 7.684406232000001,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 882308.0941199971,
+          "activity_volume_7d": 882308.0941199971,
+          "last_activity_at": "2026-05-20T22:35:02+00:00",
+          "last_activity_age_days": 0.019107764351851853,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x0997f4b1f822423c65907c57963fe7191e1ec9f6": {
+      "metadata": {
+        "proxy_wallet": "0x0997f4b1f822423c65907c57963fe7191e1ec9f6",
+        "user_name": "0x0997f4B1f822423c65907C57963Fe7191e1ec9f6-1774334426166",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "146",
+          "pnl": 0.0,
+          "vol": 6600321.007494,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 14,
+          "current_position_value": 61201.920600000005,
+          "initial_position_value": 61394.6236,
+          "open_cash_pnl": -192.70409999999998,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 34444.769,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 497,
+          "losses": 1,
+          "breakevens": 2,
+          "win_rate": 0.994,
+          "closed_positions_pnl": 1020.7250380000014,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2531.465038000001,
+          "gross_loss": 1510.74,
+          "profit_factor": 1.6756457352026166,
+          "avg_win": 5.093491022132799,
+          "avg_loss": 1510.74,
+          "largest_loss": 1510.74,
+          "avg_pnl_per_trade": 2.041450076000003,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 938796.0317899939,
+          "activity_volume_7d": 938796.0317899939,
+          "last_activity_at": "2026-05-20T23:01:53+00:00",
+          "last_activity_age_days": 0.00046193101851851854,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xfaf98181c44636998a194aa7660bcae1b977f4c4": {
+      "metadata": {
+        "proxy_wallet": "0xfaf98181c44636998a194aa7660bcae1b977f4c4",
+        "user_name": "onekey02",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "154",
+          "pnl": 0.0,
+          "vol": 6363492.461870999,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 26,
+          "current_position_value": 1813252.1982000002,
+          "initial_position_value": 1802792.3410999998,
+          "open_cash_pnl": 10459.8552,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 364885.1093,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 132,
+          "wins": 129,
+          "losses": 3,
+          "breakevens": 0,
+          "win_rate": 0.9772727272727273,
+          "closed_positions_pnl": 11310.744148000002,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 20556.200835,
+          "gross_loss": 9245.456687,
+          "profit_factor": 2.2233840394173274,
+          "avg_win": 159.35039406976745,
+          "avg_loss": 3081.818895666667,
+          "largest_loss": 5413.052221,
+          "avg_pnl_per_trade": 85.68745566666668,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1966,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 4916264.020655025,
+          "activity_volume_7d": 2629970.498392002,
+          "last_activity_at": "2026-05-20T22:40:01+00:00",
+          "last_activity_age_days": 0.015647116203703702,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x13f0bcec1e2e60ec9acc3bee4d2da2fe9694a50f": {
+      "metadata": {
+        "proxy_wallet": "0x13f0bcec1e2e60ec9acc3bee4d2da2fe9694a50f",
+        "user_name": "0x13F0Bcec1e2E60EC9acc3bEE4D2da2FE9694A50f-1774334442364",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "181",
+          "pnl": 0.0,
+          "vol": 5745264.992020999,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 18,
+          "current_position_value": 73769.35360000002,
+          "initial_position_value": 73916.00950000003,
+          "open_cash_pnl": -146.6573,
+          "open_realized_pnl": 4.9359,
+          "largest_position_value": 32322.8305,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 500,
+          "losses": 0,
+          "breakevens": 0,
+          "win_rate": 1.0,
+          "closed_positions_pnl": 2057.164591,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2057.164591,
+          "gross_loss": 0.0,
+          "profit_factor": null,
+          "avg_win": 4.1143291820000005,
+          "avg_loss": 0.0,
+          "largest_loss": 0.0,
+          "avg_pnl_per_trade": 4.1143291820000005,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1093926.974229999,
+          "activity_volume_7d": 1093926.974229999,
+          "last_activity_at": "2026-05-20T23:02:27+00:00",
+          "last_activity_age_days": 6.84125e-05,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x3555ff02db3d06f885c96469ea0e142280a7ba40": {
+      "metadata": {
+        "proxy_wallet": "0x3555ff02db3d06f885c96469ea0e142280a7ba40",
+        "user_name": "thatsabingo",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "188",
+          "pnl": 0.0,
+          "vol": 5641307.642256999,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 13,
+          "current_position_value": 84852.86829999997,
+          "initial_position_value": 84983.6346,
+          "open_cash_pnl": -130.76729999999998,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 39109.1356,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 391,
+          "losses": 108,
+          "breakevens": 1,
+          "win_rate": 0.782,
+          "closed_positions_pnl": 6085.890172000004,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 29832.763158,
+          "gross_loss": 23746.872985999995,
+          "profit_factor": 1.2562817502577266,
+          "avg_win": 76.29862700255755,
+          "avg_loss": 219.87845357407403,
+          "largest_loss": 1999.997366,
+          "avg_pnl_per_trade": 12.171780344000007,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1991665.3158670063,
+          "activity_volume_7d": 1991665.3158670063,
+          "last_activity_at": "2026-05-20T22:59:04+00:00",
+          "last_activity_age_days": 0.002417949537037037,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x6fc44ec445d73c635ae9029cdaff52f8eb62c89d": {
+      "metadata": {
+        "proxy_wallet": "0x6fc44ec445d73c635ae9029cdaff52f8eb62c89d",
+        "user_name": "0x6fc44EC445D73c635ae9029CDaFf52F8eB62c89D-1774334469194",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "194",
+          "pnl": 0.0,
+          "vol": 5492546.3356840005,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 16,
+          "current_position_value": 83009.77120000003,
+          "initial_position_value": 83125.96050000003,
+          "open_cash_pnl": -116.19040000000001,
+          "open_realized_pnl": 0.0,
+          "largest_position_value": 36670.6555,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 500,
+          "losses": 0,
+          "breakevens": 0,
+          "win_rate": 1.0,
+          "closed_positions_pnl": 2082.0694859999994,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2082.0694859999994,
+          "gross_loss": 0.0,
+          "profit_factor": null,
+          "avg_win": 4.164138971999999,
+          "avg_loss": 0.0,
+          "largest_loss": 0.0,
+          "avg_pnl_per_trade": 4.164138971999999,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 957496.0426549991,
+          "activity_volume_7d": 957496.0426549991,
+          "last_activity_at": "2026-05-20T23:02:06+00:00",
+          "last_activity_age_days": 0.00031146805555555556,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x9ad6c5316aea1f5dade839e607bfb5437fb54251": {
+      "metadata": {
+        "proxy_wallet": "0x9ad6c5316aea1f5dade839e607bfb5437fb54251",
+        "user_name": "0x9AD6c5316aEA1F5DAde839e607BfB5437fb54251-1774334450917",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "198",
+          "pnl": 0.0,
+          "vol": 5402825.669302,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 19,
+          "current_position_value": 83090.09760000001,
+          "initial_position_value": 83220.8255,
+          "open_cash_pnl": -130.7294,
+          "open_realized_pnl": 0.8723,
+          "largest_position_value": 45018.4795,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 500,
+          "losses": 0,
+          "breakevens": 0,
+          "win_rate": 1.0,
+          "closed_positions_pnl": 2106.6977049999996,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 2106.6977049999996,
+          "gross_loss": 0.0,
+          "profit_factor": null,
+          "avg_win": 4.2133954099999995,
+          "avg_loss": 0.0,
+          "largest_loss": 0.0,
+          "avg_pnl_per_trade": 4.2133954099999995,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1010932.9054499978,
+          "activity_volume_7d": 1010932.9054499978,
+          "last_activity_at": "2026-05-20T23:02:07+00:00",
+          "last_activity_age_days": 0.0002998939814814815,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0xb595d09ce5bbc4d39e3b3d04e80c402d2c8d5922": {
+      "metadata": {
+        "proxy_wallet": "0xb595d09ce5bbc4d39e3b3d04e80c402d2c8d5922",
+        "user_name": "0xB595d09Ce5bBc4d39E3b3D04E80C402d2C8D5922-1769777706105",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "216",
+          "pnl": 0.0,
+          "vol": 5209103.743193997,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 34,
+          "current_position_value": 27085.7469,
+          "initial_position_value": 28849.64240000001,
+          "open_cash_pnl": -1763.8976000000002,
+          "open_realized_pnl": 0.8999,
+          "largest_position_value": 11991.5412,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 495,
+          "losses": 3,
+          "breakevens": 2,
+          "win_rate": 0.99,
+          "closed_positions_pnl": 3204.5153199999995,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 3793.020212000003,
+          "gross_loss": 588.504892,
+          "profit_factor": 6.44518042850866,
+          "avg_win": 7.6626670949495015,
+          "avg_loss": 196.16829733333336,
+          "largest_loss": 396.0,
+          "avg_pnl_per_trade": 6.409030639999999,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 3500,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1045824.0561450033,
+          "activity_volume_7d": 1045824.0561450033,
+          "last_activity_at": "2026-05-20T23:01:06+00:00",
+          "last_activity_age_days": 0.0010059124999999998,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x5188fa0e8a77e87bc6a58e6781fdfc4e165cc804": {
+      "metadata": {
+        "proxy_wallet": "0x5188fa0e8a77e87bc6a58e6781fdfc4e165cc804",
+        "user_name": "AllByMyseIf",
+        "x_username": "",
+        "profile_image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/profile-image-3063734-5d789c1c-92ea-4bf2-a4f6-9ecc42977b56.png",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "232",
+          "pnl": 0.0,
+          "vol": 4950861.122358,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 54,
+          "current_position_value": 230803.38319999992,
+          "initial_position_value": 226435.6267000001,
+          "open_cash_pnl": 4367.7539,
+          "open_realized_pnl": 28550.1207,
+          "largest_position_value": 83804.7236,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 98,
+          "wins": 69,
+          "losses": 25,
+          "breakevens": 4,
+          "win_rate": 0.7040816326530612,
+          "closed_positions_pnl": 50817.01310600002,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 74803.42037600004,
+          "gross_loss": 23986.40727,
+          "profit_factor": 3.118575430408759,
+          "avg_win": 1084.10754168116,
+          "avg_loss": 959.4562908,
+          "largest_loss": 8044.609995,
+          "avg_pnl_per_trade": 518.5409500612247,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": false,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1858,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 1810092.6394229867,
+          "activity_volume_7d": 720500.9933279981,
+          "last_activity_at": "2026-05-20T10:59:33+00:00",
+          "last_activity_age_days": 0.5020823013888889,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
+          "trade_count_window_days": 30
+        },
+        "qualification": {
+          "passed": true,
+          "profile_version": "whale_tracking_v2",
+          "thresholds": {
+            "min_current_position_value": 10000.0,
+            "min_closed_trade_count": 50,
+            "min_win_rate": 0.7,
+            "min_closed_positions_pnl": 0.0,
+            "activity_trade_count_window_days": 30,
+            "min_activity_trade_count": 10,
+            "last_activity_max_age_days": 7
+          }
+        }
+      }
+    },
+    "0x27f738fe203827445690339104aae35b20bc44b0": {
+      "metadata": {
+        "proxy_wallet": "0x27f738fe203827445690339104aae35b20bc44b0",
+        "user_name": "ic4cream",
+        "x_username": "",
+        "profile_image": "",
+        "verified_badge": false
+      },
+      "metrics": {
+        "leaderboard": {
+          "candidate_pool_match": false,
+          "candidate_pool_source": "volume_profitable",
+          "matched_pools": [
+            "volume_top"
+          ],
+          "pnl_rank": null,
+          "vol_rank": "235",
+          "pnl": 0.0,
+          "vol": 4888495.649177001,
+          "pnl_leaderboard_wallet": false,
+          "vol_leaderboard_wallet": true
+        },
+        "exposure": {
+          "open_position_count": 45,
+          "current_position_value": 159208.90580000007,
+          "initial_position_value": 156037.28630000004,
+          "open_cash_pnl": 3171.618200000001,
+          "open_realized_pnl": 14.4,
+          "largest_position_value": 78058.49,
+          "current_positions_complete": true
+        },
+        "closed_positions": {
+          "closed_trade_count": 500,
+          "wins": 457,
+          "losses": 42,
+          "breakevens": 1,
+          "win_rate": 0.914,
+          "closed_positions_pnl": 907819.3344620011,
+          "closed_positions_volume": 0.0,
+          "roi": null,
+          "gross_profit": 1077460.8745770003,
+          "gross_loss": 169641.540115,
+          "profit_factor": 6.3513976225787,
+          "avg_win": 2357.682438899344,
+          "avg_loss": 4039.0842884523813,
+          "largest_loss": 46157.72,
+          "avg_pnl_per_trade": 1815.638668924002,
+          "unknown_timestamp_count": 0,
+          "closed_positions_complete": true,
+          "closed_positions_truncated": true,
+          "window_days": 30,
+          "cutoff": "2026-04-20T23:02:32.910840+00:00"
+        },
+        "activity": {
+          "trade_count_window": 3500,
+          "trade_count_7d": 1256,
+          "avg_trades_per_day_window": 116.66666666666667,
+          "activity_volume_window": 2714002.615914995,
+          "activity_volume_7d": 854891.6786040004,
+          "last_activity_at": "2026-05-20T22:58:37+00:00",
+          "last_activity_age_days": 0.002730449537037037,
+          "last_activity_cutoff": "2026-05-13T23:02:32.910840+00:00",
+          "unknown_timestamp_count": 0,
+          "activity_complete": false,
+          "activity_capped": true,
           "trade_count_window_days": 30
         },
         "qualification": {

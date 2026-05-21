@@ -10,7 +10,7 @@ class PolymarketSettings(BaseSettings):
     data_api: str = "https://data-api.polymarket.com"
     gamma_api: str = "https://gamma-api.polymarket.com"
     max_concurrent_profile_requests: int = Field(
-        default=2,
+        default=4,
         ge=1,
         alias="MAX_CONCURRENT_PROFILE_REQUESTS",
     )

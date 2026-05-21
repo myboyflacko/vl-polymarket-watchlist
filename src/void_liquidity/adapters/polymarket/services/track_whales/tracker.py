@@ -487,3 +487,7 @@ class WhaleTracker:
         with output_path.open("w", encoding="utf-8") as output_file:
             json.dump(payload, output_file, ensure_ascii=False, indent=2)
 
+
+if __name__ == "__main__":
+    tracker = WhaleTracker()
+    asyncio.run(tracker.run())
