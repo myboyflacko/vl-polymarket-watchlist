@@ -38,6 +38,12 @@ The default profile is:
 src/void_liquidity/adapters/polymarket/services/config/whale_tracking_profile.json
 ```
 
+The stricter quality profile is:
+
+```text
+src/void_liquidity/adapters/polymarket/services/config/whale_tracking_profile_quality.json
+```
+
 The profile controls:
 
 - candidate pool size and leaderboard request defaults
@@ -61,7 +67,8 @@ Default balanced thresholds:
     "min_closed_positions_pnl": 0.0,
     "min_roi": 0.0,
     "min_profit_factor": 1.5,
-    "min_activity_volume": 10000.0
+    "min_activity_volume": 10000.0,
+    "max_largest_win_share": 0.6
   },
   "activity": {
     "trade_count_window_days": 30,
@@ -120,6 +127,7 @@ closed_positions_pnl > min_closed_positions_pnl
 roi is available
 roi > min_roi
 profit_factor >= min_profit_factor
+largest_win_share <= max_largest_win_share when available
 activity_trade_count_window >= min_activity_trade_count or activity_capped=true
 activity_volume_window >= min_activity_volume or activity_capped=true
 last_activity_age_days <= last_activity_max_age_days
@@ -144,6 +152,8 @@ gross_loss
 profit_factor = gross_profit / gross_loss
 avg_win
 avg_loss
+largest_win
+largest_win_share = largest_win / gross_profit
 largest_loss
 ```
 
@@ -154,6 +164,14 @@ The output path is configured in the workflow profile. Relative output paths are
 ```text
 src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json
 ```
+
+Each run writes a new snapshot file by appending the run id to the configured file stem. For example:
+
+```text
+src/void_liquidity/adapters/polymarket/services/data/polymarket_whales_quality_20260521T104204246217Z.json
+```
+
+The same value is stored in `metadata.run_id`.
 
 The outer `whales` object is keyed by `proxy_wallet`.
 
@@ -206,6 +224,13 @@ python -m void_liquidity.adapters.polymarket.services.track_whales
 ```
 
 The script loads the default workflow profile, performs fresh discovery, and writes the configured JSON output.
+
+Run the quality profile:
+
+```bash
+python -m void_liquidity.adapters.polymarket.services.track_whales \
+  --profile src/void_liquidity/adapters/polymarket/services/config/whale_tracking_profile_quality.json
+```
 
 ## Tests
 

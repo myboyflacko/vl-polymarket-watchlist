@@ -39,6 +39,7 @@ class WhaleFilterConfig(BaseModel):
     min_roi: float = 0.0
     min_profit_factor: float = Field(default=1.5, ge=0)
     min_activity_volume: float = Field(default=10_000.0, ge=0)
+    max_largest_win_share: float = Field(default=0.60, ge=0, le=1)
 
 
 class WhaleTrackingProfile(BaseModel):

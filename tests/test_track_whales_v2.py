@@ -14,6 +14,7 @@ from void_liquidity.adapters.polymarket.services.track_whales import (
 )
 from void_liquidity.adapters.polymarket.services.track_whales.config import (
     PROJECT_ROOT,
+    QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
 from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
@@ -79,6 +80,7 @@ def _profile(output_path: Path) -> WhaleTrackingProfile:
             min_roi=0,
             min_profit_factor=1.5,
             min_activity_volume=10_000,
+            max_largest_win_share=0.60,
         ),
     )
 
@@ -200,9 +202,11 @@ def test_track_whales_filters_and_writes_v2_output(
     whales = asyncio.run(WhaleTracker(profile=profile).run())
 
     assert list(whales) == [WALLET_ONE]
-    assert output_path.exists()
+    output_files = list(tmp_path.glob("whales_*.json"))
+    assert len(output_files) == 1
 
-    payload = json.loads(output_path.read_text(encoding="utf-8"))
+    payload = json.loads(output_files[0].read_text(encoding="utf-8"))
+    assert payload["metadata"]["run_id"]
     assert payload["metadata"]["mode"] == "fresh_discovery"
     assert payload["metadata"]["wallet_count"] == 1
     assert payload["metadata"]["reject_summary"] == {
@@ -218,6 +222,14 @@ def test_track_whales_filters_and_writes_v2_output(
     assert "win_rate" not in whale_metrics["closed_positions"]
     assert "initial_position_value" not in whale_metrics["exposure"]
     assert "candidate_pool_match" not in whale_metrics["leaderboard"]
+    assert whale_metrics["closed_positions"]["largest_win"] == 100
+    assert whale_metrics["closed_positions"]["largest_win_share"] == pytest.approx(
+        100 / 4_000,
+    )
+    assert (
+        payload["metadata"]["qualification_thresholds"]["max_largest_win_share"]
+        == 0.60
+    )
     assert payload["metadata"]["metric_quality_summary"] == {
         "activity_capped_count": 0,
         "closed_positions_truncated_count": 0,
@@ -243,6 +255,16 @@ def test_load_default_workflow_profile() -> None:
     assert profile.candidate_pool.top_n == 250
     assert profile.activity.trade_count_window_days == 30
     assert profile.activity.last_activity_max_age_days == 7
+
+
+def test_load_quality_workflow_profile() -> None:
+    profile = load_workflow_profile(QUALITY_PROFILE_PATH)
+
+    assert profile.profile_version == "whale_tracking_quality_v1"
+    assert profile.target_wallet_count == 500
+    assert profile.filters.min_roi == 0.05
+    assert profile.filters.min_profit_factor == 2.0
+    assert profile.filters.max_largest_win_share == 0.60
 
 
 def test_resolve_project_path_uses_repo_root_for_relative_paths() -> None:
@@ -308,6 +330,7 @@ def test_incomplete_activity_is_not_a_reject_reason(tmp_path: Path) -> None:
             "closed_positions_pnl": 1,
             "roi": 0.1,
             "profit_factor": 1.5,
+            "largest_win_share": 0.5,
         },
         activity_metrics={
             "activity_complete": False,
@@ -391,7 +414,24 @@ def test_closed_position_metrics_include_risk_return_ratios() -> None:
     assert metrics["profit_factor"] == 2
     assert metrics["avg_win"] == 20
     assert metrics["avg_loss"] == 20
+    assert metrics["largest_win"] == 30
+    assert metrics["largest_win_share"] == pytest.approx(30 / 40)
     assert metrics["largest_loss"] == 20
+
+
+def test_closed_position_metrics_mark_largest_win_share_unavailable() -> None:
+    metrics = _aggregate_closed_positions(
+        closed_positions=[
+            {"realizedPnl": -10, "totalBought": 100, "avgPrice": 0.5},
+            {"realizedPnl": 0, "totalBought": 100, "avgPrice": 0.5},
+        ],
+        is_complete=True,
+        unknown_timestamp_count=0,
+    )
+
+    assert metrics["gross_profit"] == 0
+    assert metrics["largest_win"] == 0
+    assert metrics["largest_win_share"] is None
 
 
 def test_closed_position_metrics_mark_truncated_samples() -> None:
@@ -433,6 +473,7 @@ def test_qualification_rejects_unavailable_roi(tmp_path: Path) -> None:
             "closed_positions_pnl": 1,
             "roi": None,
             "profit_factor": 2,
+            "largest_win_share": 0.5,
         },
         activity_metrics={
             "activity_capped": False,
@@ -460,6 +501,7 @@ def test_qualification_rejects_low_profit_factor(tmp_path: Path) -> None:
             "closed_positions_pnl": 1,
             "roi": 0.1,
             "profit_factor": 1.49,
+            "largest_win_share": 0.5,
         },
         activity_metrics={
             "activity_capped": False,
@@ -470,3 +512,59 @@ def test_qualification_rejects_low_profit_factor(tmp_path: Path) -> None:
     )
 
     assert reasons == ["profit_factor_below_min"]
+
+
+def test_qualification_rejects_lucky_shot_largest_win_share(tmp_path: Path) -> None:
+    profile = _profile(tmp_path / "whales.json")
+
+    reasons = _qualification_reasons(
+        profile=profile,
+        exposure_metrics={
+            "current_positions_complete": True,
+            "current_position_value": 10_000,
+        },
+        closed_metrics={
+            "closed_positions_complete": True,
+            "closed_trade_count": 50,
+            "closed_positions_pnl": 1,
+            "roi": 0.1,
+            "profit_factor": 1.5,
+            "largest_win_share": 0.61,
+        },
+        activity_metrics={
+            "activity_capped": False,
+            "trade_count_window": 10,
+            "activity_volume_window": 10_000,
+            "last_activity_age_days": 0.1,
+        },
+    )
+
+    assert reasons == ["largest_win_share_above_max"]
+
+
+def test_qualification_allows_largest_win_share_at_limit(tmp_path: Path) -> None:
+    profile = _profile(tmp_path / "whales.json")
+
+    reasons = _qualification_reasons(
+        profile=profile,
+        exposure_metrics={
+            "current_positions_complete": True,
+            "current_position_value": 10_000,
+        },
+        closed_metrics={
+            "closed_positions_complete": True,
+            "closed_trade_count": 50,
+            "closed_positions_pnl": 1,
+            "roi": 0.1,
+            "profit_factor": 1.5,
+            "largest_win_share": 0.60,
+        },
+        activity_metrics={
+            "activity_capped": False,
+            "trade_count_window": 10,
+            "activity_volume_window": 10_000,
+            "last_activity_age_days": 0.1,
+        },
+    )
+
+    assert reasons == []

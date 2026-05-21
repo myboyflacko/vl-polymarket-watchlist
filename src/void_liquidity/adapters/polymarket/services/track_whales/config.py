@@ -10,6 +10,7 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 SERVICE_DIR = PACKAGE_DIR.parent
 PROJECT_ROOT = SERVICE_DIR.parents[4]
 DEFAULT_PROFILE_PATH = SERVICE_DIR / "config" / "whale_tracking_profile.json"
+QUALITY_PROFILE_PATH = SERVICE_DIR / "config" / "whale_tracking_profile_quality.json"
 
 
 def load_workflow_profile(

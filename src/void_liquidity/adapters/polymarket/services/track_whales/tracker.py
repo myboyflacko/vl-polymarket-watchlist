@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 from collections import Counter
@@ -48,6 +49,14 @@ from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
 )
 
 
+def _build_run_id(generated_at: datetime) -> str:
+    return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
+
+
+def _append_run_id_to_path(path: Path, run_id: str) -> Path:
+    return path.with_name(f"{path.stem}_{run_id}{path.suffix}")
+
+
 class WhaleTracker:
     def __init__(self, profile: WhaleTrackingProfile | None = None) -> None:
         self.profile = profile or load_workflow_profile()
@@ -55,6 +64,7 @@ class WhaleTracker:
     async def run(self) -> dict[str, dict[str, Any]]:
         client = HTTPClient()
         now = datetime.now(UTC)
+        run_id = _build_run_id(now)
         run_log = WhaleTrackerRunLog(profile=self.profile)
 
         try:
@@ -77,6 +87,8 @@ class WhaleTracker:
                 checked_wallet_count=checked_wallet_count,
                 candidate_wallet_count=len(candidates),
                 candidate_pool_summary=candidate_pool_summary,
+                generated_at=now,
+                run_id=run_id,
             )
             run_log.report(
                 candidate_wallet_count=len(candidates),
@@ -463,8 +475,15 @@ class WhaleTracker:
         candidate_wallet_count: int,
         candidate_pool_summary: Counter[str] | None = None,
         path: str | Path | None = None,
+        generated_at: datetime | None = None,
+        run_id: str | None = None,
     ) -> None:
-        output_path = _resolve_project_path(path or self.profile.output_path)
+        generated_at = generated_at or datetime.now(UTC)
+        run_id = run_id or _build_run_id(generated_at)
+        output_path = _append_run_id_to_path(
+            _resolve_project_path(path or self.profile.output_path),
+            run_id,
+        )
         output_path.parent.mkdir(parents=True, exist_ok=True)
         payload = _build_payload(
             profile=self.profile,
@@ -473,7 +492,8 @@ class WhaleTracker:
             checked_wallet_count=checked_wallet_count,
             candidate_wallet_count=candidate_wallet_count,
             candidate_pool_summary=candidate_pool_summary or Counter(),
-            generated_at=datetime.now(UTC),
+            generated_at=generated_at,
+            run_id=run_id,
         )
 
         with output_path.open("w", encoding="utf-8") as output_file:
@@ -481,5 +501,13 @@ class WhaleTracker:
 
 
 if __name__ == "__main__":
-    tracker = WhaleTracker()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--profile",
+        help="Path to a whale tracking profile JSON file.",
+    )
+    args = parser.parse_args()
+    tracker = WhaleTracker(
+        profile=load_workflow_profile(args.profile) if args.profile else None,
+    )
     asyncio.run(tracker.run())

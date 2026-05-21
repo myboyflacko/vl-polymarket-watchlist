@@ -1,8 +1,8 @@
 {
-  "profile_version": "whale_tracking_v2",
-  "target_wallet_count": 50,
+  "profile_version": "whale_tracking_quality_v1",
+  "target_wallet_count": 500,
   "wallet_batch_size": 4,
-  "output_path": "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json",
+  "output_path": "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales_quality.json",
   "candidate_pool": {
     "category": "OVERALL",
     "time_period": "MONTH",
@@ -34,8 +34,8 @@
     "min_current_position_value": 10000.0,
     "min_closed_trade_count": 50,
     "min_closed_positions_pnl": 0.0,
-    "min_roi": 0.0,
-    "min_profit_factor": 1.5,
+    "min_roi": 0.05,
+    "min_profit_factor": 2.0,
     "min_activity_volume": 10000.0,
     "max_largest_win_share": 0.6
   }

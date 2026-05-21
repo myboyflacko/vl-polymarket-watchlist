@@ -67,6 +67,7 @@ def _aggregate_closed_positions(
     closed_positions_cost_basis = 0.0
     gross_profit = 0.0
     gross_loss = 0.0
+    largest_win = 0.0
     largest_loss = 0.0
 
     for position in closed_positions:
@@ -77,6 +78,7 @@ def _aggregate_closed_positions(
         if realized_pnl > 0:
             wins += 1
             gross_profit += realized_pnl
+            largest_win = max(largest_win, realized_pnl)
         elif realized_pnl < 0:
             losses += 1
             loss = abs(realized_pnl)
@@ -92,6 +94,7 @@ def _aggregate_closed_positions(
         else None
     )
     profit_factor = gross_profit / gross_loss if gross_loss else None
+    largest_win_share = largest_win / gross_profit if gross_profit else None
     avg_win = gross_profit / wins if wins else 0.0
     avg_loss = gross_loss / losses if losses else 0.0
 
@@ -110,6 +113,8 @@ def _aggregate_closed_positions(
         "profit_factor": profit_factor,
         "avg_win": avg_win,
         "avg_loss": avg_loss,
+        "largest_win": largest_win,
+        "largest_win_share": largest_win_share,
         "largest_loss": largest_loss,
         "unknown_timestamp_count": unknown_timestamp_count,
         "closed_positions_complete": is_complete,
@@ -252,6 +257,7 @@ def _qualification_thresholds(profile: WhaleTrackingProfile) -> dict[str, Any]:
         "min_roi": profile.filters.min_roi,
         "min_profit_factor": profile.filters.min_profit_factor,
         "min_activity_volume": profile.filters.min_activity_volume,
+        "max_largest_win_share": profile.filters.max_largest_win_share,
         "activity_trade_count_window_days": (
             profile.activity.trade_count_window_days
         ),
@@ -303,6 +309,14 @@ def _qualification_reasons(
         or profit_factor < profile.filters.min_profit_factor
     ):
         reasons.append("profit_factor_below_min")
+
+    largest_win_share = closed_metrics["largest_win_share"]
+
+    if (
+        largest_win_share is not None
+        and largest_win_share > profile.filters.max_largest_win_share
+    ):
+        reasons.append("largest_win_share_above_max")
 
     activity_capped = activity_metrics["activity_capped"]
 
@@ -364,6 +378,8 @@ def _public_whale(whale: dict[str, Any]) -> dict[str, Any]:
                 "gross_loss": closed_positions["gross_loss"],
                 "avg_win": closed_positions["avg_win"],
                 "avg_loss": closed_positions["avg_loss"],
+                "largest_win": closed_positions["largest_win"],
+                "largest_win_share": closed_positions["largest_win_share"],
                 "largest_loss": closed_positions["largest_loss"],
             },
             "activity": {
@@ -408,9 +424,11 @@ def _build_payload(
     candidate_wallet_count: int,
     candidate_pool_summary: Counter[str],
     generated_at: datetime,
+    run_id: str,
 ) -> dict[str, Any]:
     return {
         "metadata": {
+            "run_id": run_id,
             "generated_at": generated_at.isoformat(),
             "mode": "fresh_discovery",
             "profile_version": profile.profile_version,
