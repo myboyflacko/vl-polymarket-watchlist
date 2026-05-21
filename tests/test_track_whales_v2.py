@@ -1,5 +1,6 @@
 import asyncio
 import json
+from collections import Counter
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -21,6 +22,9 @@ from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
     _aggregate_closed_positions,
     _build_candidate_pool,
     _qualification_reasons,
+)
+from void_liquidity.adapters.polymarket.services.track_whales.report import (
+    build_report_payload,
 )
 from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
     ActivityConfig,
@@ -202,16 +206,31 @@ def test_track_whales_filters_and_writes_v2_output(
     whales = asyncio.run(WhaleTracker(profile=profile).run())
 
     assert list(whales) == [WALLET_ONE]
-    output_files = list(tmp_path.glob("whales_*.json"))
+    output_files = [
+        path
+        for path in tmp_path.glob("whales_*.json")
+        if "_report_" not in path.name
+    ]
     assert len(output_files) == 1
+    report_files = list(tmp_path.glob("whales_report_*.json"))
+    assert len(report_files) == 1
 
     payload = json.loads(output_files[0].read_text(encoding="utf-8"))
-    assert payload["metadata"]["run_id"]
-    assert payload["metadata"]["mode"] == "fresh_discovery"
-    assert payload["metadata"]["wallet_count"] == 1
-    assert payload["metadata"]["reject_summary"] == {
+    report_payload = json.loads(report_files[0].read_text(encoding="utf-8"))
+    run_id = payload["metadata"]["run_id"]
+    assert run_id
+    assert report_payload["metadata"]["run_id"] == run_id
+    assert payload["metadata"] == {"run_id": run_id}
+    assert report_payload["metadata"]["mode"] == "fresh_discovery"
+    assert report_payload["metadata"]["wallet_count"] == 1
+    assert report_payload["candidate_funnel"]["reject_summary"] == {
         "current_position_value_below_min": 1,
     }
+    assert report_payload["candidate_funnel"]["by_group"]["core"]["checked_count"] == 2
+    assert report_payload["candidate_funnel"]["by_group"]["core"]["accepted_count"] == 1
+    assert report_payload["accepted_metrics"]["overall"][
+        "closed_positions.roi"
+    ]["median"] == pytest.approx(3_900 / 25_000)
     assert payload["whales"][WALLET_ONE]["metadata"]["user_name"] == "winner"
     assert "leaderboard" in payload["whales"][WALLET_ONE]["metrics"]
     assert "exposure" in payload["whales"][WALLET_ONE]["metrics"]
@@ -227,10 +246,10 @@ def test_track_whales_filters_and_writes_v2_output(
         100 / 4_000,
     )
     assert (
-        payload["metadata"]["qualification_thresholds"]["max_largest_win_share"]
+        report_payload["profile"]["qualification_thresholds"]["max_largest_win_share"]
         == 0.60
     )
-    assert payload["metadata"]["metric_quality_summary"] == {
+    assert report_payload["metric_quality_summary"] == {
         "activity_capped_count": 0,
         "closed_positions_truncated_count": 0,
         "roi_unavailable_count": 0,
@@ -599,3 +618,156 @@ def test_qualification_allows_largest_win_share_at_limit(tmp_path: Path) -> None
     )
 
     assert reasons == []
+
+
+def test_report_payload_includes_group_funnel_and_metric_summaries(
+    tmp_path: Path,
+) -> None:
+    profile = _profile(tmp_path / "whales.json")
+    generated_at = datetime(2026, 5, 20, tzinfo=UTC)
+    whales = {
+        WALLET_ONE: {
+            "metadata": {
+                "proxy_wallet": WALLET_ONE,
+                "user_name": "core",
+                "x_username": "",
+                "verified_badge": False,
+            },
+            "metrics": {
+                "leaderboard": {
+                    "candidate_pool_source": "core",
+                    "matched_pools": ["core", "pnl_top", "volume_top"],
+                    "pnl_rank": "1",
+                    "vol_rank": "1",
+                    "leaderboard_pnl": 100,
+                    "leaderboard_volume": 1_000,
+                },
+                "exposure": {
+                    "open_position_count": 2,
+                    "current_position_value": 10_000,
+                    "largest_position_value": 6_000,
+                    "position_concentration": 0.6,
+                },
+                "closed_positions": {
+                    "closed_trade_count": 50,
+                    "closed_positions_pnl": 100,
+                    "closed_positions_cost_basis": 500,
+                    "roi": 0.2,
+                    "roi_available": True,
+                    "profit_factor": 2,
+                    "gross_profit": 200,
+                    "gross_loss": 100,
+                    "avg_win": 20,
+                    "avg_loss": 10,
+                    "largest_win": 50,
+                    "largest_win_share": 0.25,
+                    "largest_loss": 30,
+                    "closed_positions_truncated": False,
+                },
+                "activity": {
+                    "trade_count_window": 10,
+                    "trade_count_7d": 5,
+                    "activity_volume_window": 10_000,
+                    "activity_volume_7d": 5_000,
+                    "last_activity_at": generated_at.isoformat(),
+                    "last_activity_age_days": 0,
+                    "activity_complete": True,
+                    "activity_capped": False,
+                },
+            },
+        },
+        WALLET_TWO: {
+            "metadata": {
+                "proxy_wallet": WALLET_TWO,
+                "user_name": "specialist",
+                "x_username": "",
+                "verified_badge": False,
+            },
+            "metrics": {
+                "leaderboard": {
+                    "candidate_pool_source": "pnl_specialist",
+                    "matched_pools": ["pnl_top"],
+                    "pnl_rank": "2",
+                    "vol_rank": None,
+                    "leaderboard_pnl": 200,
+                    "leaderboard_volume": 0,
+                },
+                "exposure": {
+                    "open_position_count": 4,
+                    "current_position_value": 20_000,
+                    "largest_position_value": 5_000,
+                    "position_concentration": 0.25,
+                },
+                "closed_positions": {
+                    "closed_trade_count": 100,
+                    "closed_positions_pnl": 300,
+                    "closed_positions_cost_basis": 600,
+                    "roi": 0.5,
+                    "roi_available": True,
+                    "profit_factor": 3,
+                    "gross_profit": 450,
+                    "gross_loss": 150,
+                    "avg_win": 30,
+                    "avg_loss": 15,
+                    "largest_win": 80,
+                    "largest_win_share": 0.17777777777777778,
+                    "largest_loss": 40,
+                    "closed_positions_truncated": True,
+                },
+                "activity": {
+                    "trade_count_window": 20,
+                    "trade_count_7d": 10,
+                    "activity_volume_window": 20_000,
+                    "activity_volume_7d": 10_000,
+                    "last_activity_at": generated_at.isoformat(),
+                    "last_activity_age_days": 1,
+                    "activity_complete": False,
+                    "activity_capped": True,
+                },
+            },
+        },
+    }
+
+    report = build_report_payload(
+        profile=profile,
+        whales=whales,
+        reject_summary=Counter({"current_position_value_below_min": 1}),
+        reject_group_summary={
+            "core": Counter({"current_position_value_below_min": 1}),
+        },
+        checked_wallet_count=3,
+        checked_group_summary=Counter({"core": 2, "pnl_specialist": 1}),
+        candidate_wallet_count=3,
+        candidate_pool_summary=Counter({"core": 2, "pnl_specialist": 1}),
+        generated_at=generated_at,
+        run_id="test-run",
+    )
+
+    assert report["metadata"]["run_id"] == "test-run"
+    assert report["candidate_funnel"]["acceptance_rate"] == pytest.approx(2 / 3)
+    assert report["candidate_funnel"]["by_group"]["core"] == {
+        "candidate_count": 2,
+        "checked_count": 2,
+        "accepted_count": 1,
+        "acceptance_rate": 0.5,
+        "reject_summary": {"current_position_value_below_min": 1},
+    }
+    assert report["metric_quality_summary"] == {
+        "activity_capped_count": 1,
+        "closed_positions_truncated_count": 1,
+        "roi_unavailable_count": 0,
+    }
+    assert report["accepted_metrics"]["overall"]["closed_positions.roi"] == {
+        "count": 2,
+        "avg": 0.35,
+        "median": 0.35,
+        "p25": 0.275,
+        "p75": 0.425,
+        "min": 0.2,
+        "max": 0.5,
+    }
+    assert report["accepted_metrics"]["by_group"]["core"][
+        "closed_positions.roi"
+    ]["median"] == 0.2
+    assert report["near_threshold_counts"]["roi_margin"] == 0
+    assert report["outlier_summary"]["roi"]["top"][0]["proxy_wallet"] == WALLET_TWO

@@ -1,4 +1,3 @@
-from collections import Counter
 from datetime import datetime, timedelta
 from typing import Any
 
@@ -416,30 +415,12 @@ def _metric_quality_summary(whales: dict[str, dict[str, Any]]) -> dict[str, int]
 
 
 def _build_payload(
-    profile: WhaleTrackingProfile,
     whales: dict[str, dict[str, Any]],
-    reject_summary: Counter[str],
-    checked_wallet_count: int,
-    candidate_wallet_count: int,
-    candidate_pool_summary: Counter[str],
-    generated_at: datetime,
     run_id: str,
 ) -> dict[str, Any]:
     return {
         "metadata": {
             "run_id": run_id,
-            "generated_at": generated_at.isoformat(),
-            "mode": "fresh_discovery",
-            "profile_version": profile.profile_version,
-            "target_wallet_count": profile.target_wallet_count,
-            "wallet_count": len(whales),
-            "candidate_wallet_count": candidate_wallet_count,
-            "candidate_pool_summary": dict(sorted(candidate_pool_summary.items())),
-            "checked_wallet_count": checked_wallet_count,
-            "reject_summary": dict(sorted(reject_summary.items())),
-            "qualification_thresholds": _qualification_thresholds(profile),
-            "metric_quality_summary": _metric_quality_summary(whales),
-            "candidate_pool": profile.candidate_pool.model_dump(),
         },
         "whales": {
             proxy_wallet: _public_whale(whale)

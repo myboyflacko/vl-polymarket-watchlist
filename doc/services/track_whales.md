@@ -171,9 +171,25 @@ Each run writes a new snapshot file by appending the run id to the configured fi
 src/void_liquidity/adapters/polymarket/services/data/polymarket_whales_quality_20260521T104204246217Z.json
 ```
 
-The same value is stored in `metadata.run_id`.
+Each run also writes a report file with the same run id:
+
+```text
+src/void_liquidity/adapters/polymarket/services/data/polymarket_whales_quality_report_20260521T104204246217Z.json
+```
+
+The same value is stored in `metadata.run_id` in both files.
 
 The outer `whales` object is keyed by `proxy_wallet`.
+
+The whale snapshot metadata is intentionally small:
+
+```json
+{
+  "metadata": {
+    "run_id": "20260521T104204246217Z"
+  }
+}
+```
 
 Each whale has:
 
@@ -199,16 +215,36 @@ The service does not write `rank` or `score` in V2.
 
 `metrics.leaderboard` includes `candidate_pool_source` and `matched_pools`, so later analysis can compare whether `core`, `pnl_specialist`, or `volume_profitable` produces better whales.
 
-The whale output intentionally omits low-value debug fields such as per-wallet qualification thresholds, leaderboard identity booleans, breakeven counts, and unknown timestamp counters. Aggregate metric-quality counts are stored in `metadata.metric_quality_summary`.
+The whale output intentionally omits run metadata and low-value debug fields such as per-wallet qualification thresholds, leaderboard identity booleans, breakeven counts, and unknown timestamp counters. Run metadata, aggregate metric-quality counts, and filter diagnostics are stored in the report file.
 
-Reject details are aggregated in:
+The report file contains:
 
 ```json
 {
   "metadata": {
+    "run_id": "20260521T104204246217Z"
+  },
+  "profile": {},
+  "candidate_funnel": {},
+  "metric_quality_summary": {},
+  "accepted_metrics": {},
+  "threshold_margin_summary": {},
+  "near_threshold_counts": {},
+  "outlier_summary": {}
+}
+```
+
+`accepted_metrics.overall` and `accepted_metrics.by_group` include `count`, `avg`, `median`, `p25`, `p75`, `min`, and `max` for relevant numeric whale metrics. `candidate_funnel` includes global and per-group reject summaries.
+
+Reject details are aggregated in the report:
+
+```json
+{
+  "candidate_funnel": {
     "reject_summary": {
       "current_position_value_below_min": 12
-    }
+    },
+    "by_group": {}
   }
 }
 ```

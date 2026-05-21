@@ -41,6 +41,9 @@ from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
     _leaderboard_metrics,
     _qualification_reasons,
 )
+from void_liquidity.adapters.polymarket.services.track_whales.report import (
+    build_report_payload,
+)
 from void_liquidity.adapters.polymarket.services.track_whales.run_log import (
     WhaleTrackerRunLog,
 )
@@ -55,6 +58,10 @@ def _build_run_id(generated_at: datetime) -> str:
 
 def _append_run_id_to_path(path: Path, run_id: str) -> Path:
     return path.with_name(f"{path.stem}_{run_id}{path.suffix}")
+
+
+def _append_report_run_id_to_path(path: Path, run_id: str) -> Path:
+    return path.with_name(f"{path.stem}_report_{run_id}{path.suffix}")
 
 
 class WhaleTracker:
@@ -72,7 +79,13 @@ class WhaleTracker:
             pnl_entries, vol_entries, candidates, candidate_pool_summary = (
                 await self._fetch_candidate_entries(client=client)
             )
-            whales, reject_summary, checked_wallet_count = (
+            (
+                whales,
+                reject_summary,
+                reject_group_summary,
+                checked_wallet_count,
+                checked_group_summary,
+            ) = (
                 await self._process_candidate_batches(
                     client=client,
                     candidates=candidates,
@@ -81,10 +94,12 @@ class WhaleTracker:
                     now=now,
                 )
             )
-            self._write_whales_to_json(
+            self._write_outputs_to_json(
                 whales=whales,
                 reject_summary=reject_summary,
+                reject_group_summary=reject_group_summary,
                 checked_wallet_count=checked_wallet_count,
+                checked_group_summary=checked_group_summary,
                 candidate_wallet_count=len(candidates),
                 candidate_pool_summary=candidate_pool_summary,
                 generated_at=now,
@@ -184,9 +199,17 @@ class WhaleTracker:
         pnl_entries: dict[str, dict[str, Any]],
         vol_entries: dict[str, dict[str, Any]],
         now: datetime,
-    ) -> tuple[dict[str, dict[str, Any]], Counter[str], int]:
+    ) -> tuple[
+        dict[str, dict[str, Any]],
+        Counter[str],
+        dict[str, Counter[str]],
+        int,
+        Counter[str],
+    ]:
         whales: dict[str, dict[str, Any]] = {}
         reject_summary: Counter[str] = Counter()
+        reject_group_summary: dict[str, Counter[str]] = {}
+        checked_group_summary: Counter[str] = Counter()
         checked_wallet_count = 0
 
         for batch_start in range(
@@ -213,11 +236,17 @@ class WhaleTracker:
 
             for candidate, result in zip(batch, results):
                 proxy_wallet = candidate["proxy_wallet"]
+                candidate_source = candidate["source"]
                 checked_wallet_count += 1
+                checked_group_summary.update([candidate_source])
                 whale, reasons = result
 
                 if not whale:
                     reject_summary.update(reasons)
+                    reject_group_summary.setdefault(
+                        candidate_source,
+                        Counter(),
+                    ).update(reasons)
                     continue
 
                 whales[proxy_wallet] = whale
@@ -225,7 +254,13 @@ class WhaleTracker:
                 if len(whales) >= self.profile.target_wallet_count:
                     break
 
-        return whales, reject_summary, checked_wallet_count
+        return (
+            whales,
+            reject_summary,
+            reject_group_summary,
+            checked_wallet_count,
+            checked_group_summary,
+        )
 
     async def _validate_candidate(
         self,
@@ -467,11 +502,13 @@ class WhaleTracker:
 
         return activity_rows, False
 
-    def _write_whales_to_json(
+    def _write_outputs_to_json(
         self,
         whales: dict[str, dict[str, Any]],
         reject_summary: Counter[str],
+        reject_group_summary: dict[str, Counter[str]],
         checked_wallet_count: int,
+        checked_group_summary: Counter[str],
         candidate_wallet_count: int,
         candidate_pool_summary: Counter[str] | None = None,
         path: str | Path | None = None,
@@ -480,24 +517,32 @@ class WhaleTracker:
     ) -> None:
         generated_at = generated_at or datetime.now(UTC)
         run_id = run_id or _build_run_id(generated_at)
-        output_path = _append_run_id_to_path(
-            _resolve_project_path(path or self.profile.output_path),
-            run_id,
+        base_output_path = _resolve_project_path(path or self.profile.output_path)
+        whale_output_path = _append_run_id_to_path(base_output_path, run_id)
+        report_output_path = _append_report_run_id_to_path(base_output_path, run_id)
+        whale_output_path.parent.mkdir(parents=True, exist_ok=True)
+        whale_payload = _build_payload(
+            whales=whales,
+            run_id=run_id,
         )
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = _build_payload(
+        report_payload = build_report_payload(
             profile=self.profile,
             whales=whales,
             reject_summary=reject_summary,
+            reject_group_summary=reject_group_summary,
             checked_wallet_count=checked_wallet_count,
+            checked_group_summary=checked_group_summary,
             candidate_wallet_count=candidate_wallet_count,
             candidate_pool_summary=candidate_pool_summary or Counter(),
             generated_at=generated_at,
             run_id=run_id,
         )
 
-        with output_path.open("w", encoding="utf-8") as output_file:
-            json.dump(payload, output_file, ensure_ascii=False, indent=2)
+        with whale_output_path.open("w", encoding="utf-8") as output_file:
+            json.dump(whale_payload, output_file, ensure_ascii=False, indent=2)
+
+        with report_output_path.open("w", encoding="utf-8") as output_file:
+            json.dump(report_payload, output_file, ensure_ascii=False, indent=2)
 
 
 if __name__ == "__main__":
