@@ -329,7 +329,6 @@ def _qualification_reasons(
     if (
         activity_metrics["activity_volume_window"]
         < profile.filters.min_activity_volume
-        and not activity_capped
     ):
         reasons.append("activity_volume_below_min")
 

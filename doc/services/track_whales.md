@@ -129,13 +129,13 @@ roi > min_roi
 profit_factor >= min_profit_factor
 largest_win_share <= max_largest_win_share when available
 activity_trade_count_window >= min_activity_trade_count or activity_capped=true
-activity_volume_window >= min_activity_volume or activity_capped=true
+activity_volume_window >= min_activity_volume
 last_activity_age_days <= last_activity_max_age_days
 ```
 
 Incomplete current-position or closed-position fetches reject the candidate for this fresh snapshot.
 
-Incomplete activity fetches do not reject the candidate by themselves. Activity rows are fetched newest first, so an incomplete activity scan still gives a reliable lower bound for trade count and a reliable `last_activity_at`. The `activity_complete` and `activity_capped` flags remain in the output as metric-quality signals. A capped activity scan is treated as sufficient activity because the wallet has already reached the endpoint's offset limit inside the requested window.
+Incomplete activity fetches do not reject the candidate by themselves. Activity rows are fetched newest first, so an incomplete activity scan still gives a reliable lower bound for trade count, activity volume, and `last_activity_at`. The `activity_complete` and `activity_capped` flags remain in the output as metric-quality signals. A capped activity scan is treated as sufficient for the trade-count filter because the wallet has already reached the endpoint's offset limit inside the requested window. The activity-volume filter still applies.
 
 Closed positions without a parseable timestamp are not counted toward the closed-position window. They are recorded in `unknown_timestamp_count`.
 

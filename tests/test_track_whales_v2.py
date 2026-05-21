@@ -315,7 +315,9 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
     assert is_complete is False
 
 
-def test_incomplete_activity_is_not_a_reject_reason(tmp_path: Path) -> None:
+def test_incomplete_activity_is_not_a_reject_reason_when_volume_passes(
+    tmp_path: Path,
+) -> None:
     profile = _profile(tmp_path / "whales.json")
 
     reasons = _qualification_reasons(
@@ -336,12 +338,41 @@ def test_incomplete_activity_is_not_a_reject_reason(tmp_path: Path) -> None:
             "activity_complete": False,
             "activity_capped": True,
             "trade_count_window": 3500,
-            "activity_volume_window": 0,
+            "activity_volume_window": 10_000,
             "last_activity_age_days": 0.1,
         },
     )
 
     assert reasons == []
+
+
+def test_capped_activity_still_requires_minimum_volume(tmp_path: Path) -> None:
+    profile = _profile(tmp_path / "whales.json")
+
+    reasons = _qualification_reasons(
+        profile=profile,
+        exposure_metrics={
+            "current_positions_complete": True,
+            "current_position_value": 10_000,
+        },
+        closed_metrics={
+            "closed_positions_complete": True,
+            "closed_trade_count": 50,
+            "closed_positions_pnl": 1,
+            "roi": 0.1,
+            "profit_factor": 1.5,
+            "largest_win_share": 0.5,
+        },
+        activity_metrics={
+            "activity_complete": False,
+            "activity_capped": True,
+            "trade_count_window": 3500,
+            "activity_volume_window": 9_999,
+            "last_activity_age_days": 0.1,
+        },
+    )
+
+    assert reasons == ["activity_volume_below_min"]
 
 
 def test_whale_tracker_instances_keep_independent_profiles(tmp_path: Path) -> None:
