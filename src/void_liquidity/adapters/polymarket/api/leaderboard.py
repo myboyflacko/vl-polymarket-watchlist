@@ -3,9 +3,10 @@ from typing import Any
 from void_liquidity.adapters.polymarket.params.leaderboard import LeaderboardParams
 from void_liquidity.settings import Settings
 from void_liquidity.adapters.polymarket.client import HTTPClient
-from void_liquidity.util.log import log_error
+from void_liquidity.util.log import VoidLogger
 
 settings = Settings()
+logger = VoidLogger(__name__)
 
 async def get_leaderboard(
     client: HTTPClient,
@@ -25,7 +26,7 @@ async def get_leaderboard(
         )
 
     except Exception as exc:
-        log_error(
+        logger.log_error(
             event="polymarket.get_leaderboard_failed",
             exc=exc,
             endpoint=endpoint,

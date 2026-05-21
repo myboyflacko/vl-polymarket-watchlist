@@ -1,14 +1,24 @@
-import json
+import logging
 import os
 import traceback
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from pythonjsonlogger.json import JsonFormatter
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_LOG_FILE_NAME = "polymarket_services.jsonl"
 LOG_DIR_ENV = "VOID_LIQUIDITY_LOG_DIR"
+
+_HANDLER_NAME = "void_liquidity_jsonl"
+
+_LEVEL_MAP = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
 
 
 def _log_path() -> Path:
@@ -21,34 +31,96 @@ def _log_path() -> Path:
     return log_dir / DEFAULT_LOG_FILE_NAME
 
 
-def log_event(level: str, event: str, **context: Any) -> None:
-    payload = {
-        "timestamp": datetime.now(UTC).isoformat(),
-        "level": level,
-        "event": event,
-        "context": context,
-    }
+def configure_logging() -> None:
+    root_logger = logging.getLogger()
     log_path = _log_path()
+
+    for handler in root_logger.handlers:
+        if handler.name != _HANDLER_NAME:
+            continue
+
+        if Path(getattr(handler, "baseFilename", "")) == log_path:
+            return
+
+        root_logger.removeHandler(handler)
+        handler.close()
+
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    with log_path.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(payload, ensure_ascii=False, default=str))
-        log_file.write("\n")
+    handler = logging.FileHandler(log_path, encoding="utf-8")
+    handler.name = _HANDLER_NAME
+
+    formatter = JsonFormatter(
+        "{asctime}{levelname}{name}{event}{error_type}{error}"
+        "{traceback}{context}",
+        style="{",
+    )
+
+    handler.setFormatter(formatter)
+
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.DEBUG)
 
 
-def log_error(event: str, exc: Exception, **context: Any) -> None:
-    payload = {
-        "timestamp": datetime.now(UTC).isoformat(),
-        "level": "error",
-        "event": event,
-        "error_type": type(exc).__name__,
-        "error": str(exc),
-        "context": context,
-        "traceback": traceback.format_exc(),
-    }
-    log_path = _log_path()
-    log_path.parent.mkdir(parents=True, exist_ok=True)
+class VoidLogger:
+    def __init__(self, name):
+        self._logger = logging.getLogger(name)
 
-    with log_path.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(payload, ensure_ascii=False, default=str))
-        log_file.write("\n")
+    def log_event(
+        self,
+        event: str,
+        level: str = "INFO",
+        **context: Any,
+    ) -> None:
+        configure_logging()
+        normalized_level = level.upper()
+
+        if normalized_level not in _LEVEL_MAP:
+            raise ValueError(f"Provide one of this log levels {_LEVEL_MAP.keys()}")
+
+        self._logger.log(
+            _LEVEL_MAP[normalized_level],
+            event,
+            extra={
+                "event": event,
+                "context": context,
+            },
+        )
+
+    def log_error(
+        self,
+        event: str,
+        exc: Exception,
+        level: str = "ERROR",
+        **context: Any,
+    ) -> None:
+        configure_logging()
+        normalized_level = level.upper()
+
+        if normalized_level not in _LEVEL_MAP:
+            raise ValueError(f"Provide one of this log levels {_LEVEL_MAP.keys()}")
+
+        self._logger.log(
+            _LEVEL_MAP[normalized_level],
+            event,
+            extra={
+                "event": event,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+                "traceback": "".join(
+                    traceback.format_exception(type(exc), exc, exc.__traceback__)
+                ).strip(),
+                "context": context,
+            },
+            stacklevel=2,
+        )
+
+
+if __name__ == "__main__":
+    logger = VoidLogger("test_bra")
+    logger.log_event(event="test.test.test", hallo="hallo")
+
+    try:
+        raise ValueError("test fail error")
+    except ValueError as exc:
+        logger.log_error("test.fail_error", exc, hallo="hallo")

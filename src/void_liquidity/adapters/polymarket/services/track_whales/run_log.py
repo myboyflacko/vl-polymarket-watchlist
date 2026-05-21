@@ -6,7 +6,10 @@ from uuid import uuid4
 from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.util.log import log_error, log_event
+from void_liquidity.util.log import VoidLogger
+
+
+logger = VoidLogger(__name__)
 
 
 class WhaleTrackerRunLog:
@@ -16,9 +19,9 @@ class WhaleTrackerRunLog:
         self.started_at = datetime.now(UTC)
 
     def start(self) -> None:
-        log_event(
-            "info",
+        logger.log_event(
             "polymarket.track_whales.run_started",
+            level="INFO",
             run_id=self.run_id,
             started_at=self.started_at.isoformat(),
             profile_version=self.profile.profile_version,
@@ -28,9 +31,9 @@ class WhaleTrackerRunLog:
 
     def finish(self) -> None:
         finished_at = datetime.now(UTC)
-        log_event(
-            "info",
+        logger.log_event(
             "polymarket.track_whales.run_finished",
+            level="INFO",
             run_id=self.run_id,
             started_at=self.started_at.isoformat(),
             finished_at=finished_at.isoformat(),
@@ -39,7 +42,7 @@ class WhaleTrackerRunLog:
 
     def fail(self, exc: Exception) -> None:
         failed_at = datetime.now(UTC)
-        log_error(
+        logger.log_error(
             "polymarket.track_whales.run_failed",
             exc,
             run_id=self.run_id,
@@ -58,9 +61,9 @@ class WhaleTrackerRunLog:
         reject_summary: Counter[str],
         candidate_pool_summary: Counter[str],
     ) -> None:
-        log_event(
-            "info",
+        logger.log_event(
             "polymarket.track_whales.report",
+            level="INFO",
             run_id=self.run_id,
             generated_at=datetime.now(UTC).isoformat(),
             candidate_wallet_count=candidate_wallet_count,

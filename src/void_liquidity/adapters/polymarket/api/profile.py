@@ -11,9 +11,10 @@ from void_liquidity.adapters.polymarket.params import (
 )
 from void_liquidity.adapters.polymarket.params.base import BaseParams
 from void_liquidity.settings import Settings
-from void_liquidity.util.log import log_error, log_event
+from void_liquidity.util.log import VoidLogger
 
 settings = Settings()
+logger = VoidLogger(__name__)
 profile_request_semaphore = asyncio.Semaphore(
     settings.polymarket.max_concurrent_profile_requests,
 )
@@ -64,9 +65,9 @@ async def get_closed_positions(
 
             if is_rate_limited and attempt < max_attempts:
                 wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                log_event(
-                    "warning",
+                logger.log_event(
                     "polymarket.rate_limit.retry",
+                    level="WARNING",
                     endpoint=endpoint,
                     attempt=attempt,
                     max_attempts=max_attempts,
@@ -75,7 +76,7 @@ async def get_closed_positions(
                 await asyncio.sleep(wait_seconds)
                 continue
 
-            log_error(
+            logger.log_error(
                 event="polymarket.get_closed_positions_failed",
                 exc=exc,
                 endpoint=endpoint,
@@ -130,9 +131,9 @@ async def get_current_positions(
 
             if is_rate_limited and attempt < max_attempts:
                 wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                log_event(
-                    "warning",
+                logger.log_event(
                     "polymarket.rate_limit.retry",
+                    level="WARNING",
                     endpoint=endpoint,
                     attempt=attempt,
                     max_attempts=max_attempts,
@@ -141,7 +142,7 @@ async def get_current_positions(
                 await asyncio.sleep(wait_seconds)
                 continue
 
-            log_error(
+            logger.log_error(
                 event="polymarket.get_current_positions_failed",
                 exc=exc,
                 endpoint=endpoint,
@@ -196,9 +197,9 @@ async def get_activity(
 
             if is_rate_limited and attempt < max_attempts:
                 wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                log_event(
-                    "warning",
+                logger.log_event(
                     "polymarket.rate_limit.retry",
+                    level="WARNING",
                     endpoint=endpoint,
                     attempt=attempt,
                     max_attempts=max_attempts,
@@ -207,7 +208,7 @@ async def get_activity(
                 await asyncio.sleep(wait_seconds)
                 continue
 
-            log_error(
+            logger.log_error(
                 event="polymarket.get_activity_failed",
                 exc=exc,
                 endpoint=endpoint,
