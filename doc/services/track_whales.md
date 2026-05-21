@@ -58,8 +58,10 @@ Default balanced thresholds:
   "filters": {
     "min_current_position_value": 10000.0,
     "min_closed_trade_count": 50,
-    "min_win_rate": 0.7,
-    "min_closed_positions_pnl": 0.0
+    "min_closed_positions_pnl": 0.0,
+    "min_roi": 0.0,
+    "min_profit_factor": 1.5,
+    "min_activity_volume": 10000.0
   },
   "activity": {
     "trade_count_window_days": 30,
@@ -114,25 +116,29 @@ A wallet qualifies only if all hard filters pass:
 ```text
 current_position_value >= min_current_position_value
 closed_trade_count >= min_closed_trade_count
-win_rate >= min_win_rate
 closed_positions_pnl > min_closed_positions_pnl
-activity_trade_count_window >= min_activity_trade_count
+roi is available
+roi > min_roi
+profit_factor >= min_profit_factor
+activity_trade_count_window >= min_activity_trade_count or activity_capped=true
+activity_volume_window >= min_activity_volume or activity_capped=true
 last_activity_age_days <= last_activity_max_age_days
 ```
 
 Incomplete current-position or closed-position fetches reject the candidate for this fresh snapshot.
 
-Incomplete activity fetches do not reject the candidate by themselves. Activity rows are fetched newest first, so an incomplete activity scan still gives a reliable lower bound for trade count and a reliable `last_activity_at`. The `activity_complete` flag remains in the output as a metric-quality signal.
+Incomplete activity fetches do not reject the candidate by themselves. Activity rows are fetched newest first, so an incomplete activity scan still gives a reliable lower bound for trade count and a reliable `last_activity_at`. The `activity_complete` and `activity_capped` flags remain in the output as metric-quality signals. A capped activity scan is treated as sufficient activity because the wallet has already reached the endpoint's offset limit inside the requested window.
 
 Closed positions without a parseable timestamp are not counted toward the closed-position window. They are recorded in `unknown_timestamp_count`.
 
 Closed-position samples may be capped by `closed_positions.max_positions_per_wallet`. Those wallets are not rejected only because the sample is capped, but the output sets `closed_positions_truncated=true`.
 
-Risk/reward fields are also emitted for closed positions:
+Risk/reward fields are emitted for closed positions:
 
 ```text
-closed_positions_volume
-roi = closed_positions_pnl / closed_positions_volume
+closed_positions_cost_basis = sum(totalBought * avgPrice)
+roi = closed_positions_pnl / closed_positions_cost_basis
+roi_available
 gross_profit
 gross_loss
 profit_factor = gross_profit / gross_loss
@@ -163,18 +169,19 @@ Each whale has:
     "verified_badge": false
   },
   "metrics": {
-    "leaderboard": {},
-    "exposure": {},
-    "closed_positions": {},
-    "activity": {},
-    "qualification": {}
-  }
+      "leaderboard": {},
+      "exposure": {},
+      "closed_positions": {},
+      "activity": {}
+    }
 }
 ```
 
 The service does not write `rank` or `score` in V2.
 
 `metrics.leaderboard` includes `candidate_pool_source` and `matched_pools`, so later analysis can compare whether `core`, `pnl_specialist`, or `volume_profitable` produces better whales.
+
+The whale output intentionally omits low-value debug fields such as per-wallet qualification thresholds, leaderboard identity booleans, breakeven counts, and unknown timestamp counters. Aggregate metric-quality counts are stored in `metadata.metric_quality_summary`.
 
 Reject details are aggregated in:
 

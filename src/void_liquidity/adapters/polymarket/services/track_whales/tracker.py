@@ -39,7 +39,6 @@ from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
     _build_payload,
     _leaderboard_metrics,
     _qualification_reasons,
-    _qualification_thresholds,
 )
 from void_liquidity.adapters.polymarket.services.track_whales.run_log import (
     WhaleTrackerRunLog,
@@ -274,7 +273,6 @@ class WhaleTracker:
             activity_rows=activity_rows,
             is_complete=activity_complete,
             window_start=activity_window_start,
-            last_activity_cutoff=last_activity_cutoff,
             now=now,
         )
 
@@ -299,7 +297,6 @@ class WhaleTracker:
             },
             "metrics": {
                 "leaderboard": _leaderboard_metrics(
-                    proxy_wallet=proxy_wallet,
                     pnl_entry=pnl_entry,
                     vol_entry=vol_entry,
                     candidate_pool=candidate,
@@ -315,11 +312,6 @@ class WhaleTracker:
                     "trade_count_window_days": (
                         self.profile.activity.trade_count_window_days
                     ),
-                },
-                "qualification": {
-                    "passed": True,
-                    "profile_version": self.profile.profile_version,
-                    "thresholds": _qualification_thresholds(self.profile),
                 },
             },
         }

@@ -35,8 +35,10 @@ class ActivityConfig(BaseModel):
 class WhaleFilterConfig(BaseModel):
     min_current_position_value: float = Field(default=10_000.0, ge=0)
     min_closed_trade_count: int = Field(default=50, ge=1)
-    min_win_rate: float = Field(default=0.70, ge=0, le=1)
     min_closed_positions_pnl: float = 0.0
+    min_roi: float = 0.0
+    min_profit_factor: float = Field(default=1.5, ge=0)
+    min_activity_volume: float = Field(default=10_000.0, ge=0)
 
 
 class WhaleTrackingProfile(BaseModel):

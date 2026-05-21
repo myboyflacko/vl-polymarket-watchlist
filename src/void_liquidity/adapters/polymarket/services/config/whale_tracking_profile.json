@@ -33,7 +33,9 @@
   "filters": {
     "min_current_position_value": 10000.0,
     "min_closed_trade_count": 50,
-    "min_win_rate": 0.7,
-    "min_closed_positions_pnl": 0.0
+    "min_closed_positions_pnl": 0.0,
+    "min_roi": 0.0,
+    "min_profit_factor": 1.5,
+    "min_activity_volume": 10000.0
   }
 }

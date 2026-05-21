@@ -75,8 +75,10 @@ def _profile(output_path: Path) -> WhaleTrackingProfile:
         filters=WhaleFilterConfig(
             min_current_position_value=10_000,
             min_closed_trade_count=50,
-            min_win_rate=0.70,
             min_closed_positions_pnl=0,
+            min_roi=0,
+            min_profit_factor=1.5,
+            min_activity_volume=10_000,
         ),
     )
 
@@ -89,6 +91,8 @@ def _closed_positions(now: datetime) -> list[dict[str, Any]]:
             {
                 "timestamp": int((now - timedelta(days=1)).timestamp()),
                 "realizedPnl": 100 if index < 40 else -10,
+                "totalBought": 1_000,
+                "avgPrice": 0.5,
             }
         )
 
@@ -100,7 +104,7 @@ def _activity(now: datetime) -> list[dict[str, Any]]:
         {
             "timestamp": int((now - timedelta(days=1)).timestamp()),
             "type": "TRADE",
-            "usdcSize": 100,
+            "usdcSize": 1_000,
         }
         for _ in range(10)
     ]
@@ -209,7 +213,16 @@ def test_track_whales_filters_and_writes_v2_output(
     assert "exposure" in payload["whales"][WALLET_ONE]["metrics"]
     assert "closed_positions" in payload["whales"][WALLET_ONE]["metrics"]
     assert "activity" in payload["whales"][WALLET_ONE]["metrics"]
-    assert payload["whales"][WALLET_ONE]["metrics"]["qualification"]["passed"] is True
+    whale_metrics = payload["whales"][WALLET_ONE]["metrics"]
+    assert "qualification" not in whale_metrics
+    assert "win_rate" not in whale_metrics["closed_positions"]
+    assert "initial_position_value" not in whale_metrics["exposure"]
+    assert "candidate_pool_match" not in whale_metrics["leaderboard"]
+    assert payload["metadata"]["metric_quality_summary"] == {
+        "activity_capped_count": 0,
+        "closed_positions_truncated_count": 0,
+        "roi_unavailable_count": 0,
+    }
 
     log_path = tmp_path / "logs" / DEFAULT_LOG_FILE_NAME
     log_events = [
@@ -292,12 +305,15 @@ def test_incomplete_activity_is_not_a_reject_reason(tmp_path: Path) -> None:
         closed_metrics={
             "closed_positions_complete": True,
             "closed_trade_count": 50,
-            "win_rate": 0.70,
             "closed_positions_pnl": 1,
+            "roi": 0.1,
+            "profit_factor": 1.5,
         },
         activity_metrics={
             "activity_complete": False,
+            "activity_capped": True,
             "trade_count_window": 3500,
+            "activity_volume_window": 0,
             "last_activity_age_days": 0.1,
         },
     )
@@ -359,16 +375,17 @@ def test_build_candidate_pool_splits_core_specialists_and_profitable_volume() ->
 def test_closed_position_metrics_include_risk_return_ratios() -> None:
     metrics = _aggregate_closed_positions(
         closed_positions=[
-            {"realizedPnl": 30, "initialValue": 100},
-            {"realizedPnl": 10, "initialValue": 100},
-            {"realizedPnl": -20, "initialValue": 100},
+            {"realizedPnl": 30, "totalBought": 100, "avgPrice": 0.5},
+            {"realizedPnl": 10, "totalBought": 100, "avgPrice": 0.5},
+            {"realizedPnl": -20, "totalBought": 100, "avgPrice": 0.5},
         ],
         is_complete=True,
         unknown_timestamp_count=0,
     )
 
-    assert metrics["closed_positions_volume"] == 300
-    assert metrics["roi"] == pytest.approx(20 / 300)
+    assert metrics["closed_positions_cost_basis"] == 150
+    assert metrics["roi"] == pytest.approx(20 / 150)
+    assert metrics["roi_available"] is True
     assert metrics["gross_profit"] == 40
     assert metrics["gross_loss"] == 20
     assert metrics["profit_factor"] == 2
@@ -379,7 +396,7 @@ def test_closed_position_metrics_include_risk_return_ratios() -> None:
 
 def test_closed_position_metrics_mark_truncated_samples() -> None:
     metrics = _aggregate_closed_positions(
-        closed_positions=[{"realizedPnl": 1, "initialValue": 10}],
+        closed_positions=[{"realizedPnl": 1, "totalBought": 10, "avgPrice": 0.5}],
         is_complete=True,
         unknown_timestamp_count=0,
         is_truncated=True,
@@ -387,3 +404,69 @@ def test_closed_position_metrics_mark_truncated_samples() -> None:
 
     assert metrics["closed_positions_complete"] is True
     assert metrics["closed_positions_truncated"] is True
+
+
+def test_closed_position_metrics_mark_roi_unavailable_without_cost_basis() -> None:
+    metrics = _aggregate_closed_positions(
+        closed_positions=[{"realizedPnl": 10}],
+        is_complete=True,
+        unknown_timestamp_count=0,
+    )
+
+    assert metrics["closed_positions_cost_basis"] == 0
+    assert metrics["roi"] is None
+    assert metrics["roi_available"] is False
+
+
+def test_qualification_rejects_unavailable_roi(tmp_path: Path) -> None:
+    profile = _profile(tmp_path / "whales.json")
+
+    reasons = _qualification_reasons(
+        profile=profile,
+        exposure_metrics={
+            "current_positions_complete": True,
+            "current_position_value": 10_000,
+        },
+        closed_metrics={
+            "closed_positions_complete": True,
+            "closed_trade_count": 50,
+            "closed_positions_pnl": 1,
+            "roi": None,
+            "profit_factor": 2,
+        },
+        activity_metrics={
+            "activity_capped": False,
+            "trade_count_window": 10,
+            "activity_volume_window": 10_000,
+            "last_activity_age_days": 0.1,
+        },
+    )
+
+    assert reasons == ["roi_unavailable"]
+
+
+def test_qualification_rejects_low_profit_factor(tmp_path: Path) -> None:
+    profile = _profile(tmp_path / "whales.json")
+
+    reasons = _qualification_reasons(
+        profile=profile,
+        exposure_metrics={
+            "current_positions_complete": True,
+            "current_position_value": 10_000,
+        },
+        closed_metrics={
+            "closed_positions_complete": True,
+            "closed_trade_count": 50,
+            "closed_positions_pnl": 1,
+            "roi": 0.1,
+            "profit_factor": 1.49,
+        },
+        activity_metrics={
+            "activity_capped": False,
+            "trade_count_window": 10,
+            "activity_volume_window": 10_000,
+            "last_activity_age_days": 0.1,
+        },
+    )
+
+    assert reasons == ["profit_factor_below_min"]
