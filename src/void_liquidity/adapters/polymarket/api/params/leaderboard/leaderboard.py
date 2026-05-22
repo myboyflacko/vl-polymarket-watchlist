@@ -1,6 +1,6 @@
 from pydantic import Field, field_validator
 from typing import Literal
-from void_liquidity.adapters.polymarket.params.base import BaseParams
+from void_liquidity.adapters.polymarket.api.params.base import BaseParams
 
 class LeaderboardParams(BaseParams):
     category: Literal[

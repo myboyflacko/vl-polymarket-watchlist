@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from void_liquidity.adapters.polymarket.params import ActivityParams
+from void_liquidity.adapters.polymarket.api.params import ActivityParams
 from void_liquidity.adapters.polymarket.services.track_whales import (
     WhaleTracker,
     WhaleTrackingProfile,
@@ -36,7 +36,7 @@ from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
 from void_liquidity.adapters.polymarket.services.track_whales import (
     tracker as tracker_module,
 )
-from void_liquidity.util.log import DEFAULT_LOG_FILE_NAME
+from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
 
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -256,15 +256,20 @@ def test_track_whales_filters_and_writes_v2_output(
     }
 
     log_path = tmp_path / "logs" / DEFAULT_LOG_FILE_NAME
-    log_events = [
-        json.loads(line)["event"]
+    log_payloads = [
+        json.loads(line)
         for line in log_path.read_text(encoding="utf-8").splitlines()
     ]
+    log_events = [payload["event"] for payload in log_payloads]
     assert log_events == [
         "polymarket.track_whales.run_started",
         "polymarket.track_whales.report",
         "polymarket.track_whales.run_finished",
     ]
+    assert [
+        payload["context"]["run_id"]
+        for payload in log_payloads
+    ] == [run_id, run_id, run_id]
 
 
 def test_load_default_workflow_profile() -> None:
@@ -332,6 +337,47 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
 
     assert len(rows) == 3500
     assert is_complete is False
+
+
+def test_fetch_all_activity_logs_fetch_errors_with_wallet_context(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
+    output_path = tmp_path / "whales.json"
+    profile = _profile(output_path)
+
+    async def fake_get_activity(
+        client: Any,
+        params: ActivityParams,
+    ) -> list[dict[str, Any]]:
+        raise RuntimeError("api down")
+
+    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
+
+    rows, is_complete = asyncio.run(
+        WhaleTracker(profile=profile)._fetch_all_activity(
+            client=FakeHTTPClient(),
+            proxy_wallet=WALLET_ONE,
+            start=datetime(2026, 5, 1, tzinfo=UTC),
+            end=datetime(2026, 5, 20, tzinfo=UTC),
+        )
+    )
+
+    assert rows == []
+    assert is_complete is False
+
+    log_path = tmp_path / "logs" / DEFAULT_LOG_FILE_NAME
+    [payload] = [
+        json.loads(line)
+        for line in log_path.read_text(encoding="utf-8").splitlines()
+    ]
+    assert payload["event"] == "polymarket.activity_fetch_failed"
+    assert payload["error_type"] == "RuntimeError"
+    assert payload["error"] == "api down"
+    assert payload["context"]["proxy_wallet"] == WALLET_ONE
+    assert payload["context"]["offset"] == 0
+    assert payload["context"]["is_rate_limited"] is False
 
 
 def test_incomplete_activity_is_not_a_reject_reason_when_volume_passes(

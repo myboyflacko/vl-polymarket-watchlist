@@ -12,9 +12,11 @@ from void_liquidity.adapters.polymarket.api import (
     get_current_positions,
     get_leaderboard,
 )
-from void_liquidity.adapters.polymarket.api.profile import PolymarketRateLimitError
-from void_liquidity.adapters.polymarket.client import HTTPClient
-from void_liquidity.adapters.polymarket.params import (
+from void_liquidity.adapters.polymarket.api.client import HTTPClient
+from void_liquidity.adapters.polymarket.api.endpoints.profile import (
+    PolymarketRateLimitError,
+)
+from void_liquidity.adapters.polymarket.api.params import (
     ActivityParams,
     ClosedPositionsParams,
     CurrentPositionsParams,
@@ -50,6 +52,10 @@ from void_liquidity.adapters.polymarket.services.track_whales.run_log import (
 from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
     WhaleTrackingProfile,
 )
+from void_liquidity.logging import VoidLogger
+
+
+logger = VoidLogger(__name__)
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -72,7 +78,7 @@ class WhaleTracker:
         client = HTTPClient()
         now = datetime.now(UTC)
         run_id = _build_run_id(now)
-        run_log = WhaleTrackerRunLog(profile=self.profile)
+        run_log = WhaleTrackerRunLog(profile=self.profile, run_id=run_id)
 
         try:
             run_log.start()
@@ -165,7 +171,18 @@ class WhaleTracker:
                 order_by=order_by,
                 offset=offset,
             )
-            page = await get_leaderboard(client=client, params=params)
+
+            try:
+                page = await get_leaderboard(client=client, params=params)
+            except Exception as exc:
+                logger.log_error(
+                    "polymarket.leaderboard_fetch_failed",
+                    exc,
+                    order_by=order_by,
+                    offset=offset,
+                    params=params.model_dump(exclude_none=True),
+                )
+                raise
 
             if not isinstance(page, list) or not page:
                 break
@@ -382,7 +399,25 @@ class WhaleTracker:
 
             try:
                 page = await get_current_positions(client=client, params=params)
-            except PolymarketRateLimitError:
+            except PolymarketRateLimitError as exc:
+                logger.log_error(
+                    "polymarket.current_positions_fetch_failed",
+                    exc,
+                    proxy_wallet=proxy_wallet,
+                    offset=offset,
+                    is_rate_limited=True,
+                    params=params.model_dump(exclude_none=True),
+                )
+                return current_positions, False
+            except Exception as exc:
+                logger.log_error(
+                    "polymarket.current_positions_fetch_failed",
+                    exc,
+                    proxy_wallet=proxy_wallet,
+                    offset=offset,
+                    is_rate_limited=False,
+                    params=params.model_dump(exclude_none=True),
+                )
                 return current_positions, False
 
             if not isinstance(page, list) or not page:
@@ -421,7 +456,25 @@ class WhaleTracker:
 
             try:
                 page = await get_closed_positions(client=client, params=params)
-            except PolymarketRateLimitError:
+            except PolymarketRateLimitError as exc:
+                logger.log_error(
+                    "polymarket.closed_positions_fetch_failed",
+                    exc,
+                    proxy_wallet=proxy_wallet,
+                    offset=offset,
+                    is_rate_limited=True,
+                    params=params.model_dump(exclude_none=True),
+                )
+                return closed_positions, False, unknown_timestamp_count, False
+            except Exception as exc:
+                logger.log_error(
+                    "polymarket.closed_positions_fetch_failed",
+                    exc,
+                    proxy_wallet=proxy_wallet,
+                    offset=offset,
+                    is_rate_limited=False,
+                    params=params.model_dump(exclude_none=True),
+                )
                 return closed_positions, False, unknown_timestamp_count, False
 
             if not isinstance(page, list) or not page:
@@ -487,7 +540,25 @@ class WhaleTracker:
 
             try:
                 page = await get_activity(client=client, params=params)
-            except PolymarketRateLimitError:
+            except PolymarketRateLimitError as exc:
+                logger.log_error(
+                    "polymarket.activity_fetch_failed",
+                    exc,
+                    proxy_wallet=proxy_wallet,
+                    offset=offset,
+                    is_rate_limited=True,
+                    params=params.model_dump(exclude_none=True),
+                )
+                return activity_rows, False
+            except Exception as exc:
+                logger.log_error(
+                    "polymarket.activity_fetch_failed",
+                    exc,
+                    proxy_wallet=proxy_wallet,
+                    offset=offset,
+                    is_rate_limited=False,
+                    params=params.model_dump(exclude_none=True),
+                )
                 return activity_rows, False
 
             if not isinstance(page, list) or not page:

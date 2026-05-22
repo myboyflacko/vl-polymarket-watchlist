@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from void_liquidity.adapters.polymarket.params import (
+from void_liquidity.adapters.polymarket.api.params import (
     ActivityParams,
     ClosedPositionsParams,
     CurrentPositionsParams,

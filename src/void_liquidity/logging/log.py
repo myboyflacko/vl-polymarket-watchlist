@@ -114,13 +114,3 @@ class VoidLogger:
             },
             stacklevel=2,
         )
-
-
-if __name__ == "__main__":
-    logger = VoidLogger("test_bra")
-    logger.log_event(event="test.test.test", hallo="hallo")
-
-    try:
-        raise ValueError("test fail error")
-    except ValueError as exc:
-        logger.log_error("test.fail_error", exc, hallo="hallo")

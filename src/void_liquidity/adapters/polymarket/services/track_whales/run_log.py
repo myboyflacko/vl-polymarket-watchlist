@@ -1,21 +1,20 @@
 from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
-from uuid import uuid4
 
 from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.util.log import VoidLogger
+from void_liquidity.logging import VoidLogger
 
 
 logger = VoidLogger(__name__)
 
 
 class WhaleTrackerRunLog:
-    def __init__(self, profile: WhaleTrackingProfile) -> None:
+    def __init__(self, profile: WhaleTrackingProfile, run_id: str) -> None:
         self.profile = profile
-        self.run_id = str(uuid4())
+        self.run_id = run_id
         self.started_at = datetime.now(UTC)
 
     def start(self) -> None:

@@ -2,41 +2,27 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from void_liquidity.adapters.polymarket.params.base import BaseParams
+from void_liquidity.adapters.polymarket.api.params.base import BaseParams
 
 
-class ActivityParams(BaseParams):
-    """Query params for Polymarket Data API `/activity`.
-
-    Reference:
-        https://docs.polymarket.com/api-reference/core/get-user-activity
-    """
-
+class ClosedPositionsParams(BaseParams):
     user: str = Field(
         min_length=42,
         max_length=42,
         pattern=r"^0x[a-fA-F0-9]{40}$",
     )
     market: list[str] | None = Field(default=None)
+    title: str | None = Field(default=None, max_length=100)
     eventId: list[int] | None = None
-    type: list[
-        Literal[
-            "TRADE",
-            "SPLIT",
-            "MERGE",
-            "REDEEM",
-            "REWARD",
-            "CONVERSION",
-            "MAKER_REBATE",
-            "REFERRAL_REWARD",
-        ]
-    ] | None = Field(default=None)
-    start: int | None = Field(default=None, ge=0)
-    end: int | None = Field(default=None, ge=0)
-    side: Literal["BUY", "SELL"] | None = None
-    limit: int = Field(default=100, ge=0, le=500)
-    offset: int = Field(default=0, ge=0, le=3000)
-    sortBy: Literal["TIMESTAMP", "TOKENS", "CASH"] = Field(default="TIMESTAMP")
+    limit: int = Field(default=10, ge=0, le=50)
+    offset: int = Field(default=0, ge=0, le=100000)
+    sortBy: Literal[
+        "REALIZEDPNL",
+        "TITLE",
+        "PRICE",
+        "AVGPRICE",
+        "TIMESTAMP",
+    ] = Field(default="REALIZEDPNL")
     sortDirection: Literal["ASC", "DESC"] = Field(default="DESC")
 
     @field_validator("market", mode="before")
@@ -81,27 +67,13 @@ class ActivityParams(BaseParams):
 
         return value
 
-    @field_validator("type", mode="before")
+    @field_validator("sortBy", "sortDirection", mode="before")
     @classmethod
-    def parse_type(cls, value: str | list[str] | None) -> list[str] | None:
-        if value is None:
-            return value
-
-        if isinstance(value, list):
-            return [item.upper() for item in value]
-
-        return [item.strip().upper() for item in value.split(",") if item.strip()]
-
-    @field_validator("side", "sortBy", "sortDirection", mode="before")
-    @classmethod
-    def capitalize(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-
+    def capitalize(cls, value: str) -> str:
         return value.upper()
 
     @model_validator(mode="after")
-    def validate_market_or_event_id(self) -> "ActivityParams":
+    def validate_market_or_event_id(self) -> "ClosedPositionsParams":
         if self.market is not None and self.eventId is not None:
             raise ValueError("market cannot be used together with eventId")
 
@@ -115,8 +87,5 @@ class ActivityParams(BaseParams):
 
         if "eventId" in params:
             params["eventId"] = ",".join(str(event_id) for event_id in params["eventId"])
-
-        if "type" in params:
-            params["type"] = ",".join(params["type"])
 
         return params
