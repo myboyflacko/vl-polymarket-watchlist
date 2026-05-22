@@ -1,16 +1,23 @@
 import json
 from pathlib import Path
 
-from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
     WhaleTrackingProfile,
 )
 
 
 PACKAGE_DIR = Path(__file__).resolve().parent
-SERVICE_DIR = PACKAGE_DIR.parent
-PROJECT_ROOT = SERVICE_DIR.parents[4]
-DEFAULT_PROFILE_PATH = SERVICE_DIR / "config" / "whale_tracking_profile.json"
-QUALITY_PROFILE_PATH = SERVICE_DIR / "config" / "whale_tracking_profile_quality.json"
+POLYMARKET_ADAPTER_DIR = PACKAGE_DIR.parents[2]
+PROJECT_ROOT = PACKAGE_DIR.parents[6]
+DEFAULT_PROFILE_PATH = (
+    POLYMARKET_ADAPTER_DIR / "services" / "config" / "whale_tracking_profile.json"
+)
+QUALITY_PROFILE_PATH = (
+    POLYMARKET_ADAPTER_DIR
+    / "services"
+    / "config"
+    / "whale_tracking_profile_quality.json"
+)
 
 
 def load_workflow_profile(

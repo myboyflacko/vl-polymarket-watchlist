@@ -8,32 +8,32 @@ from typing import Any
 import pytest
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
-from void_liquidity.adapters.polymarket.services.track_whales import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
     WhaleTracker,
     WhaleTrackingProfile,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.services.track_whales.config import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.config import (
     PROJECT_ROOT,
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
-from void_liquidity.adapters.polymarket.services.track_whales.metrics import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.metrics import (
     _aggregate_closed_positions,
     _build_candidate_pool,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.services.track_whales.report import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.services.track_whales.schemas import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
     ActivityConfig,
     CandidatePoolConfig,
     ClosedPositionsConfig,
     CurrentPositionsConfig,
     WhaleFilterConfig,
 )
-from void_liquidity.adapters.polymarket.services.track_whales import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
     tracker as tracker_module,
 )
 from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
