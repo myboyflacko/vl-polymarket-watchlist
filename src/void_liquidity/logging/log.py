@@ -60,6 +60,8 @@ def configure_logging() -> None:
 
     root_logger.addHandler(handler)
     root_logger.setLevel(logging.DEBUG)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 class VoidLogger:

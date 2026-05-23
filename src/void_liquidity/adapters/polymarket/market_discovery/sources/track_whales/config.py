@@ -10,7 +10,7 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 POLYMARKET_ADAPTER_DIR = PACKAGE_DIR.parents[2]
 PROJECT_ROOT = PACKAGE_DIR.parents[6]
 DEFAULT_PROFILE_PATH = (
-    POLYMARKET_ADAPTER_DIR / "services" / "config" / "whale_tracking_profile.json"
+    POLYMARKET_ADAPTER_DIR / "services" / "config" / "whale_tracking_profile_quality.json"
 )
 QUALITY_PROFILE_PATH = (
     POLYMARKET_ADAPTER_DIR
