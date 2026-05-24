@@ -11,42 +11,42 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
-from void_liquidity.adapters.polymarket.sources.track_whales import (
+from void_liquidity.adapters.polymarket.collectors.whales import (
     WhaleTracker,
     WhaleTrackingProfile,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.sources.track_whales.config import (
+from void_liquidity.adapters.polymarket.collectors.whales.config import (
     PROJECT_ROOT,
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
-from void_liquidity.adapters.polymarket.sources.track_whales.models import (
+from void_liquidity.adapters.polymarket.collectors.whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.sources.track_whales.metrics import (
+from void_liquidity.adapters.polymarket.collectors.whales.metrics import (
     _aggregate_closed_positions,
     _build_candidate_pool,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.sources.track_whales.report import (
+from void_liquidity.adapters.polymarket.collectors.whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
+from void_liquidity.adapters.polymarket.collectors.whales.schemas import (
     ActivityConfig,
     CandidatePoolConfig,
     ClosedPositionsConfig,
     CurrentPositionsConfig,
     WhaleFilterConfig,
 )
-from void_liquidity.adapters.polymarket.sources.track_whales import (
+from void_liquidity.adapters.polymarket.collectors.whales import (
     tracker as tracker_module,
 )
 from void_liquidity.core import EventBus
 from void_liquidity.features.whales.events import (
-    TRACK_WHALES_COMPLETED,
-    TRACK_WHALES_STARTED,
+    WHALES_COLLECTION_COMPLETED,
+    WHALES_COLLECTION_STARTED,
 )
 from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
 from void_liquidity.data import Base, create_database_engine, database_session
@@ -241,8 +241,8 @@ def test_track_whales_filters_and_writes_v2_output(
 
     assert list(whales) == [WALLET_ONE]
     assert [event.event_type for event in emitted_events] == [
-        TRACK_WHALES_STARTED,
-        TRACK_WHALES_COMPLETED,
+        WHALES_COLLECTION_STARTED,
+        WHALES_COLLECTION_COMPLETED,
     ]
     assert [
         path

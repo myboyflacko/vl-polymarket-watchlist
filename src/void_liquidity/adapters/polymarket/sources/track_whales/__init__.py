@@ -1,11 +1,7 @@
-from void_liquidity.adapters.polymarket.sources.track_whales.config import (
-    load_workflow_profile,
-)
-from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
-    WhaleTrackingProfile,
-)
-from void_liquidity.adapters.polymarket.sources.track_whales.tracker import (
+from void_liquidity.adapters.polymarket.collectors.whales import (
     WhaleTracker,
+    WhaleTrackingProfile,
+    load_workflow_profile,
 )
 
 __all__ = [

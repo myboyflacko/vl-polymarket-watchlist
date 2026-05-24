@@ -43,7 +43,7 @@ DomainEvent -> Runtime -> PluginRegistry -> Plugin -> DomainEvent
 ```
 
 `track_whales` kann weiter direkt ausgefuehrt werden, ist aber auch ueber
-`PolymarketWhaleTrackingPlugin` event-getrieben anschliessbar. Market Discovery
+`PolymarketWhaleCollectorPlugin` event-getrieben anschliessbar. Market Discovery
 soll spaeter genauso angebunden werden: ein Plugin konsumiert Whale-Events oder
 persistierte Whale-Snapshots und produziert Market-Candidate-Events.
 

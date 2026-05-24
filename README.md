@@ -9,21 +9,24 @@ without coupling each step directly to the next one.
 ```text
 src/void_liquidity/
   core/       event bus, domain events, plugin registry, runtime
-  features/   business capabilities such as whale tracking and later markets
-  adapters/   external systems such as Polymarket HTTP APIs
+  features/   feature event contracts, currently qualified whale collection
+  adapters/   external systems and collectors such as Polymarket whales
+  plugins/    runtime connectors between feature events and adapters
   data/       database engine, SQLAlchemy models, Alembic migrations
   logging/    JSONL logging
 ```
 
 The rule is simple: features express business intent, adapters talk to external
-systems, and `core` wires capabilities together through events.
+systems, plugins connect both sides, and `core` wires everything through events.
 
 ## Whale Tracker
 
 The current production path is the Polymarket whale tracker. It can still be run
 directly through the legacy-compatible module
-`src/void_liquidity/adapters/polymarket/sources/track_whales`, and it can now
-also be mounted as `PolymarketWhaleTrackingPlugin`.
+`src/void_liquidity/adapters/polymarket/sources/track_whales`, but the real
+implementation now lives at
+`src/void_liquidity/adapters/polymarket/collectors/whales`. It can also be
+mounted as `PolymarketWhaleCollectorPlugin`.
 
 The tracker performs a fresh discovery run:
 
@@ -36,11 +39,11 @@ The tracker performs a fresh discovery run:
 It only reads public Polymarket data. It does not place trades, submit orders,
 cancel orders, or move funds.
 
-## Next Feature Boundary
+## Current Feature Boundary
 
-Wallet-to-market derivation should land under `features/markets/`. It should
-consume whale snapshots or whale tracking events and produce normalized market
-candidate events. Polymarket-specific fetch details stay in `adapters`.
+The current stage delivers qualified whales. `features/whales` owns the event
+contract, `adapters/polymarket/collectors/whales` owns Polymarket collection,
+and `plugins/polymarket/whales.py` connects that collector to the runtime.
 
 Run the test suite with the project virtualenv:
 
