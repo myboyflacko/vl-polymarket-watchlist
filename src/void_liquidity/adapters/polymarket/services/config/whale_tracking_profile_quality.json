@@ -3,6 +3,7 @@
   "target_wallet_count": 500,
   "wallet_batch_size": 4,
   "output_path": "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales_quality.json",
+  "database_path": "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.sqlite3",
   "candidate_pool": {
     "category": "OVERALL",
     "time_period": "MONTH",

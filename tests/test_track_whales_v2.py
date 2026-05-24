@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
@@ -17,6 +19,11 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.co
     PROJECT_ROOT,
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
+)
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.db import (
+    TrackedWhale,
+    WhaleTrackerRun,
+    create_whale_tracker_engine,
 )
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.metrics import (
     _aggregate_closed_positions,
@@ -64,6 +71,7 @@ def _profile(output_path: Path) -> WhaleTrackingProfile:
         target_wallet_count=10,
         wallet_batch_size=2,
         output_path=str(output_path),
+        database_path=str(output_path.with_suffix(".sqlite3")),
         candidate_pool=CandidatePoolConfig(top_n=2, leaderboard_limit=2),
         current_positions=CurrentPositionsConfig(limit=10),
         closed_positions=ClosedPositionsConfig(
@@ -206,21 +214,17 @@ def test_track_whales_filters_and_writes_v2_output(
     whales = asyncio.run(WhaleTracker(profile=profile).run())
 
     assert list(whales) == [WALLET_ONE]
-    output_files = [
+    assert [
         path
         for path in tmp_path.glob("whales_*.json")
         if "_report_" not in path.name
-    ]
-    assert len(output_files) == 1
+    ] == []
     report_files = list(tmp_path.glob("whales_report_*.json"))
     assert len(report_files) == 1
 
-    payload = json.loads(output_files[0].read_text(encoding="utf-8"))
     report_payload = json.loads(report_files[0].read_text(encoding="utf-8"))
-    run_id = payload["metadata"]["run_id"]
+    run_id = report_payload["metadata"]["run_id"]
     assert run_id
-    assert report_payload["metadata"]["run_id"] == run_id
-    assert payload["metadata"] == {"run_id": run_id}
     assert report_payload["metadata"]["mode"] == "fresh_discovery"
     assert report_payload["metadata"]["wallet_count"] == 1
     assert report_payload["candidate_funnel"]["reject_summary"] == {
@@ -231,12 +235,30 @@ def test_track_whales_filters_and_writes_v2_output(
     assert report_payload["accepted_metrics"]["overall"][
         "closed_positions.roi"
     ]["median"] == pytest.approx(3_900 / 25_000)
-    assert payload["whales"][WALLET_ONE]["metadata"]["user_name"] == "winner"
-    assert "leaderboard" in payload["whales"][WALLET_ONE]["metrics"]
-    assert "exposure" in payload["whales"][WALLET_ONE]["metrics"]
-    assert "closed_positions" in payload["whales"][WALLET_ONE]["metrics"]
-    assert "activity" in payload["whales"][WALLET_ONE]["metrics"]
-    whale_metrics = payload["whales"][WALLET_ONE]["metrics"]
+
+    engine = create_whale_tracker_engine(profile.database_path)
+    with Session(engine) as session:
+        run_row = session.execute(
+            select(WhaleTrackerRun).where(WhaleTrackerRun.run_id == run_id)
+        ).scalar_one()
+        whale_row = session.execute(
+            select(TrackedWhale).where(TrackedWhale.run_id == run_id)
+        ).scalar_one()
+
+    assert run_row.profile_version == profile.profile_version
+    assert run_row.candidate_wallet_count == 2
+    assert run_row.checked_wallet_count == 2
+    assert run_row.accepted_wallet_count == 1
+    assert run_row.report_path == str(report_files[0])
+    assert whale_row.proxy_wallet == WALLET_ONE
+    assert whale_row.user_name == "winner"
+    assert whale_row.candidate_pool_source == "core"
+    whale_metrics = {
+        "leaderboard": whale_row.leaderboard,
+        "exposure": whale_row.exposure,
+        "closed_positions": whale_row.closed_positions,
+        "activity": whale_row.activity,
+    }
     assert "qualification" not in whale_metrics
     assert "win_rate" not in whale_metrics["closed_positions"]
     assert "initial_position_value" not in whale_metrics["exposure"]
@@ -299,6 +321,20 @@ def test_resolve_project_path_uses_repo_root_for_relative_paths() -> None:
     assert resolved_path == (
         PROJECT_ROOT
         / "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json"
+    )
+
+
+def test_default_workflow_profile_uses_project_data_sqlite() -> None:
+    profile = WhaleTrackingProfile()
+
+    assert profile.database_path == (
+        "src/void_liquidity/adapters/polymarket/services/data/"
+        "polymarket_whales.sqlite3"
+    )
+    assert _resolve_project_path(profile.database_path) == (
+        PROJECT_ROOT
+        / "src/void_liquidity/adapters/polymarket/services/data/"
+        "polymarket_whales.sqlite3"
     )
 
 

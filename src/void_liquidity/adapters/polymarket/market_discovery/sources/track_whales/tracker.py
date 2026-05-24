@@ -26,6 +26,9 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.co
     _resolve_project_path,
     load_workflow_profile,
 )
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.db import (
+    persist_whale_tracker_run,
+)
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.helpers import (
     _build_activity_params,
     _build_closed_positions_params,
@@ -39,7 +42,6 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.me
     _aggregate_closed_positions,
     _aggregate_current_positions,
     _build_candidate_pool,
-    _build_payload,
     _leaderboard_metrics,
     _qualification_reasons,
 )
@@ -60,10 +62,6 @@ logger = VoidLogger(__name__)
 
 def _build_run_id(generated_at: datetime) -> str:
     return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
-
-
-def _append_run_id_to_path(path: Path, run_id: str) -> Path:
-    return path.with_name(f"{path.stem}_{run_id}{path.suffix}")
 
 
 def _append_report_run_id_to_path(path: Path, run_id: str) -> Path:
@@ -100,7 +98,7 @@ class WhaleTracker:
                     now=now,
                 )
             )
-            self._write_outputs_to_json(
+            self._persist_outputs(
                 whales=whales,
                 reject_summary=reject_summary,
                 reject_group_summary=reject_group_summary,
@@ -110,6 +108,7 @@ class WhaleTracker:
                 candidate_pool_summary=candidate_pool_summary,
                 generated_at=now,
                 run_id=run_id,
+                started_at=run_log.started_at,
             )
             run_log.report(
                 candidate_wallet_count=len(candidates),
@@ -573,7 +572,7 @@ class WhaleTracker:
 
         return activity_rows, False
 
-    def _write_outputs_to_json(
+    def _persist_outputs(
         self,
         whales: dict[str, dict[str, Any]],
         reject_summary: Counter[str],
@@ -585,17 +584,15 @@ class WhaleTracker:
         path: str | Path | None = None,
         generated_at: datetime | None = None,
         run_id: str | None = None,
+        started_at: datetime | None = None,
     ) -> None:
         generated_at = generated_at or datetime.now(UTC)
         run_id = run_id or _build_run_id(generated_at)
+        started_at = started_at or generated_at
+        finished_at = datetime.now(UTC)
         base_output_path = _resolve_project_path(path or self.profile.output_path)
-        whale_output_path = _append_run_id_to_path(base_output_path, run_id)
         report_output_path = _append_report_run_id_to_path(base_output_path, run_id)
-        whale_output_path.parent.mkdir(parents=True, exist_ok=True)
-        whale_payload = _build_payload(
-            whales=whales,
-            run_id=run_id,
-        )
+        report_output_path.parent.mkdir(parents=True, exist_ok=True)
         report_payload = build_report_payload(
             profile=self.profile,
             whales=whales,
@@ -609,11 +606,20 @@ class WhaleTracker:
             run_id=run_id,
         )
 
-        with whale_output_path.open("w", encoding="utf-8") as output_file:
-            json.dump(whale_payload, output_file, ensure_ascii=False, indent=2)
-
         with report_output_path.open("w", encoding="utf-8") as output_file:
             json.dump(report_payload, output_file, ensure_ascii=False, indent=2)
+
+        persist_whale_tracker_run(
+            profile=self.profile,
+            run_id=run_id,
+            started_at=started_at,
+            finished_at=finished_at,
+            generated_at=generated_at,
+            candidate_wallet_count=candidate_wallet_count,
+            checked_wallet_count=checked_wallet_count,
+            whales=whales,
+            report_path=report_output_path,
+        )
 
 
 if __name__ == "__main__":
