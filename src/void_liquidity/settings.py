@@ -7,7 +7,7 @@ ENV_FILE = Path(__file__).resolve().parents[2] / '.env'
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SQLITE_PATH = (
     PROJECT_ROOT
-    / "data/"
+    / "src/void_liquidity/data/"
     "void_liquidity.sqlite3"
 )
 

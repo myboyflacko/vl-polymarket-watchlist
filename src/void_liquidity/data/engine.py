@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 from sqlalchemy import create_engine
-from sqlalchemy.engine import Engine
+from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.orm import Session, sessionmaker
 
 from void_liquidity.settings import PROJECT_ROOT, get_settings
@@ -31,14 +31,21 @@ def build_sqlite_url(database_path: str | Path | None = None) -> str:
     return f"{SQLITE_URL_PREFIX}{resolved_path}"
 
 
+def ensure_database_parent(database_url: str) -> None:
+    url = make_url(database_url)
+
+    if not url.drivername.startswith("sqlite"):
+        return
+
+    if not url.database or url.database == ":memory:":
+        return
+
+    Path(url.database).parent.mkdir(parents=True, exist_ok=True)
+
+
 def create_database_engine(database_path: str | Path | None = None) -> Engine:
     database_url = build_sqlite_url(database_path)
-
-    if database_url.startswith(SQLITE_URL_PREFIX):
-        Path(database_url.removeprefix(SQLITE_URL_PREFIX)).parent.mkdir(
-            parents=True,
-            exist_ok=True,
-        )
+    ensure_database_parent(database_url)
 
     return create_engine(database_url, future=True)
 

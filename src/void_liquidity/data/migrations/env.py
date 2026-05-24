@@ -7,12 +7,12 @@ import sys
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
     models as track_whales_models,
 )
-from void_liquidity.data import Base, build_sqlite_url
+from void_liquidity.data import Base, build_sqlite_url, ensure_database_parent
 
 
 _ = track_whales_models
@@ -43,7 +43,9 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    config.set_main_option("sqlalchemy.url", _database_url())
+    database_url = _database_url()
+    ensure_database_parent(database_url)
+    config.set_main_option("sqlalchemy.url", database_url)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

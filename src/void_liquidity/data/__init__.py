@@ -3,6 +3,7 @@ from void_liquidity.data.engine import (
     build_sqlite_url,
     create_database_engine,
     database_session,
+    ensure_database_parent,
     resolve_project_path,
 )
 
@@ -11,5 +12,6 @@ __all__ = [
     "build_sqlite_url",
     "create_database_engine",
     "database_session",
+    "ensure_database_parent",
     "resolve_project_path",
 ]

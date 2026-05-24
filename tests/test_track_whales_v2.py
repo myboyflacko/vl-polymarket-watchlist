@@ -347,7 +347,7 @@ def test_settings_provide_default_project_data_sqlite() -> None:
     assert not hasattr(profile, "database_path")
     assert DEFAULT_SQLITE_PATH == (
         PROJECT_ROOT
-        / "data/"
+        / "src/void_liquidity/data/"
         "void_liquidity.sqlite3"
     )
     assert get_settings().database.sqlite_path == DEFAULT_SQLITE_PATH
