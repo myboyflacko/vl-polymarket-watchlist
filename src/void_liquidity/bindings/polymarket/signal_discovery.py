@@ -2,30 +2,30 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from void_liquidity.adapters.polymarket.collectors.whales import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery import (
     WhaleTracker,
     load_workflow_profile,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
-from void_liquidity.core.plugins import PluginSpec
-from void_liquidity.features.whales.events import (
-    WHALES_COLLECTION_COMPLETED,
-    WHALES_COLLECTION_FAILED,
-    WHALES_COLLECTION_REQUESTED,
-    WHALES_COLLECTION_STARTED,
+from void_liquidity.core.bindings import BindingSpec
+from void_liquidity.pipeline.signal_discovery.events import (
+    SIGNAL_DISCOVERY_COMPLETED,
+    SIGNAL_DISCOVERY_FAILED,
+    SIGNAL_DISCOVERY_REQUESTED,
+    SIGNAL_DISCOVERY_STARTED,
 )
 
 
-class PolymarketWhaleCollectorPlugin:
-    spec = PluginSpec(
-        name="polymarket.whale_collector",
+class PolymarketSignalDiscoveryBinding:
+    spec = BindingSpec(
+        name="polymarket.signal_discovery",
         version="1.0.0",
         description="Collects qualified Polymarket whales and persists snapshots.",
-        consumes=(WHALES_COLLECTION_REQUESTED,),
+        consumes=(SIGNAL_DISCOVERY_REQUESTED,),
         produces=(
-            WHALES_COLLECTION_STARTED,
-            WHALES_COLLECTION_COMPLETED,
-            WHALES_COLLECTION_FAILED,
+            SIGNAL_DISCOVERY_STARTED,
+            SIGNAL_DISCOVERY_COMPLETED,
+            SIGNAL_DISCOVERY_FAILED,
         ),
     )
 

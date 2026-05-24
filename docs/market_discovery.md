@@ -35,16 +35,16 @@ track_whales -> market_discovery -> strategy -> risk -> execution -> runtime mod
 ```
 
 Die technische Kopplung laeuft aber nicht mehr ueber direkte Imports zwischen
-Pipeline-Schritten. Neue Schritte werden als Plugins an den Runtime-Bus
+Pipeline-Schritten. Neue Schritte werden als Bindings an den Runtime-Bus
 gehaengt:
 
 ```text
-DomainEvent -> Runtime -> PluginRegistry -> Plugin -> DomainEvent
+DomainEvent -> Runtime -> BindingRegistry -> Binding -> DomainEvent
 ```
 
 `track_whales` kann weiter direkt ausgefuehrt werden, ist aber auch ueber
-`PolymarketWhaleCollectorPlugin` event-getrieben anschliessbar. Market Discovery
-soll spaeter genauso angebunden werden: ein Plugin konsumiert Whale-Events oder
+`PolymarketSignalDiscoveryBinding` event-getrieben anschliessbar. Market Discovery
+soll spaeter genauso angebunden werden: ein Binding konsumiert Whale-Events oder
 persistierte Whale-Snapshots und produziert Market-Candidate-Events.
 
 `market_discovery` nutzt diese Whale-Daten als Input und erzeugt daraus
@@ -120,49 +120,53 @@ urspruenglich kam.
 
 ## Zielstruktur
 
-Der Repo-Aufbau trennt bewusst Framework, Features und externe Systeme:
+Der Repo-Aufbau trennt bewusst Framework, Pipeline-Vertraege und externe Systeme:
 
 ```text
 src/void_liquidity/
   core/
     events.py          # DomainEvent und EventBus
-    plugins.py         # PluginSpec, PluginRegistry, Plugin-Protokoll
+    bindings.py         # BindingSpec, BindingRegistry, Binding-Protokoll
     runtime.py         # kleine Runtime fuer Event-Routing
 
-  features/
-    whales/
-      events.py        # Whale-Event-Namen
-      polymarket.py    # Plugin-Adapter fuer Polymarket Whale Tracking
+  pipeline/
+    signal_discovery/
+      events.py        # generische Signal-Discovery-Events
+
+  bindings/
+    polymarket/
+      signal_discovery.py
 
   adapters/
     polymarket/
       api/             # HTTP/API-Details
-      sources/         # Legacy-kompatible Ausfuehrungspfade
+      signals/
+        signal_discovery/  # aktuell whale-basierte Signal Discovery
 ```
 
-Market Discovery sollte spaeter unter `features/markets/` entstehen, nicht als
+Market Discovery sollte spaeter unter `pipeline/market_discovery/` entstehen, nicht als
 Adapter-Code. Polymarket-spezifische API-Details bleiben unter
 `adapters/polymarket`.
 
 ## Spaetere Verantwortlichkeiten
 
-`features/markets/models.py`
+`pipeline/market_discovery/models.py`
 
 - definiert das stabile Output-Schema
 - enthaelt keine Polymarket-API-Logik
 
-`features/markets/sources.py`
+`pipeline/market_discovery/sources.py`
 
 - definiert das Interface fuer Discovery-Sources
 - jede Source liefert `list[MarketCandidate]`
 
-`features/markets/whale_markets.py`
+`pipeline/market_discovery/whale_markets.py`
 
 - implementiert die erste konkrete Source
 - nutzt Whale-Daten als Input
 - erzeugt normierte Market-Kandidaten
 
-`features/markets/plugin.py`
+`bindings/polymarket/market_discovery.py`
 
 - orchestriert eine oder mehrere Sources
 - dedupliziert Markets

@@ -4,14 +4,14 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from void_liquidity.adapters.polymarket.collectors.whales.metrics import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery.metrics import (
     _build_payload,
 )
-from void_liquidity.adapters.polymarket.collectors.whales.models import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery.models import (
     TrackedWhale,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.collectors.whales.schemas import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery.schemas import (
     WhaleTrackingProfile,
 )
 from void_liquidity.data import database_session

@@ -2,7 +2,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from typing import Any
 
-from void_liquidity.adapters.polymarket.collectors.whales.schemas import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery.schemas import (
     WhaleTrackingProfile,
 )
 from void_liquidity.logging import VoidLogger

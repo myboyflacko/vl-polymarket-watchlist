@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 from typing import Any
 
-from void_liquidity.adapters.polymarket.collectors.whales.helpers import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery.helpers import (
     _parse_row_timestamp,
     _to_float,
 )
-from void_liquidity.adapters.polymarket.collectors.whales.schemas import (
+from void_liquidity.adapters.polymarket.signals.signal_discovery.schemas import (
     WhaleTrackingProfile,
 )
 

@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Sequence
 
 from void_liquidity.core import DomainEvent, EventBus, Runtime
-from void_liquidity.features.whales import WHALES_COLLECTION_REQUESTED
-from void_liquidity.plugins.polymarket import PolymarketWhaleCollectorPlugin
+from void_liquidity.pipeline.signal_discovery import SIGNAL_DISCOVERY_REQUESTED
+from void_liquidity.bindings.polymarket import PolymarketSignalDiscoveryBinding
 
 
 def build_track_whales_event(
@@ -22,7 +22,7 @@ def build_track_whales_event(
         payload["profile_path"] = str(profile_path)
 
     return DomainEvent.create(
-        event_type=WHALES_COLLECTION_REQUESTED,
+        event_type=SIGNAL_DISCOVERY_REQUESTED,
         source=source,
         payload=payload,
     )
@@ -30,7 +30,7 @@ def build_track_whales_event(
 
 def build_track_whales_runtime(bus: EventBus | None = None) -> Runtime:
     runtime = Runtime(bus=bus)
-    runtime.install(PolymarketWhaleCollectorPlugin())
+    runtime.install(PolymarketSignalDiscoveryBinding())
     return runtime
 
 
@@ -50,11 +50,11 @@ async def run_track_whales(
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Run Polymarket whale collection through the event runtime.",
+        description="Run Polymarket whale-based signal discovery.",
     )
     parser.add_argument(
         "--profile",
-        help="Path to a whale collection profile JSON file.",
+        help="Path to a Polymarket signal-discovery profile JSON file.",
     )
     parser.add_argument(
         "--echo-events",

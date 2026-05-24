@@ -1,33 +1,31 @@
 # void-liquidity
 
 Research tooling for Polymarket market data. The repo is organized around a
-small event-driven core so new research capabilities can be added as plugins
+small event-driven core so new research capabilities can be added as bindings
 without coupling each step directly to the next one.
 
 ## Architecture
 
 ```text
 src/void_liquidity/
-  core/       event bus, domain events, plugin registry, runtime
-  features/   feature event contracts, currently qualified whale collection
-  adapters/   external systems and collectors such as Polymarket whales
-  plugins/    runtime connectors between feature events and adapters
+  core/       event bus, domain events, binding registry, runtime
+  pipeline/   provider-neutral pipeline event contracts
+  adapters/   provider-specific implementations such as Polymarket signals
+  bindings/    runtime connectors between pipeline events and adapters
   workflows/  runnable process composition roots
   data/       database engine, SQLAlchemy models, Alembic migrations
   logging/    JSONL logging
 ```
 
-The rule is simple: features express business intent, adapters talk to external
-systems, plugins connect both sides, and `core` wires everything through events.
+The rule is simple: pipeline stages express business intent, adapters talk to external
+systems, bindings connect both sides, and `core` wires everything through events.
 
 ## Whale Tracker
 
-The current production path is the Polymarket whale tracker. It can still be run
-directly through the legacy-compatible module
-`src/void_liquidity/adapters/polymarket/sources/track_whales`, but the real
-implementation now lives at
-`src/void_liquidity/adapters/polymarket/collectors/whales`. It can also be
-mounted as `PolymarketWhaleCollectorPlugin`.
+The current production path is the Polymarket whale tracker. Its provider-specific
+signal-discovery implementation lives at
+`src/void_liquidity/adapters/polymarket/signals/signal_discovery`. It can also be
+mounted as `PolymarketSignalDiscoveryBinding`.
 
 The tracker performs a fresh discovery run:
 
@@ -40,11 +38,12 @@ The tracker performs a fresh discovery run:
 It only reads public Polymarket data. It does not place trades, submit orders,
 cancel orders, or move funds.
 
-## Current Feature Boundary
+## Current Pipeline Boundary
 
-The current stage delivers qualified whales. `features/whales` owns the event
-contract, `adapters/polymarket/collectors/whales` owns Polymarket collection,
-and `plugins/polymarket/whales.py` connects that collector to the runtime.
+The current stage delivers qualified whale signals. `pipeline/signal_discovery`
+owns the generic event contract, `adapters/polymarket/signals/signal_discovery`
+owns the Polymarket implementation, and `bindings/polymarket/signal_discovery.py`
+connects both sides.
 
 Run the current stage through the event-driven workflow:
 

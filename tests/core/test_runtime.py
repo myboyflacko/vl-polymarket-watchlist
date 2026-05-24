@@ -2,7 +2,13 @@ import asyncio
 
 import pytest
 
-from void_liquidity.core import DomainEvent, EventBus, PluginRegistry, PluginSpec, Runtime
+from void_liquidity.core import (
+    BindingRegistry,
+    BindingSpec,
+    DomainEvent,
+    EventBus,
+    Runtime,
+)
 
 
 def test_event_bus_routes_specific_and_wildcard_handlers() -> None:
@@ -24,14 +30,14 @@ def test_event_bus_routes_specific_and_wildcard_handlers() -> None:
     assert seen == ["wallets.changed", "*:test"]
 
 
-def test_runtime_connects_registered_plugins_once() -> None:
+def test_runtime_connects_registered_bindings_once() -> None:
     handled: list[str] = []
 
-    class FakePlugin:
-        spec = PluginSpec(
+    class FakeBinding:
+        spec = BindingSpec(
             name="fake",
             version="1.0.0",
-            description="Test plugin",
+            description="Test binding",
             consumes=("run.requested",),
             produces=("run.completed",),
         )
@@ -48,7 +54,7 @@ def test_runtime_connects_registered_plugins_once() -> None:
 
     completed: list[str] = []
     runtime = Runtime()
-    runtime.install(FakePlugin())
+    runtime.install(FakeBinding())
     runtime.bus.subscribe("run.completed", lambda event: completed.append(event.source))
 
     asyncio.run(
@@ -65,15 +71,15 @@ def test_runtime_connects_registered_plugins_once() -> None:
     assert completed == ["fake"]
 
 
-def test_plugin_registry_rejects_duplicate_names() -> None:
-    class FakePlugin:
-        spec = PluginSpec(name="fake", version="1.0.0", description="Test plugin")
+def test_binding_registry_rejects_duplicate_names() -> None:
+    class FakeBinding:
+        spec = BindingSpec(name="fake", version="1.0.0", description="Test binding")
 
         async def handle(self, event: DomainEvent, bus: EventBus) -> None:
             return None
 
-    registry = PluginRegistry()
-    registry.register(FakePlugin())
+    registry = BindingRegistry()
+    registry.register(FakeBinding())
 
-    with pytest.raises(ValueError, match="Plugin already registered"):
-        registry.register(FakePlugin())
+    with pytest.raises(ValueError, match="Binding already registered"):
+        registry.register(FakeBinding())

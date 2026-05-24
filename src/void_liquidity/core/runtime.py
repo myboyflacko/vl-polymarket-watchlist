@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from void_liquidity.core.events import DomainEvent, EventBus
-from void_liquidity.core.plugins import Plugin, PluginRegistry
+from void_liquidity.core.bindings import Binding, BindingRegistry
 
 
 class Runtime:
@@ -9,14 +9,14 @@ class Runtime:
         self,
         *,
         bus: EventBus | None = None,
-        registry: PluginRegistry | None = None,
+        registry: BindingRegistry | None = None,
     ) -> None:
         self.bus = bus or EventBus()
-        self.registry = registry or PluginRegistry()
+        self.registry = registry or BindingRegistry()
         self._connected = False
 
-    def install(self, plugin: Plugin) -> None:
-        self.registry.register(plugin)
+    def install(self, binding: Binding) -> None:
+        self.registry.register(binding)
         self._connected = False
 
     async def publish(self, event: DomainEvent) -> None:
