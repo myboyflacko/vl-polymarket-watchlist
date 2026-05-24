@@ -22,11 +22,11 @@ from void_liquidity.adapters.polymarket.api.params import (
     CurrentPositionsParams,
     LeaderboardParams,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.config import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.config import (
     _resolve_project_path,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.domain import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.domain import (
     Candidate,
     CandidateEntries,
     CandidateScan,
@@ -34,7 +34,10 @@ from void_liquidity.adapters.polymarket.signals.signal_discovery.domain import (
     PagedRows,
     PersistContext,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.helpers import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.events import (
+    POLYMARKET_WHALES_DISCOVERED,
+)
+from void_liquidity.adapters.polymarket.signal_discovery.whales.helpers import (
     _build_activity_params,
     _build_closed_positions_params,
     _build_current_positions_params,
@@ -42,7 +45,7 @@ from void_liquidity.adapters.polymarket.signals.signal_discovery.helpers import 
     _field_le,
     _parse_row_timestamp,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.metrics import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.metrics import (
     _aggregate_activity,
     _aggregate_closed_positions,
     _aggregate_current_positions,
@@ -50,16 +53,16 @@ from void_liquidity.adapters.polymarket.signals.signal_discovery.metrics import 
     _leaderboard_metrics,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.report import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.repository import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.repository import (
     persist_whale_tracker_run,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.run_log import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.run_log import (
     WhaleTrackerRunLog,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.schemas import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
@@ -147,6 +150,16 @@ class WhaleTracker:
                     "candidate_wallet_count": len(entries.candidates),
                     "checked_wallet_count": scan.checked_wallet_count,
                     "accepted_wallet_count": len(scan.whales),
+                },
+            )
+            await self._publish_event(
+                event_type=POLYMARKET_WHALES_DISCOVERED,
+                run_id=run_id,
+                correlation_id=correlation_id,
+                payload={
+                    "wallets": list(scan.whales),
+                    "accepted_wallet_count": len(scan.whales),
+                    "checked_wallet_count": scan.checked_wallet_count,
                 },
             )
             return scan.whales

@@ -24,7 +24,7 @@ systems, bindings connect both sides, and `core` wires everything through events
 
 The current production path is the Polymarket whale tracker. Its provider-specific
 signal-discovery implementation lives at
-`src/void_liquidity/adapters/polymarket/signals/signal_discovery`. It can also be
+`src/void_liquidity/adapters/polymarket/signal_discovery/whales`. It can also be
 mounted as `PolymarketSignalDiscoveryBinding`.
 
 The tracker performs a fresh discovery run:
@@ -41,9 +41,10 @@ cancel orders, or move funds.
 ## Current Pipeline Boundary
 
 The current stage delivers qualified whale signals. `pipeline/signal_discovery`
-owns the generic event contract, `adapters/polymarket/signals/signal_discovery`
-owns the Polymarket implementation, and `bindings/polymarket/signal_discovery.py`
-connects both sides.
+owns the generic event contract, `adapters/polymarket/signal_discovery/whales`
+owns the Polymarket whale implementation, and
+`bindings/polymarket/signal_discovery.py` connects both sides. Downstream steps
+can later subscribe to `polymarket.signal_discovery.whales.discovered`.
 
 Run the current stage through the event-driven workflow:
 

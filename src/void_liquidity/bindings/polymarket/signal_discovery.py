@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from void_liquidity.adapters.polymarket.signals.signal_discovery import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales import (
     WhaleTracker,
     load_workflow_profile,
+)
+from void_liquidity.adapters.polymarket.signal_discovery.whales.events import (
+    POLYMARKET_WHALES_DISCOVERED,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.bindings import BindingSpec
@@ -26,6 +29,7 @@ class PolymarketSignalDiscoveryBinding:
             SIGNAL_DISCOVERY_STARTED,
             SIGNAL_DISCOVERY_COMPLETED,
             SIGNAL_DISCOVERY_FAILED,
+            POLYMARKET_WHALES_DISCOVERED,
         ),
     )
 

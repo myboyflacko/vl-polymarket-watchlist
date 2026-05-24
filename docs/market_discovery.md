@@ -140,13 +140,14 @@ src/void_liquidity/
   adapters/
     polymarket/
       api/             # HTTP/API-Details
-      signals/
-        signal_discovery/  # aktuell whale-basierte Signal Discovery
+      signal_discovery/
+        whales/        # aktuell whale-basierte Signal Discovery
 ```
 
-Market Discovery sollte spaeter unter `pipeline/market_discovery/` entstehen, nicht als
-Adapter-Code. Polymarket-spezifische API-Details bleiben unter
-`adapters/polymarket`.
+Market Discovery sollte spaeter als eigener Pipeline-Vertrag unter
+`pipeline/market_discovery/` entstehen. Die konkrete Polymarket-Ableitung aus
+Whale-Signalen kann dann unter `adapters/polymarket/market_discovery/` liegen
+und auf `polymarket.signal_discovery.whales.discovered` reagieren.
 
 ## Spaetere Verantwortlichkeiten
 

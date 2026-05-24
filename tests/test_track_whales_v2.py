@@ -11,37 +11,40 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
-from void_liquidity.adapters.polymarket.signals.signal_discovery import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales import (
     WhaleTracker,
     WhaleTrackingProfile,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.config import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.config import (
     PROJECT_ROOT,
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.models import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.metrics import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.metrics import (
     _aggregate_closed_positions,
     _build_candidate_pool,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.report import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery.schemas import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
     ActivityConfig,
     CandidatePoolConfig,
     ClosedPositionsConfig,
     CurrentPositionsConfig,
     WhaleFilterConfig,
 )
-from void_liquidity.adapters.polymarket.signals.signal_discovery import (
+from void_liquidity.adapters.polymarket.signal_discovery.whales import (
     tracker as tracker_module,
+)
+from void_liquidity.adapters.polymarket.signal_discovery.whales.events import (
+    POLYMARKET_WHALES_DISCOVERED,
 )
 from void_liquidity.core import EventBus
 from void_liquidity.pipeline.signal_discovery.events import (
@@ -243,6 +246,7 @@ def test_track_whales_filters_and_writes_v2_output(
     assert [event.event_type for event in emitted_events] == [
         SIGNAL_DISCOVERY_STARTED,
         SIGNAL_DISCOVERY_COMPLETED,
+        POLYMARKET_WHALES_DISCOVERED,
     ]
     assert [
         path

@@ -52,6 +52,7 @@ pipeline.signal_discovery.requested
   -> polymarket.signal_discovery
   -> pipeline.signal_discovery.started
   -> pipeline.signal_discovery.completed
+  -> polymarket.signal_discovery.whales.discovered
 ```
 
 ## Extension Rule
@@ -67,5 +68,6 @@ When adding a new capability:
 ## Current Boundary
 
 The active stage is signal discovery. The current Polymarket implementation
-produces qualified whale signals and does not derive markets, place orders,
-score trades, or decide execution.
+is `adapters/polymarket/signal_discovery/whales`. It produces qualified whale
+signals and emits a Polymarket-specific whale event for later market discovery.
+It does not derive markets, place orders, score trades, or decide execution.

@@ -1,6 +1,6 @@
 # Polymarket Whale Tracking Service
 
-This document explains `src/void_liquidity/adapters/polymarket/signals/signal_discovery/tracker.py`.
+This document explains `src/void_liquidity/adapters/polymarket/signal_discovery/whales/tracker.py`.
 
 The service builds a fresh daily Polymarket signal-whale snapshot. It does not place live trades, create orders, cancel orders, or move funds. It only reads public Polymarket Data API endpoints.
 
@@ -36,10 +36,13 @@ runtime through `PolymarketSignalDiscoveryBinding`. The binding consumes
 pipeline.signal_discovery.started
 pipeline.signal_discovery.completed
 pipeline.signal_discovery.failed
+polymarket.signal_discovery.whales.discovered
 ```
 
 This makes Polymarket whale-based signal discovery available without forcing
-downstream steps to import provider internals directly.
+downstream steps to import provider internals directly. Future Market Discovery
+handlers can subscribe to `polymarket.signal_discovery.whales.discovered` and
+load the persisted run by `run_id`.
 
 ## Workflow Profile
 
@@ -48,13 +51,13 @@ Whale-specific strategy settings are no longer read from `Settings.whale_tracker
 The default profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/signals/signal_discovery/profiles/whale_tracking_profile.json
+src/void_liquidity/adapters/polymarket/signal_discovery/whales/profiles/whale_tracking_profile.json
 ```
 
 The stricter quality profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/signals/signal_discovery/profiles/whale_tracking_profile_quality.json
+src/void_liquidity/adapters/polymarket/signal_discovery/whales/profiles/whale_tracking_profile_quality.json
 ```
 
 The profile controls:
@@ -302,7 +305,7 @@ persists accepted whales.
 Run the provider implementation directly:
 
 ```bash
-python -m void_liquidity.adapters.polymarket.signals.signal_discovery.tracker
+python -m void_liquidity.adapters.polymarket.signal_discovery.whales.tracker
 ```
 
 The script loads the default workflow profile, performs fresh discovery, writes
@@ -312,7 +315,7 @@ Run the quality profile:
 
 ```bash
 python -m void_liquidity.workflows.track_whales \
-  --profile src/void_liquidity/adapters/polymarket/signals/signal_discovery/profiles/whale_tracking_profile_quality.json
+  --profile src/void_liquidity/adapters/polymarket/signal_discovery/whales/profiles/whale_tracking_profile_quality.json
 ```
 
 ## Tests
