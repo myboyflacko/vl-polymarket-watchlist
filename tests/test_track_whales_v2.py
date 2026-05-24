@@ -7,6 +7,7 @@ from typing import Any
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
@@ -20,10 +21,9 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.co
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.db import (
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
-    create_whale_tracker_engine,
 )
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.metrics import (
     _aggregate_closed_positions,
@@ -44,6 +44,7 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales im
     tracker as tracker_module,
 )
 from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
+from void_liquidity.data import Base, create_database_engine, database_session
 
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -97,6 +98,11 @@ def _profile(output_path: Path) -> WhaleTrackingProfile:
     )
 
 
+def _create_test_schema(database_path: str) -> None:
+    engine = create_database_engine(database_path)
+    Base.metadata.create_all(engine)
+
+
 def _closed_positions(now: datetime) -> list[dict[str, Any]]:
     rows = []
 
@@ -133,6 +139,7 @@ def test_track_whales_filters_and_writes_v2_output(
     FrozenDateTime.frozen_now = now
     output_path = tmp_path / "whales.json"
     profile = _profile(output_path)
+    _create_test_schema(profile.database_path)
 
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
         if params.orderBy == "PNL":
@@ -236,7 +243,7 @@ def test_track_whales_filters_and_writes_v2_output(
         "closed_positions.roi"
     ]["median"] == pytest.approx(3_900 / 25_000)
 
-    engine = create_whale_tracker_engine(profile.database_path)
+    engine = create_database_engine(profile.database_path)
     with Session(engine) as session:
         run_row = session.execute(
             select(WhaleTrackerRun).where(WhaleTrackerRun.run_id == run_id)
@@ -336,6 +343,14 @@ def test_default_workflow_profile_uses_project_data_sqlite() -> None:
         / "src/void_liquidity/adapters/polymarket/services/data/"
         "polymarket_whales.sqlite3"
     )
+
+
+def test_database_session_does_not_create_tables_implicitly(tmp_path: Path) -> None:
+    database_path = tmp_path / "whales.sqlite3"
+
+    with database_session(database_path) as session:
+        with pytest.raises(OperationalError):
+            session.execute(select(WhaleTrackerRun)).all()
 
 
 def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(

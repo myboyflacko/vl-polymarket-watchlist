@@ -26,9 +26,6 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.co
     _resolve_project_path,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.db import (
-    persist_whale_tracker_run,
-)
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.helpers import (
     _build_activity_params,
     _build_closed_positions_params,
@@ -47,6 +44,9 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.me
 )
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.report import (
     build_report_payload,
+)
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.repository import (
+    persist_whale_tracker_run,
 )
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.run_log import (
     WhaleTrackerRunLog,

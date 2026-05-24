@@ -10,13 +10,16 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.db import (
-    Base,
-    build_sqlite_url,
+from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
+    models as track_whales_models,
 )
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
     WhaleTrackingProfile,
 )
+from void_liquidity.data import Base, build_sqlite_url
+
+
+_ = track_whales_models
 
 
 config = context.config
