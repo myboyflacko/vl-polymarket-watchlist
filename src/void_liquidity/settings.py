@@ -4,6 +4,12 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ENV_FILE = Path(__file__).resolve().parents[2] / '.env'
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_SQLITE_PATH = (
+    PROJECT_ROOT
+    / "src/void_liquidity/adapters/polymarket/services/data/"
+    "polymarket_whales.sqlite3"
+)
 
 
 class PolymarketSettings(BaseSettings):
@@ -40,8 +46,30 @@ class PolymarketSettings(BaseSettings):
     )
 
 
+class DatabaseSettings(BaseSettings):
+    sqlite_path: Path = Field(
+        default=DEFAULT_SQLITE_PATH,
+        alias="VOID_LIQUIDITY_SQLITE_PATH",
+    )
+    url: str | None = Field(default=None, alias="VOID_LIQUIDITY_DATABASE_URL")
+
+    @property
+    def database_url(self) -> str:
+        if self.url:
+            return self.url
+
+        return f"sqlite:///{self.sqlite_path}"
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_file_encoding='utf-8',
+        extra="ignore",
+    )
+
+
 class Settings(BaseSettings):
-    polymarket: PolymarketSettings = PolymarketSettings()
+    polymarket: PolymarketSettings = Field(default_factory=PolymarketSettings)
+    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
 
 
 @lru_cache(maxsize=1)

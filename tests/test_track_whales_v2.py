@@ -45,10 +45,18 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales im
 )
 from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
 from void_liquidity.data import Base, create_database_engine, database_session
+from void_liquidity.settings import DEFAULT_SQLITE_PATH, get_settings
 
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 WALLET_TWO = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+
+@pytest.fixture(autouse=True)
+def clear_settings_cache():
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
 
 
 class FakeHTTPClient:
@@ -72,7 +80,6 @@ def _profile(output_path: Path) -> WhaleTrackingProfile:
         target_wallet_count=10,
         wallet_batch_size=2,
         output_path=str(output_path),
-        database_path=str(output_path.with_suffix(".sqlite3")),
         candidate_pool=CandidatePoolConfig(top_n=2, leaderboard_limit=2),
         current_positions=CurrentPositionsConfig(limit=10),
         closed_positions=ClosedPositionsConfig(
@@ -98,7 +105,7 @@ def _profile(output_path: Path) -> WhaleTrackingProfile:
     )
 
 
-def _create_test_schema(database_path: str) -> None:
+def _create_test_schema(database_path: Path) -> None:
     engine = create_database_engine(database_path)
     Base.metadata.create_all(engine)
 
@@ -138,8 +145,11 @@ def test_track_whales_filters_and_writes_v2_output(
     now = datetime(2026, 5, 20, tzinfo=UTC)
     FrozenDateTime.frozen_now = now
     output_path = tmp_path / "whales.json"
+    database_path = output_path.with_suffix(".sqlite3")
+    monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
+    get_settings.cache_clear()
     profile = _profile(output_path)
-    _create_test_schema(profile.database_path)
+    _create_test_schema(database_path)
 
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
         if params.orderBy == "PNL":
@@ -243,7 +253,7 @@ def test_track_whales_filters_and_writes_v2_output(
         "closed_positions.roi"
     ]["median"] == pytest.approx(3_900 / 25_000)
 
-    engine = create_database_engine(profile.database_path)
+    engine = create_database_engine(database_path)
     with Session(engine) as session:
         run_row = session.execute(
             select(WhaleTrackerRun).where(WhaleTrackerRun.run_id == run_id)
@@ -331,18 +341,17 @@ def test_resolve_project_path_uses_repo_root_for_relative_paths() -> None:
     )
 
 
-def test_default_workflow_profile_uses_project_data_sqlite() -> None:
+def test_settings_provide_default_project_data_sqlite() -> None:
     profile = WhaleTrackingProfile()
 
-    assert profile.database_path == (
-        "src/void_liquidity/adapters/polymarket/services/data/"
-        "polymarket_whales.sqlite3"
-    )
-    assert _resolve_project_path(profile.database_path) == (
+    assert not hasattr(profile, "database_path")
+    assert DEFAULT_SQLITE_PATH == (
         PROJECT_ROOT
         / "src/void_liquidity/adapters/polymarket/services/data/"
         "polymarket_whales.sqlite3"
     )
+    assert get_settings().database.sqlite_path == DEFAULT_SQLITE_PATH
+    assert get_settings().database.database_url == f"sqlite:///{DEFAULT_SQLITE_PATH}"
 
 
 def test_database_session_does_not_create_tables_implicitly(tmp_path: Path) -> None:

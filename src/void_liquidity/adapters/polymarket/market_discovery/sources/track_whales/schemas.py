@@ -50,10 +50,6 @@ class WhaleTrackingProfile(BaseModel):
         "src/void_liquidity/adapters/polymarket/services/data/"
         "polymarket_whales.json"
     )
-    database_path: str = (
-        "src/void_liquidity/adapters/polymarket/services/data/"
-        "polymarket_whales.sqlite3"
-    )
     candidate_pool: CandidatePoolConfig = Field(default_factory=CandidatePoolConfig)
     current_positions: CurrentPositionsConfig = Field(
         default_factory=CurrentPositionsConfig,

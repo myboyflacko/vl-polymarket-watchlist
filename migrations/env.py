@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from logging.config import fileConfig
-from os import environ
 from pathlib import Path
 import sys
 
@@ -12,9 +11,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
     models as track_whales_models,
-)
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
-    WhaleTrackingProfile,
 )
 from void_liquidity.data import Base, build_sqlite_url
 
@@ -31,12 +27,7 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    configured_url = environ.get("VOID_LIQUIDITY_WHALE_TRACKER_DATABASE_URL")
-
-    if configured_url:
-        return configured_url
-
-    return build_sqlite_url(WhaleTrackingProfile().database_path)
+    return build_sqlite_url()
 
 
 def run_migrations_offline() -> None:

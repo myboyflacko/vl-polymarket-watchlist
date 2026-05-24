@@ -31,7 +31,7 @@ def persist_whale_tracker_run(
 ) -> None:
     public_whales = _build_payload(whales=whales, run_id=run_id)["whales"]
 
-    with database_session(profile.database_path) as session:
+    with database_session() as session:
         session.add(
             WhaleTrackerRun(
                 run_id=run_id,

@@ -51,7 +51,7 @@ The profile controls:
 - closed-position window and request defaults
 - activity window and request defaults
 - qualification thresholds
-- report output path and SQLite database path
+- report output path
 
 Default balanced thresholds:
 
@@ -159,9 +159,13 @@ largest_loss
 
 ## Output Shape
 
-The report output path and SQLite database path are configured in the workflow
-profile. Relative paths are resolved from the project root, not from the current
-shell directory.
+The report output path is configured in the workflow profile. Relative paths
+are resolved from the project root, not from the current shell directory.
+
+The SQLite database location is configured centrally through
+`src/void_liquidity/settings.py`, not through the whale tracking profile.
+The default can be overridden with `VOID_LIQUIDITY_SQLITE_PATH`, or the full
+database URL can be overridden with `VOID_LIQUIDITY_DATABASE_URL`.
 
 The default SQLite database is:
 
