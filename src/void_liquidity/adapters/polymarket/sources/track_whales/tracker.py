@@ -26,6 +26,14 @@ from void_liquidity.adapters.polymarket.sources.track_whales.config import (
     _resolve_project_path,
     load_workflow_profile,
 )
+from void_liquidity.adapters.polymarket.sources.track_whales.domain import (
+    Candidate,
+    CandidateEntries,
+    CandidateScan,
+    CandidateValidation,
+    PagedRows,
+    PersistContext,
+)
 from void_liquidity.adapters.polymarket.sources.track_whales.helpers import (
     _build_activity_params,
     _build_closed_positions_params,
@@ -80,45 +88,35 @@ class WhaleTracker:
 
         try:
             run_log.start()
-            pnl_entries, vol_entries, candidates, candidate_pool_summary = (
-                await self._fetch_candidate_entries(client=client)
-            )
-            (
-                whales,
-                reject_summary,
-                reject_group_summary,
-                checked_wallet_count,
-                checked_group_summary,
-            ) = (
-                await self._process_candidate_batches(
-                    client=client,
-                    candidates=candidates,
-                    pnl_entries=pnl_entries,
-                    vol_entries=vol_entries,
-                    now=now,
-                )
+            entries = await self._fetch_candidate_entries(client=client)
+            scan = await self._process_candidate_batches(
+                client=client,
+                entries=entries,
+                now=now,
             )
             self._persist_outputs(
-                whales=whales,
-                reject_summary=reject_summary,
-                reject_group_summary=reject_group_summary,
-                checked_wallet_count=checked_wallet_count,
-                checked_group_summary=checked_group_summary,
-                candidate_wallet_count=len(candidates),
-                candidate_pool_summary=candidate_pool_summary,
-                generated_at=now,
-                run_id=run_id,
-                started_at=run_log.started_at,
+                whales=scan.whales,
+                context=PersistContext(
+                    reject_summary=scan.reject_summary,
+                    reject_group_summary=scan.reject_group_summary,
+                    checked_wallet_count=scan.checked_wallet_count,
+                    checked_group_summary=scan.checked_group_summary,
+                    candidate_wallet_count=len(entries.candidates),
+                    candidate_pool_summary=entries.pool_summary,
+                    generated_at=now,
+                    run_id=run_id,
+                    started_at=run_log.started_at,
+                ),
             )
             run_log.report(
-                candidate_wallet_count=len(candidates),
-                checked_wallet_count=checked_wallet_count,
-                whales=whales,
-                reject_summary=reject_summary,
-                candidate_pool_summary=candidate_pool_summary,
+                candidate_wallet_count=len(entries.candidates),
+                checked_wallet_count=scan.checked_wallet_count,
+                whales=scan.whales,
+                reject_summary=scan.reject_summary,
+                candidate_pool_summary=entries.pool_summary,
             )
             run_log.finish()
-            return whales
+            return scan.whales
         except Exception as exc:
             run_log.fail(exc)
             raise
@@ -129,12 +127,7 @@ class WhaleTracker:
     async def _fetch_candidate_entries(
         self,
         client: HTTPClient,
-    ) -> tuple[
-        dict[str, dict[str, Any]],
-        dict[str, dict[str, Any]],
-        list[dict[str, Any]],
-        Counter[str],
-    ]:
+    ) -> CandidateEntries:
         pnl_entries = await self._fetch_leaderboard_top(
             client=client,
             order_by="PNL",
@@ -147,10 +140,18 @@ class WhaleTracker:
             pnl_entries=pnl_entries,
             vol_entries=vol_entries,
         )
+        typed_candidates = [
+            Candidate.from_mapping(candidate) for candidate in candidates
+        ]
         candidate_pool_summary = Counter(
-            candidate["source"] for candidate in candidates
+            candidate.source for candidate in typed_candidates
         )
-        return pnl_entries, vol_entries, candidates, candidate_pool_summary
+        return CandidateEntries(
+            pnl_entries=pnl_entries,
+            vol_entries=vol_entries,
+            candidates=typed_candidates,
+            pool_summary=candidate_pool_summary,
+        )
 
     async def _fetch_leaderboard_top(
         self,
@@ -211,17 +212,9 @@ class WhaleTracker:
     async def _process_candidate_batches(
         self,
         client: HTTPClient,
-        candidates: list[dict[str, Any]],
-        pnl_entries: dict[str, dict[str, Any]],
-        vol_entries: dict[str, dict[str, Any]],
+        entries: CandidateEntries,
         now: datetime,
-    ) -> tuple[
-        dict[str, dict[str, Any]],
-        Counter[str],
-        dict[str, Counter[str]],
-        int,
-        Counter[str],
-    ]:
+    ) -> CandidateScan:
         whales: dict[str, dict[str, Any]] = {}
         reject_summary: Counter[str] = Counter()
         reject_group_summary: dict[str, Counter[str]] = {}
@@ -230,63 +223,63 @@ class WhaleTracker:
 
         for batch_start in range(
             0,
-            len(candidates),
+            len(entries.candidates),
             self.profile.wallet_batch_size,
         ):
             if len(whales) >= self.profile.target_wallet_count:
                 break
 
-            batch = candidates[batch_start:batch_start + self.profile.wallet_batch_size]
+            batch = entries.candidates[
+                batch_start:batch_start + self.profile.wallet_batch_size
+            ]
             results = await asyncio.gather(
                 *[
                     self._validate_candidate(
                         client=client,
                         candidate=candidate,
-                        pnl_entry=pnl_entries.get(candidate["proxy_wallet"]),
-                        vol_entry=vol_entries.get(candidate["proxy_wallet"]),
+                        pnl_entry=entries.pnl_entries.get(candidate.proxy_wallet),
+                        vol_entry=entries.vol_entries.get(candidate.proxy_wallet),
                         now=now,
                     )
                     for candidate in batch
                 ]
             )
 
-            for candidate, result in zip(batch, results):
-                proxy_wallet = candidate["proxy_wallet"]
-                candidate_source = candidate["source"]
+            for result in results:
+                candidate = result.candidate
                 checked_wallet_count += 1
-                checked_group_summary.update([candidate_source])
-                whale, reasons = result
+                checked_group_summary.update([candidate.source])
 
-                if not whale:
-                    reject_summary.update(reasons)
+                if not result.accepted:
+                    reject_summary.update(result.reject_reasons)
                     reject_group_summary.setdefault(
-                        candidate_source,
+                        candidate.source,
                         Counter(),
-                    ).update(reasons)
+                    ).update(result.reject_reasons)
                     continue
 
-                whales[proxy_wallet] = whale
+                whales[candidate.proxy_wallet] = result.whale
 
                 if len(whales) >= self.profile.target_wallet_count:
                     break
 
-        return (
-            whales,
-            reject_summary,
-            reject_group_summary,
-            checked_wallet_count,
-            checked_group_summary,
+        return CandidateScan(
+            whales=whales,
+            reject_summary=reject_summary,
+            reject_group_summary=reject_group_summary,
+            checked_wallet_count=checked_wallet_count,
+            checked_group_summary=checked_group_summary,
         )
 
     async def _validate_candidate(
         self,
         client: HTTPClient,
-        candidate: dict[str, Any],
+        candidate: Candidate,
         pnl_entry: dict[str, Any] | None,
         vol_entry: dict[str, Any] | None,
         now: datetime,
-    ) -> tuple[dict[str, Any] | None, list[str]]:
-        proxy_wallet = candidate["proxy_wallet"]
+    ) -> CandidateValidation:
+        proxy_wallet = candidate.proxy_wallet
         closed_cutoff = now - timedelta(days=self.profile.closed_positions.window_days)
         activity_window_start = now - timedelta(
             days=self.profile.activity.trade_count_window_days,
@@ -300,41 +293,36 @@ class WhaleTracker:
             now - timedelta(days=7),
         )
 
-        current_positions, current_complete = await self._fetch_all_current_positions(
+        current_positions = await self._fetch_all_current_positions(
             client=client,
             proxy_wallet=proxy_wallet,
         )
         exposure_metrics = _aggregate_current_positions(
-            current_positions=current_positions,
-            is_complete=current_complete,
+            current_positions=current_positions.rows,
+            is_complete=current_positions.complete,
         )
 
-        (
-            closed_positions,
-            closed_complete,
-            unknown_closed_timestamps,
-            closed_truncated,
-        ) = await self._fetch_all_closed_positions(
+        closed_positions = await self._fetch_all_closed_positions(
             client=client,
             proxy_wallet=proxy_wallet,
             cutoff=closed_cutoff,
         )
         closed_metrics = _aggregate_closed_positions(
-            closed_positions=closed_positions,
-            is_complete=closed_complete,
-            unknown_timestamp_count=unknown_closed_timestamps,
-            is_truncated=closed_truncated,
+            closed_positions=closed_positions.rows,
+            is_complete=closed_positions.complete,
+            unknown_timestamp_count=closed_positions.unknown_timestamp_count,
+            is_truncated=closed_positions.truncated,
         )
 
-        activity_rows, activity_complete = await self._fetch_all_activity(
+        activity_rows = await self._fetch_all_activity(
             client=client,
             proxy_wallet=proxy_wallet,
             start=activity_fetch_start,
             end=now,
         )
         activity_metrics = _aggregate_activity(
-            activity_rows=activity_rows,
-            is_complete=activity_complete,
+            activity_rows=activity_rows.rows,
+            is_complete=activity_rows.complete,
             window_start=activity_window_start,
             now=now,
         )
@@ -347,7 +335,11 @@ class WhaleTracker:
         )
 
         if reasons:
-            return None, reasons
+            return CandidateValidation(
+                candidate=candidate,
+                whale=None,
+                reject_reasons=reasons,
+            )
 
         identity_entry = pnl_entry or vol_entry or {}
         whale = {
@@ -362,7 +354,7 @@ class WhaleTracker:
                 "leaderboard": _leaderboard_metrics(
                     pnl_entry=pnl_entry,
                     vol_entry=vol_entry,
-                    candidate_pool=candidate,
+                    candidate_pool=candidate.as_metrics_payload(),
                 ),
                 "exposure": exposure_metrics,
                 "closed_positions": {
@@ -378,13 +370,13 @@ class WhaleTracker:
                 },
             },
         }
-        return whale, []
+        return CandidateValidation(candidate=candidate, whale=whale, reject_reasons=[])
 
     async def _fetch_all_current_positions(
         self,
         client: HTTPClient,
         proxy_wallet: str,
-    ) -> tuple[list[dict[str, Any]], bool]:
+    ) -> PagedRows:
         current_positions: list[dict[str, Any]] = []
         offset = 0
         max_offset = _field_le(CurrentPositionsParams, "offset", default=10000)
@@ -407,7 +399,7 @@ class WhaleTracker:
                     is_rate_limited=True,
                     params=params.model_dump(exclude_none=True),
                 )
-                return current_positions, False
+                return PagedRows(rows=current_positions, complete=False)
             except Exception as exc:
                 logger.log_error(
                     "polymarket.current_positions_fetch_failed",
@@ -417,26 +409,26 @@ class WhaleTracker:
                     is_rate_limited=False,
                     params=params.model_dump(exclude_none=True),
                 )
-                return current_positions, False
+                return PagedRows(rows=current_positions, complete=False)
 
             if not isinstance(page, list) or not page:
-                return current_positions, True
+                return PagedRows(rows=current_positions, complete=True)
 
             current_positions.extend(row for row in page if isinstance(row, dict))
 
             if len(page) < params.limit:
-                return current_positions, True
+                return PagedRows(rows=current_positions, complete=True)
 
             offset += params.limit
 
-        return current_positions, True
+        return PagedRows(rows=current_positions, complete=True)
 
     async def _fetch_all_closed_positions(
         self,
         client: HTTPClient,
         proxy_wallet: str,
         cutoff: datetime,
-    ) -> tuple[list[dict[str, Any]], bool, int, bool]:
+    ) -> PagedRows:
         closed_positions: list[dict[str, Any]] = []
         unknown_timestamp_count = 0
         offset = 0
@@ -464,7 +456,11 @@ class WhaleTracker:
                     is_rate_limited=True,
                     params=params.model_dump(exclude_none=True),
                 )
-                return closed_positions, False, unknown_timestamp_count, False
+                return PagedRows(
+                    rows=closed_positions,
+                    complete=False,
+                    unknown_timestamp_count=unknown_timestamp_count,
+                )
             except Exception as exc:
                 logger.log_error(
                     "polymarket.closed_positions_fetch_failed",
@@ -474,10 +470,18 @@ class WhaleTracker:
                     is_rate_limited=False,
                     params=params.model_dump(exclude_none=True),
                 )
-                return closed_positions, False, unknown_timestamp_count, False
+                return PagedRows(
+                    rows=closed_positions,
+                    complete=False,
+                    unknown_timestamp_count=unknown_timestamp_count,
+                )
 
             if not isinstance(page, list) or not page:
-                return closed_positions, True, unknown_timestamp_count, False
+                return PagedRows(
+                    rows=closed_positions,
+                    complete=True,
+                    unknown_timestamp_count=unknown_timestamp_count,
+                )
 
             reached_cutoff = False
 
@@ -502,20 +506,37 @@ class WhaleTracker:
             ]
 
             if reached_cutoff:
-                return closed_positions, True, unknown_timestamp_count, False
+                return PagedRows(
+                    rows=closed_positions,
+                    complete=True,
+                    unknown_timestamp_count=unknown_timestamp_count,
+                )
 
             if len(page) < params.limit:
-                return closed_positions, True, unknown_timestamp_count, False
+                return PagedRows(
+                    rows=closed_positions,
+                    complete=True,
+                    unknown_timestamp_count=unknown_timestamp_count,
+                )
 
             if (
                 len(closed_positions)
                 >= self.profile.closed_positions.max_positions_per_wallet
             ):
-                return closed_positions, True, unknown_timestamp_count, True
+                return PagedRows(
+                    rows=closed_positions,
+                    complete=True,
+                    unknown_timestamp_count=unknown_timestamp_count,
+                    truncated=True,
+                )
 
             offset += params.limit
 
-        return closed_positions, True, unknown_timestamp_count, False
+        return PagedRows(
+            rows=closed_positions,
+            complete=True,
+            unknown_timestamp_count=unknown_timestamp_count,
+        )
 
     async def _fetch_all_activity(
         self,
@@ -523,7 +544,7 @@ class WhaleTracker:
         proxy_wallet: str,
         start: datetime,
         end: datetime,
-    ) -> tuple[list[dict[str, Any]], bool]:
+    ) -> PagedRows:
         activity_rows: list[dict[str, Any]] = []
         offset = 0
         max_offset = _field_le(ActivityParams, "offset", default=3000)
@@ -548,7 +569,7 @@ class WhaleTracker:
                     is_rate_limited=True,
                     params=params.model_dump(exclude_none=True),
                 )
-                return activity_rows, False
+                return PagedRows(rows=activity_rows, complete=False)
             except Exception as exc:
                 logger.log_error(
                     "polymarket.activity_fetch_failed",
@@ -558,50 +579,43 @@ class WhaleTracker:
                     is_rate_limited=False,
                     params=params.model_dump(exclude_none=True),
                 )
-                return activity_rows, False
+                return PagedRows(rows=activity_rows, complete=False)
 
             if not isinstance(page, list) or not page:
-                return activity_rows, True
+                return PagedRows(rows=activity_rows, complete=True)
 
             activity_rows.extend(row for row in page if isinstance(row, dict))
 
             if len(page) < params.limit:
-                return activity_rows, True
+                return PagedRows(rows=activity_rows, complete=True)
 
             offset += params.limit
 
-        return activity_rows, False
+        return PagedRows(rows=activity_rows, complete=False)
 
     def _persist_outputs(
         self,
         whales: dict[str, dict[str, Any]],
-        reject_summary: Counter[str],
-        reject_group_summary: dict[str, Counter[str]],
-        checked_wallet_count: int,
-        checked_group_summary: Counter[str],
-        candidate_wallet_count: int,
-        candidate_pool_summary: Counter[str] | None = None,
-        path: str | Path | None = None,
-        generated_at: datetime | None = None,
-        run_id: str | None = None,
-        started_at: datetime | None = None,
+        context: PersistContext,
     ) -> None:
-        generated_at = generated_at or datetime.now(UTC)
-        run_id = run_id or _build_run_id(generated_at)
-        started_at = started_at or generated_at
+        generated_at = context.generated_at or datetime.now(UTC)
+        run_id = context.run_id or _build_run_id(generated_at)
+        started_at = context.started_at or generated_at
         finished_at = datetime.now(UTC)
-        base_output_path = _resolve_project_path(path or self.profile.output_path)
+        base_output_path = _resolve_project_path(
+            context.path or self.profile.output_path
+        )
         report_output_path = _append_report_run_id_to_path(base_output_path, run_id)
         report_output_path.parent.mkdir(parents=True, exist_ok=True)
         report_payload = build_report_payload(
             profile=self.profile,
             whales=whales,
-            reject_summary=reject_summary,
-            reject_group_summary=reject_group_summary,
-            checked_wallet_count=checked_wallet_count,
-            checked_group_summary=checked_group_summary,
-            candidate_wallet_count=candidate_wallet_count,
-            candidate_pool_summary=candidate_pool_summary or Counter(),
+            reject_summary=context.reject_summary,
+            reject_group_summary=context.reject_group_summary,
+            checked_wallet_count=context.checked_wallet_count,
+            checked_group_summary=context.checked_group_summary,
+            candidate_wallet_count=context.candidate_wallet_count,
+            candidate_pool_summary=context.candidate_pool_summary,
             generated_at=generated_at,
             run_id=run_id,
         )
@@ -615,8 +629,8 @@ class WhaleTracker:
             started_at=started_at,
             finished_at=finished_at,
             generated_at=generated_at,
-            candidate_wallet_count=candidate_wallet_count,
-            checked_wallet_count=checked_wallet_count,
+            candidate_wallet_count=context.candidate_wallet_count,
+            checked_wallet_count=context.checked_wallet_count,
             whales=whales,
             report_path=report_output_path,
         )

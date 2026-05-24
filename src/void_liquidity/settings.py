@@ -1,15 +1,13 @@
 from functools import lru_cache
 from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ENV_FILE = Path(__file__).resolve().parents[2] / '.env'
+
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SQLITE_PATH = (
-    PROJECT_ROOT
-    / "data/db/"
-    "void_liquidity.sqlite3"
-)
+DEFAULT_SQLITE_PATH = PROJECT_ROOT / "data/db/void_liquidity.sqlite3"
 
 
 class PolymarketSettings(BaseSettings):
@@ -41,7 +39,7 @@ class PolymarketSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
-        env_file_encoding='utf-8',
+        env_file_encoding="utf-8",
         extra="ignore",
     )
 
@@ -62,7 +60,7 @@ class DatabaseSettings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
-        env_file_encoding='utf-8',
+        env_file_encoding="utf-8",
         extra="ignore",
     )
 
