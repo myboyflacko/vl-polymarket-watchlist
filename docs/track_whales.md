@@ -170,7 +170,7 @@ database URL can be overridden with `VOID_LIQUIDITY_DATABASE_URL`.
 The default SQLite database is:
 
 ```text
-src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.sqlite3
+data/void_liquidity.sqlite3
 ```
 
 Each successful run writes one row to `whale_tracker_runs` and one row per

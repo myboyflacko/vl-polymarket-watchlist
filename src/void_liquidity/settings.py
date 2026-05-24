@@ -7,8 +7,8 @@ ENV_FILE = Path(__file__).resolve().parents[2] / '.env'
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SQLITE_PATH = (
     PROJECT_ROOT
-    / "src/void_liquidity/adapters/polymarket/services/data/"
-    "polymarket_whales.sqlite3"
+    / "data/"
+    "void_liquidity.sqlite3"
 )
 
 

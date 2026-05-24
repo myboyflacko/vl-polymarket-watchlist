@@ -347,8 +347,8 @@ def test_settings_provide_default_project_data_sqlite() -> None:
     assert not hasattr(profile, "database_path")
     assert DEFAULT_SQLITE_PATH == (
         PROJECT_ROOT
-        / "src/void_liquidity/adapters/polymarket/services/data/"
-        "polymarket_whales.sqlite3"
+        / "data/"
+        "void_liquidity.sqlite3"
     )
     assert get_settings().database.sqlite_path == DEFAULT_SQLITE_PATH
     assert get_settings().database.database_url == f"sqlite:///{DEFAULT_SQLITE_PATH}"
