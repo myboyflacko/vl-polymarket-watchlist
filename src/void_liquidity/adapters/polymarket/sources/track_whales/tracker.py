@@ -62,6 +62,12 @@ from void_liquidity.adapters.polymarket.sources.track_whales.run_log import (
 from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
     WhaleTrackingProfile,
 )
+from void_liquidity.core.events import DomainEvent, EventBus
+from void_liquidity.features.whales.events import (
+    TRACK_WHALES_COMPLETED,
+    TRACK_WHALES_FAILED,
+    TRACK_WHALES_STARTED,
+)
 from void_liquidity.logging import VoidLogger
 
 
@@ -77,10 +83,18 @@ def _append_report_run_id_to_path(path: Path, run_id: str) -> Path:
 
 
 class WhaleTracker:
-    def __init__(self, profile: WhaleTrackingProfile | None = None) -> None:
+    def __init__(
+        self,
+        profile: WhaleTrackingProfile | None = None,
+        event_bus: EventBus | None = None,
+    ) -> None:
         self.profile = profile or load_workflow_profile()
+        self.event_bus = event_bus
 
-    async def run(self) -> dict[str, dict[str, Any]]:
+    async def run(
+        self,
+        correlation_id: str | None = None,
+    ) -> dict[str, dict[str, Any]]:
         client = HTTPClient()
         now = datetime.now(UTC)
         run_id = _build_run_id(now)
@@ -88,6 +102,15 @@ class WhaleTracker:
 
         try:
             run_log.start()
+            await self._publish_event(
+                event_type=TRACK_WHALES_STARTED,
+                run_id=run_id,
+                correlation_id=correlation_id,
+                payload={
+                    "profile_version": self.profile.profile_version,
+                    "target_wallet_count": self.profile.target_wallet_count,
+                },
+            )
             entries = await self._fetch_candidate_entries(client=client)
             scan = await self._process_candidate_batches(
                 client=client,
@@ -116,13 +139,55 @@ class WhaleTracker:
                 candidate_pool_summary=entries.pool_summary,
             )
             run_log.finish()
+            await self._publish_event(
+                event_type=TRACK_WHALES_COMPLETED,
+                run_id=run_id,
+                correlation_id=correlation_id,
+                payload={
+                    "candidate_wallet_count": len(entries.candidates),
+                    "checked_wallet_count": scan.checked_wallet_count,
+                    "accepted_wallet_count": len(scan.whales),
+                },
+            )
             return scan.whales
         except Exception as exc:
             run_log.fail(exc)
+            await self._publish_event(
+                event_type=TRACK_WHALES_FAILED,
+                run_id=run_id,
+                correlation_id=correlation_id,
+                payload={
+                    "error_type": type(exc).__name__,
+                    "error": str(exc),
+                },
+            )
             raise
 
         finally:
             await client.close()
+
+    async def _publish_event(
+        self,
+        *,
+        event_type: str,
+        run_id: str,
+        correlation_id: str | None,
+        payload: dict[str, Any],
+    ) -> None:
+        if self.event_bus is None:
+            return
+
+        await self.event_bus.publish(
+            DomainEvent.create(
+                event_type=event_type,
+                source="polymarket.whale_tracker",
+                payload={
+                    "run_id": run_id,
+                    **payload,
+                },
+                correlation_id=correlation_id,
+            )
+        )
 
     async def _fetch_candidate_entries(
         self,

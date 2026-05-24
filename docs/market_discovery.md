@@ -2,9 +2,8 @@
 
 ## Zweck
 
-`market_discovery` ist der erste geplante Schritt der Trading-Pipeline.
-Der Schritt entscheidet, welche Markets fuer die nachgelagerten Systeme
-interessant sind.
+Market Discovery ist der naechste geplante Feature-Schritt. Der Schritt
+entscheidet, welche Markets fuer die nachgelagerten Systeme interessant sind.
 
 Alle spaeteren Schritte sollen mit einem stabilen, normalisierten
 Market-Schema arbeiten, unabhaengig davon, aus welcher Quelle ein Market
@@ -27,17 +26,26 @@ Whale-Liste abgeleitet.
 Der Name `market_discovery` beschreibt deshalb besser den fachlichen Schritt:
 Welche Markets sollen ueberhaupt weiter betrachtet werden?
 
-## Pipeline-Grenze
+## Runtime-Grenze
 
-Die geplante Reihenfolge ist:
+Die fachliche Reihenfolge bleibt:
 
 ```text
 track_whales -> market_discovery -> strategy -> risk -> execution -> runtime mode
 ```
 
-`track_whales` bleibt eine vorgelagerte Polymarket-Source unter
-`void_liquidity.adapters.polymarket.sources.track_whales`. Sie findet und
-qualifiziert Wallets.
+Die technische Kopplung laeuft aber nicht mehr ueber direkte Imports zwischen
+Pipeline-Schritten. Neue Schritte werden als Plugins an den Runtime-Bus
+gehaengt:
+
+```text
+DomainEvent -> Runtime -> PluginRegistry -> Plugin -> DomainEvent
+```
+
+`track_whales` kann weiter direkt ausgefuehrt werden, ist aber auch ueber
+`PolymarketWhaleTrackingPlugin` event-getrieben anschliessbar. Market Discovery
+soll spaeter genauso angebunden werden: ein Plugin konsumiert Whale-Events oder
+persistierte Whale-Snapshots und produziert Market-Candidate-Events.
 
 `market_discovery` nutzt diese Whale-Daten als Input und erzeugt daraus
 normierte Market-Kandidaten.
@@ -110,48 +118,56 @@ Alle Sources sollen denselben Output liefern. Dadurch muessen Strategy,
 Backtesting, Paper Trading und Live Trading nicht wissen, woher ein Market
 urspruenglich kam.
 
-## Modulstruktur
+## Zielstruktur
 
-`market_discovery` ist ein Top-Level-Modul. Aktuell ist nur der Package-Ort
-angelegt; Models, Pipeline und Source-Interfaces folgen spaeter:
+Der Repo-Aufbau trennt bewusst Framework, Features und externe Systeme:
 
 ```text
 src/void_liquidity/
-  market_discovery/
-    __init__.py
-    models.py
-    pipeline.py
+  core/
+    events.py          # DomainEvent und EventBus
+    plugins.py         # PluginSpec, PluginRegistry, Plugin-Protokoll
+    runtime.py         # kleine Runtime fuer Event-Routing
 
-    sources/
-      __init__.py
-      base.py
-      whale_markets.py
+  features/
+    whales/
+      events.py        # Whale-Event-Namen
+      polymarket.py    # Plugin-Adapter fuer Polymarket Whale Tracking
+
+  adapters/
+    polymarket/
+      api/             # HTTP/API-Details
+      sources/         # Legacy-kompatible Ausfuehrungspfade
 ```
 
-## Verantwortlichkeiten
+Market Discovery sollte spaeter unter `features/markets/` entstehen, nicht als
+Adapter-Code. Polymarket-spezifische API-Details bleiben unter
+`adapters/polymarket`.
 
-`models.py`
+## Spaetere Verantwortlichkeiten
+
+`features/markets/models.py`
 
 - definiert das stabile Output-Schema
 - enthaelt keine Polymarket-API-Logik
 
-`sources/base.py`
+`features/markets/sources.py`
 
 - definiert das Interface fuer Discovery-Sources
 - jede Source liefert `list[MarketCandidate]`
 
-`sources/whale_markets.py`
+`features/markets/whale_markets.py`
 
 - implementiert die erste konkrete Source
 - nutzt Whale-Daten als Input
 - erzeugt normierte Market-Kandidaten
 
-`pipeline.py`
+`features/markets/plugin.py`
 
 - orchestriert eine oder mehrere Sources
 - dedupliziert Markets
 - sortiert oder priorisiert die Ergebnisse
-- liefert die finale Market-Liste an nachgelagerte Systeme
+- publiziert finale Market-Kandidaten als Domain-Events
 
 ## Nicht-Ziele fuer den ersten Schritt
 

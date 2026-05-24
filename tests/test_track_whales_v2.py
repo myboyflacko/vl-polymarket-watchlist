@@ -43,6 +43,11 @@ from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
 from void_liquidity.adapters.polymarket.sources.track_whales import (
     tracker as tracker_module,
 )
+from void_liquidity.core import EventBus
+from void_liquidity.features.whales.events import (
+    TRACK_WHALES_COMPLETED,
+    TRACK_WHALES_STARTED,
+)
 from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
 from void_liquidity.data import Base, create_database_engine, database_session
 from void_liquidity.settings import DEFAULT_SQLITE_PATH, get_settings
@@ -228,9 +233,17 @@ def test_track_whales_filters_and_writes_v2_output(
     monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
     monkeypatch.setattr(tracker_module, "datetime", FrozenDateTime)
 
-    whales = asyncio.run(WhaleTracker(profile=profile).run())
+    emitted_events = []
+    event_bus = EventBus()
+    event_bus.subscribe(EventBus.WILDCARD, emitted_events.append)
+
+    whales = asyncio.run(WhaleTracker(profile=profile, event_bus=event_bus).run())
 
     assert list(whales) == [WALLET_ONE]
+    assert [event.event_type for event in emitted_events] == [
+        TRACK_WHALES_STARTED,
+        TRACK_WHALES_COMPLETED,
+    ]
     assert [
         path
         for path in tmp_path.glob("whales_*.json")

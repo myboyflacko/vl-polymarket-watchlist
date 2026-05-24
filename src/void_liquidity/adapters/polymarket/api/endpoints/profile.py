@@ -41,40 +41,11 @@ async def get_closed_positions(
     client: HTTPClient,
     params: ClosedPositionsParams,
 ) -> dict[str, Any] | list[Any]:
-
-    base_url = settings.polymarket.data_api
-    endpoint = "/v1/closed-positions"
-    query_params = params.output_params()
-    max_attempts = settings.polymarket.rate_limit_retry_attempts + 1
-
-    for attempt in range(1, max_attempts + 1):
-        try:
-            async with profile_request_semaphore:
-                if settings.polymarket.request_delay_seconds:
-                    await asyncio.sleep(settings.polymarket.request_delay_seconds)
-
-                return await client.get(
-                    base_url=base_url,
-                    endpoint=endpoint,
-                    params=query_params,
-                )
-
-        except Exception as exc:
-            is_rate_limited = _is_rate_limited(exc)
-
-            if is_rate_limited and attempt < max_attempts:
-                wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                await asyncio.sleep(wait_seconds)
-                continue
-
-            if is_rate_limited:
-                raise PolymarketRateLimitError(
-                    f"Rate limited for {endpoint} after {attempt} attempts"
-                ) from exc
-
-            raise
-
-    raise RuntimeError(f"Request attempts exhausted for {endpoint}")
+    return await _get_profile_endpoint(
+        client=client,
+        endpoint="/v1/closed-positions",
+        params=params,
+    )
 
 
 async def get_current_positions(
@@ -87,39 +58,11 @@ async def get_current_positions(
         https://docs.polymarket.com/api-reference/core/get-current-positions-for-a-user
     """
 
-    base_url = settings.polymarket.data_api
-    endpoint = "/v1/positions"
-    query_params = params.output_params()
-    max_attempts = settings.polymarket.rate_limit_retry_attempts + 1
-
-    for attempt in range(1, max_attempts + 1):
-        try:
-            async with profile_request_semaphore:
-                if settings.polymarket.request_delay_seconds:
-                    await asyncio.sleep(settings.polymarket.request_delay_seconds)
-
-                return await client.get(
-                    base_url=base_url,
-                    endpoint=endpoint,
-                    params=query_params,
-                )
-
-        except Exception as exc:
-            is_rate_limited = _is_rate_limited(exc)
-
-            if is_rate_limited and attempt < max_attempts:
-                wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
-                await asyncio.sleep(wait_seconds)
-                continue
-
-            if is_rate_limited:
-                raise PolymarketRateLimitError(
-                    f"Rate limited for {endpoint} after {attempt} attempts"
-                ) from exc
-
-            raise
-
-    raise RuntimeError(f"Request attempts exhausted for {endpoint}")
+    return await _get_profile_endpoint(
+        client=client,
+        endpoint="/v1/positions",
+        params=params,
+    )
 
 
 async def get_activity(
@@ -132,8 +75,19 @@ async def get_activity(
         https://docs.polymarket.com/api-reference/core/get-user-activity
     """
 
+    return await _get_profile_endpoint(
+        client=client,
+        endpoint="/activity",
+        params=params,
+    )
+
+
+async def _get_profile_endpoint(
+    client: HTTPClient,
+    endpoint: str,
+    params: BaseParams,
+) -> dict[str, Any] | list[Any]:
     base_url = settings.polymarket.data_api
-    endpoint = "/activity"
     query_params = params.output_params()
     max_attempts = settings.polymarket.rate_limit_retry_attempts + 1
 

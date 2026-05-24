@@ -1,7 +1,7 @@
-import httpx
-
 from typing import Any
 from urllib.parse import urljoin
+
+import httpx
 
 
 class HTTPClientError(RuntimeError):
@@ -22,18 +22,15 @@ class HTTPStatusCodeError(HTTPClientError):
 
 
 class HTTPClient:
-    def __init__(self, timeout: float = 10.0):
-        self.client = httpx.AsyncClient(
-            timeout=timeout,
-        )
+    def __init__(self, timeout: float = 10.0) -> None:
+        self.client = httpx.AsyncClient(timeout=timeout)
 
     async def get(
         self,
         base_url: str,
         endpoint: str,
-        params: dict | None = None,
+        params: dict[str, Any] | None = None,
     ) -> dict[str, Any] | list[Any]:
-
         url = urljoin(base_url, endpoint)
 
         try:
@@ -58,6 +55,5 @@ class HTTPClient:
                 f"Request failed for {url}: {exc}"
             ) from exc
 
-
-    async def close(self):
+    async def close(self) -> None:
         await self.client.aclose()

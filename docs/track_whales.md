@@ -28,6 +28,19 @@ The flow is:
 
 There is no cache-refresh mode in V2. Running the script always performs a fresh discovery.
 
+The tracker can still be called directly, but it also supports the event-driven
+runtime through `PolymarketWhaleTrackingPlugin`. The plugin consumes
+`whales.tracking.requested` and the tracker emits:
+
+```text
+whales.tracking.started
+whales.tracking.completed
+whales.tracking.failed
+```
+
+This makes whale tracking a plug-in capability for later market discovery
+without forcing the market layer to import tracker internals directly.
+
 ## Workflow Profile
 
 Whale-specific strategy settings are no longer read from `Settings.whale_tracker` or `WHALE_*` environment variables.
