@@ -7,15 +7,13 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.sc
 
 
 PACKAGE_DIR = Path(__file__).resolve().parent
-POLYMARKET_ADAPTER_DIR = PACKAGE_DIR.parents[2]
 PROJECT_ROOT = PACKAGE_DIR.parents[6]
 DEFAULT_PROFILE_PATH = (
-    POLYMARKET_ADAPTER_DIR / "services" / "config" / "whale_tracking_profile.json"
+    PACKAGE_DIR / "profiles" / "whale_tracking_profile.json"
 )
 QUALITY_PROFILE_PATH = (
-    POLYMARKET_ADAPTER_DIR
-    / "services"
-    / "config"
+    PACKAGE_DIR
+    / "profiles"
     / "whale_tracking_profile_quality.json"
 )
 

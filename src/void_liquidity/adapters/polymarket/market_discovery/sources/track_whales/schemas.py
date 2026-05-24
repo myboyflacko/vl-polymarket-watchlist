@@ -47,7 +47,7 @@ class WhaleTrackingProfile(BaseModel):
     target_wallet_count: int = Field(default=50, ge=1)
     wallet_batch_size: int = Field(default=4, ge=1)
     output_path: str = (
-        "src/void_liquidity/adapters/polymarket/services/data/"
+        "src/void_liquidity/data/reports/track_whales/"
         "polymarket_whales.json"
     )
     candidate_pool: CandidatePoolConfig = Field(default_factory=CandidatePoolConfig)

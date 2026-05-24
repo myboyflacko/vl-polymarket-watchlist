@@ -64,6 +64,7 @@ db.sqlite3
 db.sqlite3-journal
 *.sqlite3
 *.sqlite3-*
+src/void_liquidity/data/reports/
 
 # Flask stuff:
 instance/

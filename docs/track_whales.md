@@ -35,13 +35,13 @@ Whale-specific strategy settings are no longer read from `Settings.whale_tracker
 The default profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/services/config/whale_tracking_profile.json
+src/void_liquidity/adapters/polymarket/market_discovery/sources/track_whales/profiles/whale_tracking_profile.json
 ```
 
 The stricter quality profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/services/config/whale_tracking_profile_quality.json
+src/void_liquidity/adapters/polymarket/market_discovery/sources/track_whales/profiles/whale_tracking_profile_quality.json
 ```
 
 The profile controls:
@@ -180,14 +180,14 @@ does not replace older wallet rows.
 The report output path is still:
 
 ```text
-src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json
+src/void_liquidity/data/reports/track_whales/polymarket_whales.json
 ```
 
 Each run writes a report file by appending the run id to the configured file
 stem:
 
 ```text
-src/void_liquidity/adapters/polymarket/services/data/polymarket_whales_quality_report_20260521T104204246217Z.json
+src/void_liquidity/data/reports/track_whales/polymarket_whales_quality_report_20260521T104204246217Z.json
 ```
 
 The same value is stored in `metadata.run_id` in the report and
@@ -289,7 +289,7 @@ Run the quality profile:
 
 ```bash
 python -m void_liquidity.adapters.polymarket.services.track_whales \
-  --profile src/void_liquidity/adapters/polymarket/services/config/whale_tracking_profile_quality.json
+  --profile src/void_liquidity/adapters/polymarket/market_discovery/sources/track_whales/profiles/whale_tracking_profile_quality.json
 ```
 
 ## Tests

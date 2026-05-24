@@ -332,12 +332,12 @@ def test_load_quality_workflow_profile() -> None:
 
 def test_resolve_project_path_uses_repo_root_for_relative_paths() -> None:
     resolved_path = _resolve_project_path(
-        "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json"
+        "src/void_liquidity/data/reports/track_whales/polymarket_whales.json"
     )
 
     assert resolved_path == (
         PROJECT_ROOT
-        / "src/void_liquidity/adapters/polymarket/services/data/polymarket_whales.json"
+        / "src/void_liquidity/data/reports/track_whales/polymarket_whales.json"
     )
 
 
