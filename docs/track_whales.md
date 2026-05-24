@@ -289,7 +289,16 @@ Rejected wallets are not written to `tracked_whales`. `target_wallet_count` is a
 
 ## Running
 
-Run the service module:
+Run the event-driven workflow:
+
+```bash
+python -m void_liquidity.workflows.track_whales --echo-events
+```
+
+The workflow publishes `whales.collection.requested`, the Polymarket whale
+collector plugin handles that event, and the collector persists accepted whales.
+
+Run the collector module directly:
 
 ```bash
 python -m void_liquidity.adapters.polymarket.collectors.whales.tracker
@@ -301,7 +310,7 @@ the report JSON, and persists accepted wallets to SQLite.
 Run the quality profile:
 
 ```bash
-python -m void_liquidity.adapters.polymarket.collectors.whales.tracker \
+python -m void_liquidity.workflows.track_whales \
   --profile src/void_liquidity/adapters/polymarket/collectors/whales/profiles/whale_tracking_profile_quality.json
 ```
 

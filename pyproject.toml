@@ -18,6 +18,9 @@ dependencies = [
     "pytest==9.0.3"
 ]
 
+[project.scripts]
+void-track-whales = "void_liquidity.workflows.track_whales:main"
+
 [project.optional-dependencies]
 dev = [
     "pytest==9.0.3",

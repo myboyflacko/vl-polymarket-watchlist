@@ -24,6 +24,10 @@ plugins
   Runtime connectors. A plugin maps a feature event to a concrete adapter or
   collector and publishes follow-up events.
 
+workflows
+  Runnable process composition roots. A workflow installs plugins into the
+  runtime and publishes the first feature event.
+
 data
   Persistence infrastructure: SQLAlchemy base, engine creation, migrations.
 ```

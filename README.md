@@ -12,6 +12,7 @@ src/void_liquidity/
   features/   feature event contracts, currently qualified whale collection
   adapters/   external systems and collectors such as Polymarket whales
   plugins/    runtime connectors between feature events and adapters
+  workflows/  runnable process composition roots
   data/       database engine, SQLAlchemy models, Alembic migrations
   logging/    JSONL logging
 ```
@@ -44,6 +45,12 @@ cancel orders, or move funds.
 The current stage delivers qualified whales. `features/whales` owns the event
 contract, `adapters/polymarket/collectors/whales` owns Polymarket collection,
 and `plugins/polymarket/whales.py` connects that collector to the runtime.
+
+Run the current stage through the event-driven workflow:
+
+```bash
+.venv/bin/python -m void_liquidity.workflows.track_whales --echo-events
+```
 
 Run the test suite with the project virtualenv:
 
