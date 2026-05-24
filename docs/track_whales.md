@@ -1,6 +1,6 @@
 # Polymarket Whale Tracking Service
 
-This document explains `src/void_liquidity/adapters/polymarket/services/track_whales.py`.
+This document explains `src/void_liquidity/adapters/polymarket/sources/track_whales/tracker.py`.
 
 The service builds a fresh daily Polymarket signal-whale snapshot. It does not place live trades, create orders, cancel orders, or move funds. It only reads public Polymarket Data API endpoints.
 
@@ -35,13 +35,13 @@ Whale-specific strategy settings are no longer read from `Settings.whale_tracker
 The default profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/market_discovery/sources/track_whales/profiles/whale_tracking_profile.json
+src/void_liquidity/adapters/polymarket/sources/track_whales/profiles/whale_tracking_profile.json
 ```
 
 The stricter quality profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/market_discovery/sources/track_whales/profiles/whale_tracking_profile_quality.json
+src/void_liquidity/adapters/polymarket/sources/track_whales/profiles/whale_tracking_profile_quality.json
 ```
 
 The profile controls:
@@ -170,7 +170,7 @@ database URL can be overridden with `VOID_LIQUIDITY_DATABASE_URL`.
 The default SQLite database is:
 
 ```text
-src/void_liquidity/data/void_liquidity.sqlite3
+data/db/void_liquidity.sqlite3
 ```
 
 Each successful run writes one row to `whale_tracker_runs` and one row per
@@ -180,14 +180,14 @@ does not replace older wallet rows.
 The report output path is still:
 
 ```text
-src/void_liquidity/data/reports/track_whales/polymarket_whales.json
+data/reports/track_whales/polymarket_whales.json
 ```
 
 Each run writes a report file by appending the run id to the configured file
 stem:
 
 ```text
-src/void_liquidity/data/reports/track_whales/polymarket_whales_quality_report_20260521T104204246217Z.json
+data/reports/track_whales/polymarket_whales_quality_report_20260521T104204246217Z.json
 ```
 
 The same value is stored in `metadata.run_id` in the report and
@@ -279,7 +279,7 @@ Rejected wallets are not written to `tracked_whales`. `target_wallet_count` is a
 Run the service module:
 
 ```bash
-python -m void_liquidity.adapters.polymarket.services.track_whales
+python -m void_liquidity.adapters.polymarket.sources.track_whales.tracker
 ```
 
 The script loads the default workflow profile, performs fresh discovery, writes
@@ -288,8 +288,8 @@ the report JSON, and persists accepted wallets to SQLite.
 Run the quality profile:
 
 ```bash
-python -m void_liquidity.adapters.polymarket.services.track_whales \
-  --profile src/void_liquidity/adapters/polymarket/market_discovery/sources/track_whales/profiles/whale_tracking_profile_quality.json
+python -m void_liquidity.adapters.polymarket.sources.track_whales.tracker \
+  --profile src/void_liquidity/adapters/polymarket/sources/track_whales/profiles/whale_tracking_profile_quality.json
 ```
 
 ## Tests
@@ -297,5 +297,5 @@ python -m void_liquidity.adapters.polymarket.services.track_whales \
 Relevant tests:
 
 ```bash
-.venv/bin/pytest tests/test_polymarket_activity_params.py tests/test_track_whales_v2.py
+.venv/bin/pytest tests/adapters/polymarket/api/params/profile/test_activity.py tests/test_track_whales_v2.py
 ```

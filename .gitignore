@@ -64,7 +64,9 @@ db.sqlite3
 db.sqlite3-journal
 *.sqlite3
 *.sqlite3-*
-src/void_liquidity/data/reports/
+data/reports/**/*.json
+!data/db/.gitkeep
+!data/reports/track_whales/.gitkeep
 
 # Flask stuff:
 instance/

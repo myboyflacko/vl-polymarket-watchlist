@@ -22,11 +22,11 @@ from void_liquidity.adapters.polymarket.api.params import (
     CurrentPositionsParams,
     LeaderboardParams,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.config import (
+from void_liquidity.adapters.polymarket.sources.track_whales.config import (
     _resolve_project_path,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.helpers import (
+from void_liquidity.adapters.polymarket.sources.track_whales.helpers import (
     _build_activity_params,
     _build_closed_positions_params,
     _build_current_positions_params,
@@ -34,7 +34,7 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.he
     _field_le,
     _parse_row_timestamp,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.metrics import (
+from void_liquidity.adapters.polymarket.sources.track_whales.metrics import (
     _aggregate_activity,
     _aggregate_closed_positions,
     _aggregate_current_positions,
@@ -42,16 +42,16 @@ from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.me
     _leaderboard_metrics,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.report import (
+from void_liquidity.adapters.polymarket.sources.track_whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.repository import (
+from void_liquidity.adapters.polymarket.sources.track_whales.repository import (
     persist_whale_tracker_run,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.run_log import (
+from void_liquidity.adapters.polymarket.sources.track_whales.run_log import (
     WhaleTrackerRunLog,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
+from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
     WhaleTrackingProfile,
 )
 from void_liquidity.logging import VoidLogger

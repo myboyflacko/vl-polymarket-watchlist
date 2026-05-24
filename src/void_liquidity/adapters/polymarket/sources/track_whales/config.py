@@ -1,13 +1,13 @@
 import json
 from pathlib import Path
 
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
+from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
     WhaleTrackingProfile,
 )
 
 
 PACKAGE_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = PACKAGE_DIR.parents[6]
+PROJECT_ROOT = PACKAGE_DIR.parents[5]
 DEFAULT_PROFILE_PATH = (
     PACKAGE_DIR / "profiles" / "whale_tracking_profile.json"
 )

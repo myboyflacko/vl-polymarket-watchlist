@@ -2,7 +2,7 @@
   "profile_version": "whale_tracking_quality_v1",
   "target_wallet_count": 500,
   "wallet_batch_size": 4,
-  "output_path": "src/void_liquidity/data/reports/track_whales/polymarket_whales_quality.json",
+  "output_path": "data/reports/track_whales/polymarket_whales_quality.json",
   "candidate_pool": {
     "category": "OVERALL",
     "time_period": "MONTH",

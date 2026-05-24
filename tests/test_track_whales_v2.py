@@ -11,36 +11,36 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
+from void_liquidity.adapters.polymarket.sources.track_whales import (
     WhaleTracker,
     WhaleTrackingProfile,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.config import (
+from void_liquidity.adapters.polymarket.sources.track_whales.config import (
     PROJECT_ROOT,
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.models import (
+from void_liquidity.adapters.polymarket.sources.track_whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.metrics import (
+from void_liquidity.adapters.polymarket.sources.track_whales.metrics import (
     _aggregate_closed_positions,
     _build_candidate_pool,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.report import (
+from void_liquidity.adapters.polymarket.sources.track_whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales.schemas import (
+from void_liquidity.adapters.polymarket.sources.track_whales.schemas import (
     ActivityConfig,
     CandidatePoolConfig,
     ClosedPositionsConfig,
     CurrentPositionsConfig,
     WhaleFilterConfig,
 )
-from void_liquidity.adapters.polymarket.market_discovery.sources.track_whales import (
+from void_liquidity.adapters.polymarket.sources.track_whales import (
     tracker as tracker_module,
 )
 from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
@@ -332,12 +332,12 @@ def test_load_quality_workflow_profile() -> None:
 
 def test_resolve_project_path_uses_repo_root_for_relative_paths() -> None:
     resolved_path = _resolve_project_path(
-        "src/void_liquidity/data/reports/track_whales/polymarket_whales.json"
+        "data/reports/track_whales/polymarket_whales.json"
     )
 
     assert resolved_path == (
         PROJECT_ROOT
-        / "src/void_liquidity/data/reports/track_whales/polymarket_whales.json"
+        / "data/reports/track_whales/polymarket_whales.json"
     )
 
 
@@ -347,7 +347,7 @@ def test_settings_provide_default_project_data_sqlite() -> None:
     assert not hasattr(profile, "database_path")
     assert DEFAULT_SQLITE_PATH == (
         PROJECT_ROOT
-        / "src/void_liquidity/data/"
+        / "data/db/"
         "void_liquidity.sqlite3"
     )
     assert get_settings().database.sqlite_path == DEFAULT_SQLITE_PATH

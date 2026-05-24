@@ -35,7 +35,8 @@ Die geplante Reihenfolge ist:
 track_whales -> market_discovery -> strategy -> risk -> execution -> runtime mode
 ```
 
-`track_whales` bleibt ein vorgelagerter Polymarket-Service. Er findet und
+`track_whales` bleibt eine vorgelagerte Polymarket-Source unter
+`void_liquidity.adapters.polymarket.sources.track_whales`. Sie findet und
 qualifiziert Wallets.
 
 `market_discovery` nutzt diese Whale-Daten als Input und erzeugt daraus
@@ -109,9 +110,10 @@ Alle Sources sollen denselben Output liefern. Dadurch muessen Strategy,
 Backtesting, Paper Trading und Live Trading nicht wissen, woher ein Market
 urspruenglich kam.
 
-## Empfohlene spaetere Modulstruktur
+## Modulstruktur
 
-Diese Struktur ist nur der Zielplan und wird aktuell noch nicht angelegt:
+`market_discovery` ist ein Top-Level-Modul. Aktuell ist nur der Package-Ort
+angelegt; Models, Pipeline und Source-Interfaces folgen spaeter:
 
 ```text
 src/void_liquidity/
