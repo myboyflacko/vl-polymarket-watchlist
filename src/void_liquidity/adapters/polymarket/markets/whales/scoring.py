@@ -1,33 +1,62 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
+from math import isclose
 from typing import Any, Literal
 
 
 PercentileDirection = Literal["bottom", "top"]
+
+DEFAULT_WHALE_SCORING_METHOD = "percentile_v1"
+BOTTOM_CUT_PERCENTILE = 0.10
+TOP_CUT_PERCENTILE = 1 - BOTTOM_CUT_PERCENTILE
+
+
+@dataclass(frozen=True)
+class PercentileWhaleScoringCriteria:
+    current_position_value: bool = True
+    closed_trade_count: bool = True
+    closed_positions_pnl: bool = True
+    roi: bool = True
+    profit_factor: bool = True
+    activity_volume_window: bool = True
+    largest_win_share: bool = True
+
+
 WhaleScoringMethod = Callable[
-    [dict[str, dict[str, Any]]],
+    [dict[str, dict[str, Any]], PercentileWhaleScoringCriteria | None],
     dict[str, dict[str, Any]],
 ]
 
-DEFAULT_WHALE_SCORING_METHOD = "percentile_v1"
-RANKING_CRITERIA: tuple[tuple[str, str, PercentileDirection], ...] = (
-    ("exposure", "current_position_value", "bottom"),
-    ("closed_positions", "closed_trade_count", "bottom"),
-    ("closed_positions", "closed_positions_pnl", "bottom"),
-    ("closed_positions", "roi", "bottom"),
-    ("closed_positions", "profit_factor", "bottom"),
-    ("activity", "activity_volume_window", "bottom"),
-    ("closed_positions", "largest_win_share", "top"),
+
+RANKING_CRITERIA: tuple[tuple[str, str, str, PercentileDirection], ...] = (
+    ("current_position_value", "exposure", "current_position_value", "bottom"),
+    ("closed_trade_count", "closed_positions", "closed_trade_count", "bottom"),
+    (
+        "closed_positions_pnl",
+        "closed_positions",
+        "closed_positions_pnl",
+        "bottom",
+    ),
+    ("roi", "closed_positions", "roi", "bottom"),
+    ("profit_factor", "closed_positions", "profit_factor", "bottom"),
+    ("activity_volume_window", "activity", "activity_volume_window", "bottom"),
+    ("largest_win_share", "closed_positions", "largest_win_share", "top"),
 )
 
 
 def filter_bottom_percentile_whales(
     whales: dict[str, dict[str, Any]],
+    criteria: PercentileWhaleScoringCriteria | None = None,
 ) -> dict[str, dict[str, Any]]:
+    criteria = criteria or PercentileWhaleScoringCriteria()
     ranked_whales = whales
 
-    for section, metric_name, direction in RANKING_CRITERIA:
+    for criteria_name, section, metric_name, direction in RANKING_CRITERIA:
+        if not getattr(criteria, criteria_name):
+            continue
+
         if len(ranked_whales) < 2:
             break
 
@@ -72,7 +101,10 @@ def _filter_metric_percentile(
     if len(values) < 2:
         return whales
 
-    cutoff = _percentile(sorted(values), 0.75 if direction == "top" else 0.25)
+    cutoff = _percentile(
+        sorted(values),
+        TOP_CUT_PERCENTILE if direction == "top" else BOTTOM_CUT_PERCENTILE,
+    )
 
     if direction == "top":
         return {
@@ -80,7 +112,7 @@ def _filter_metric_percentile(
             for proxy_wallet, whale in whales.items()
             if (
                 value := _metric_value(whale, section, metric_name)
-            ) is None or value <= cutoff
+            ) is None or _passes_cutoff(value=value, cutoff=cutoff, direction=direction)
         }
 
     return {
@@ -88,7 +120,7 @@ def _filter_metric_percentile(
         for proxy_wallet, whale in whales.items()
         if (
             value := _metric_value(whale, section, metric_name)
-        ) is None or value >= cutoff
+        ) is None or _passes_cutoff(value=value, cutoff=cutoff, direction=direction)
     }
 
 
@@ -103,6 +135,20 @@ def _metric_value(
         return None
 
     return value
+
+
+def _passes_cutoff(
+    value: float | int,
+    cutoff: float | int,
+    direction: PercentileDirection,
+) -> bool:
+    if isclose(value, cutoff):
+        return True
+
+    if direction == "top":
+        return value < cutoff
+
+    return value > cutoff
 
 
 def _percentile(sorted_values: list[float | int], percentile: float) -> float | int:

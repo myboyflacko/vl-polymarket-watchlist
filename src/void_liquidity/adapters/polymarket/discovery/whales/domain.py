@@ -95,4 +95,5 @@ class WhaleTrackerResult:
     checked_wallet_count: int
     accepted_wallet_count: int
     scoring_method: str = "percentile_v1"
+    scoring_criteria: dict[str, bool] = field(default_factory=dict)
     request_errors: list[dict[str, Any]] = field(default_factory=list)

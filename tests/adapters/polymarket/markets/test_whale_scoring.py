@@ -3,7 +3,9 @@ from typing import Any
 import pytest
 
 from void_liquidity.adapters.polymarket.markets.whales.scoring import (
+    BOTTOM_CUT_PERCENTILE,
     DEFAULT_WHALE_SCORING_METHOD,
+    PercentileWhaleScoringCriteria,
     filter_bottom_percentile_whales,
     resolve_whale_scoring_method,
 )
@@ -49,6 +51,10 @@ def test_resolve_whale_scoring_method_rejects_unknown_method() -> None:
         resolve_whale_scoring_method("unknown")
 
 
+def test_bottom_cut_percentile_defaults_to_less_aggressive_cut() -> None:
+    assert BOTTOM_CUT_PERCENTILE == 0.10
+
+
 def test_filter_bottom_percentile_whales_removes_bottom_quartile() -> None:
     whales = {
         "wallet-1": _whale(current_position_value=10),
@@ -60,6 +66,27 @@ def test_filter_bottom_percentile_whales_removes_bottom_quartile() -> None:
     filtered = filter_bottom_percentile_whales(whales)
 
     assert list(filtered) == ["wallet-2", "wallet-3", "wallet-4"]
+
+
+def test_filter_bottom_percentile_whales_can_disable_criteria() -> None:
+    whales = {
+        "wallet-1": _whale(current_position_value=10, closed_trade_count=100),
+        "wallet-2": _whale(current_position_value=20, closed_trade_count=10),
+        "wallet-3": _whale(current_position_value=30, closed_trade_count=20),
+        "wallet-4": _whale(current_position_value=40, closed_trade_count=30),
+    }
+    criteria = PercentileWhaleScoringCriteria(
+        current_position_value=False,
+        closed_positions_pnl=False,
+        roi=False,
+        profit_factor=False,
+        activity_volume_window=False,
+        largest_win_share=False,
+    )
+
+    filtered = filter_bottom_percentile_whales(whales, criteria=criteria)
+
+    assert list(filtered) == ["wallet-1", "wallet-3", "wallet-4"]
 
 
 def test_filter_bottom_percentile_whales_removes_top_largest_win_share() -> None:

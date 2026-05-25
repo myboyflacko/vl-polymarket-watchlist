@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import json
 from collections import Counter
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -62,6 +63,7 @@ from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
 )
 from void_liquidity.adapters.polymarket.markets.whales.scoring import (
     DEFAULT_WHALE_SCORING_METHOD,
+    PercentileWhaleScoringCriteria,
     resolve_whale_scoring_method,
 )
 
@@ -120,9 +122,11 @@ class WhaleTracker:
         self,
         profile: WhaleTrackingProfile | None = None,
         scoring_method: str = DEFAULT_WHALE_SCORING_METHOD,
+        scoring_criteria: PercentileWhaleScoringCriteria | None = None,
     ) -> None:
         self.profile = profile or load_workflow_profile()
         self.scoring_method = scoring_method
+        self.scoring_criteria = scoring_criteria or PercentileWhaleScoringCriteria()
         self._score_whales = resolve_whale_scoring_method(scoring_method)
 
     async def run(
@@ -141,7 +145,10 @@ class WhaleTracker:
                 entries=entries,
                 now=now,
             )
-            ranked_whales = self._score_whales(scan.whales)
+            ranked_whales = self._score_whales(
+                scan.whales,
+                criteria=self.scoring_criteria,
+            )
             self._persist_outputs(
                 whales=ranked_whales,
                 context=PersistContext(
@@ -162,6 +169,7 @@ class WhaleTracker:
                 checked_wallet_count=scan.checked_wallet_count,
                 accepted_wallet_count=len(ranked_whales),
                 scoring_method=self.scoring_method,
+                scoring_criteria=asdict(self.scoring_criteria),
                 request_errors=scan.request_errors,
             )
 
