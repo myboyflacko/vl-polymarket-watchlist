@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from void_liquidity.adapters.polymarket.markets.whales.scoring import (
+from void_liquidity.adapters.polymarket.discovery.whales.scoring import (
     BOTTOM_CUT_PERCENTILE,
     DEFAULT_WHALE_SCORING_METHOD,
     PercentileWhaleScoringCriteria,

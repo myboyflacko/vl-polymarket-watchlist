@@ -61,7 +61,7 @@ from void_liquidity.adapters.polymarket.discovery.whales.repository import (
 from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.adapters.polymarket.markets.whales.scoring import (
+from void_liquidity.adapters.polymarket.discovery.whales.scoring import (
     DEFAULT_WHALE_SCORING_METHOD,
     PercentileWhaleScoringCriteria,
     resolve_whale_scoring_method,
