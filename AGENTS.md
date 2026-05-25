@@ -32,7 +32,7 @@ Core behavior:
 Definition of Done:
 
 - Änderung ist umgesetzt und der Diff wurde geprüft.
-- Relevante `pytest`-Tests und `pylint`-Checks wurden ausgeführt oder ein klarer Grund genannt, warum nicht.
+- Relevante `pytest`-Tests und `ruff`-Checks wurden ausgeführt oder ein klarer Grund genannt, warum nicht.
 - Offene Risiken, Annahmen oder Folgearbeiten werden kurz genannt.
 - Die Aufgabe bleibt klein, thematisch geschlossen und ohne unrelated Changes.
 
@@ -41,7 +41,7 @@ Definition of Done:
 Für Python-Arbeit gelten diese Defaults, sofern das Projekt keinen eigenen Standard vorgibt:
 
 - `pytest` für Tests.
-- `pylint` als Standard-Linter.
+- `ruff` als Standard-Linter.
 - Mypy optional und projektabhängig.
 - Pydantic an Systemgrenzen: API-Input, Config, externe Daten, Agent-Payloads und LLM-/Agent-Tool-Payloads.
 - Type Hints für neue öffentliche Funktionen und Agent-/LLM-Tool-Funktionen.
