@@ -38,6 +38,9 @@ from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
 from void_liquidity.adapters.polymarket.discovery.whales.report import (
     build_report_payload,
 )
+from void_liquidity.adapters.polymarket.discovery.whales.repository import (
+    persist_whale_tracker_run,
+)
 from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     ActivityConfig,
     CandidatePoolConfig,
@@ -333,9 +336,9 @@ def test_track_whales_filters_and_writes_v2_output(
         run_row = session.execute(
             select(WhaleTrackerRun).where(WhaleTrackerRun.run_id == run_id)
         ).scalar_one()
-        whale_row = session.execute(
-            select(TrackedWhale).where(TrackedWhale.run_id == run_id)
-        ).scalar_one()
+        whale_row = session.execute(select(TrackedWhale)).scalar_one()
+        run_wallets = [whale.proxy_wallet for whale in run_row.tracked_whales]
+        whale_run_id = whale_row.tracker_run.run_id
 
     assert run_row.profile_version == profile.profile_version
     assert run_row.candidate_wallet_count == 2
@@ -343,20 +346,18 @@ def test_track_whales_filters_and_writes_v2_output(
     assert run_row.accepted_wallet_count == 1
     assert run_row.report_path == str(report_files[0])
     assert whale_row.proxy_wallet == WALLET_ONE
-    assert whale_row.user_name == "winner"
-    assert whale_row.candidate_pool_source == "core"
-    whale_metrics = {
-        "leaderboard": whale_row.leaderboard,
-        "exposure": whale_row.exposure,
-        "closed_positions": whale_row.closed_positions,
-        "activity": whale_row.activity,
-    }
-    assert "qualification" not in whale_metrics
-    assert "win_rate" not in whale_metrics["closed_positions"]
-    assert "initial_position_value" not in whale_metrics["exposure"]
-    assert "candidate_pool_match" not in whale_metrics["leaderboard"]
-    assert whale_metrics["closed_positions"]["largest_win"] == 100
-    assert whale_metrics["closed_positions"]["largest_win_share"] == pytest.approx(
+    assert whale_row.run_id == run_id
+    assert whale_run_id == run_id
+    assert run_wallets == [WALLET_ONE]
+    assert whale_row.first_seen is not None
+    assert whale_row.last_seen is not None
+    accepted_whale = result.whales[WALLET_ONE]
+    assert accepted_whale["metadata"]["user_name"] == "winner"
+    assert accepted_whale["metrics"]["leaderboard"]["candidate_pool_source"] == "core"
+    assert accepted_whale["metrics"]["closed_positions"]["largest_win"] == 100
+    assert accepted_whale["metrics"]["closed_positions"][
+        "largest_win_share"
+    ] == pytest.approx(
         100 / 4_000,
     )
     assert (
@@ -462,12 +463,74 @@ def test_track_whales_ranks_before_writing_outputs(
         ).scalar_one()
         persisted_wallets = session.execute(
             select(TrackedWhale.proxy_wallet)
-            .where(TrackedWhale.run_id == "ranked-run")
-            .order_by(TrackedWhale.current_position_value)
+            .order_by(TrackedWhale.id)
         ).scalars().all()
+        run_wallets = [whale.proxy_wallet for whale in run_row.tracked_whales]
 
     assert run_row.accepted_wallet_count == 3
     assert persisted_wallets == [WALLET_TWO, WALLET_THREE, WALLET_FOUR]
+    assert run_wallets == [WALLET_TWO, WALLET_THREE, WALLET_FOUR]
+
+
+def test_persist_whale_tracker_run_updates_existing_tracked_whale(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output_path = tmp_path / "whales.json"
+    database_path = output_path.with_suffix(".sqlite3")
+    monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
+    get_settings.cache_clear()
+    _create_test_schema(database_path)
+    profile = _profile(output_path)
+    first_seen = datetime(2026, 5, 20, tzinfo=UTC)
+    last_seen = datetime(2026, 5, 21, tzinfo=UTC)
+
+    persist_whale_tracker_run(
+        profile=profile,
+        run_id="first-run",
+        started_at=first_seen,
+        finished_at=first_seen,
+        generated_at=first_seen,
+        candidate_wallet_count=1,
+        checked_wallet_count=1,
+        whales={
+            WALLET_ONE: _tracked_whale_payload(
+                WALLET_ONE,
+                current_position_value=10_000,
+            ),
+        },
+        report_path=output_path,
+    )
+    persist_whale_tracker_run(
+        profile=profile,
+        run_id="second-run",
+        started_at=last_seen,
+        finished_at=last_seen,
+        generated_at=last_seen,
+        candidate_wallet_count=1,
+        checked_wallet_count=1,
+        whales={
+            WALLET_ONE: _tracked_whale_payload(
+                WALLET_ONE,
+                current_position_value=20_000,
+            ),
+        },
+        report_path=output_path,
+    )
+
+    engine = create_database_engine(database_path)
+    with Session(engine) as session:
+        whale_row = session.execute(select(TrackedWhale)).scalar_one()
+        second_run = session.execute(
+            select(WhaleTrackerRun).where(WhaleTrackerRun.run_id == "second-run")
+        ).scalar_one()
+        run_wallets = [whale.proxy_wallet for whale in second_run.tracked_whales]
+
+    assert whale_row.proxy_wallet == WALLET_ONE
+    assert whale_row.run_id == "second-run"
+    assert whale_row.first_seen == first_seen.replace(tzinfo=None)
+    assert whale_row.last_seen == last_seen.replace(tzinfo=None)
+    assert run_wallets == [WALLET_ONE]
 
 
 def test_load_default_workflow_profile() -> None:

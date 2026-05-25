@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
     _build_payload,
@@ -47,36 +51,43 @@ def persist_whale_tracker_run(
                 report_path=str(report_path),
             )
         )
-        session.add_all(
-            _tracked_whale_row(run_id=run_id, whale=whale)
-            for whale in public_whales.values()
+        session.flush()
+        _upsert_tracked_whales(
+            session=session,
+            run_id=run_id,
+            seen_at=generated_at,
+            whales=public_whales.values(),
         )
         session.commit()
 
 
-def _tracked_whale_row(run_id: str, whale: dict[str, Any]) -> TrackedWhale:
-    metadata = whale["metadata"]
-    metrics = whale["metrics"]
-    leaderboard = metrics["leaderboard"]
-    exposure = metrics["exposure"]
-    closed_positions = metrics["closed_positions"]
-    activity = metrics["activity"]
+def _upsert_tracked_whales(
+    *,
+    session: Session,
+    run_id: str,
+    seen_at: datetime,
+    whales: Iterable[dict[str, Any]],
+) -> None:
+    rows = [
+        {
+            "run_id": run_id,
+            "proxy_wallet": whale["metadata"]["proxy_wallet"],
+            "first_seen": seen_at,
+            "last_seen": seen_at,
+        }
+        for whale in whales
+    ]
 
-    return TrackedWhale(
-        run_id=run_id,
-        proxy_wallet=metadata["proxy_wallet"],
-        user_name=metadata["user_name"],
-        x_username=metadata["x_username"],
-        verified_badge=metadata["verified_badge"],
-        candidate_pool_source=leaderboard["candidate_pool_source"],
-        current_position_value=exposure["current_position_value"],
-        closed_positions_pnl=closed_positions["closed_positions_pnl"],
-        roi=closed_positions["roi"],
-        profit_factor=closed_positions["profit_factor"],
-        activity_volume_window=activity["activity_volume_window"],
-        last_activity_at=activity["last_activity_at"],
-        leaderboard=leaderboard,
-        exposure=exposure,
-        closed_positions=closed_positions,
-        activity=activity,
+    if not rows:
+        return
+
+    statement = insert(TrackedWhale).values(rows)
+    session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[TrackedWhale.proxy_wallet],
+            set_={
+                "run_id": run_id,
+                "last_seen": seen_at,
+            },
+        )
     )

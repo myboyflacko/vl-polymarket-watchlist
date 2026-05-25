@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Index, Integer, JSON, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from void_liquidity.data import Base
 
@@ -23,6 +23,11 @@ class WhaleTrackerRun(Base):
     accepted_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False)
     profile: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     report_path: Mapped[str | None] = mapped_column(String, nullable=True)
+    tracked_whales: Mapped[list["TrackedWhale"]] = relationship(
+        back_populates="tracker_run",
+        cascade="all, delete-orphan",
+        order_by="TrackedWhale.id",
+    )
 
 
 class TrackedWhale(Base):
@@ -32,7 +37,11 @@ class TrackedWhale(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    proxy_wallet: Mapped[str] = mapped_column(String, nullable=False)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("whale_tracker_runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    proxy_wallet: Mapped[str] = mapped_column(String, nullable=False, unique=True)
     first_seen: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -44,3 +53,4 @@ class TrackedWhale(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+    tracker_run: Mapped[WhaleTrackerRun] = relationship(back_populates="tracked_whales")
