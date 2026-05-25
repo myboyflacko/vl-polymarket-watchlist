@@ -21,6 +21,11 @@ from void_liquidity.adapters.polymarket.discovery.whales.config import (
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
+    Candidate,
+    CandidateEntries,
+    CandidateScan,
+)
 from void_liquidity.adapters.polymarket.discovery.whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
@@ -49,6 +54,8 @@ from void_liquidity.settings import DEFAULT_SQLITE_PATH, get_settings
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 WALLET_TWO = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+WALLET_THREE = "0xcccccccccccccccccccccccccccccccccccccccc"
+WALLET_FOUR = "0xdddddddddddddddddddddddddddddddddddddddd"
 
 
 @pytest.fixture(autouse=True)
@@ -134,6 +141,66 @@ def _activity(now: datetime) -> list[dict[str, Any]]:
         }
         for _ in range(10)
     ]
+
+
+def _tracked_whale_payload(
+    proxy_wallet: str,
+    *,
+    current_position_value: float,
+) -> dict[str, Any]:
+    return {
+        "metadata": {
+            "proxy_wallet": proxy_wallet,
+            "user_name": proxy_wallet,
+            "x_username": "",
+            "profile_image": None,
+            "verified_badge": False,
+        },
+        "metrics": {
+            "leaderboard": {
+                "candidate_pool_source": "core",
+                "matched_pools": ["core", "pnl_top", "volume_top"],
+                "pnl_rank": "1",
+                "vol_rank": "1",
+                "leaderboard_pnl": 100,
+                "leaderboard_volume": 1_000,
+            },
+            "exposure": {
+                "open_position_count": 1,
+                "current_position_value": current_position_value,
+                "largest_position_value": current_position_value,
+                "position_concentration": 1,
+                "current_positions_complete": True,
+            },
+            "closed_positions": {
+                "closed_trade_count": 50,
+                "closed_positions_pnl": 100,
+                "closed_positions_cost_basis": 500,
+                "roi": 0.2,
+                "roi_available": True,
+                "profit_factor": 2,
+                "gross_profit": 200,
+                "gross_loss": 100,
+                "avg_win": 20,
+                "avg_loss": 10,
+                "largest_win": 50,
+                "largest_win_share": 0.25,
+                "largest_loss": 30,
+                "closed_positions_complete": True,
+                "closed_positions_truncated": False,
+            },
+            "activity": {
+                "trade_count_window": 10,
+                "trade_count_7d": 5,
+                "activity_volume_window": 10_000,
+                "activity_volume_7d": 5_000,
+                "last_activity_at": datetime(2026, 5, 20, tzinfo=UTC).isoformat(),
+                "last_activity_age_days": 0,
+                "activity_complete": True,
+                "activity_capped": False,
+            },
+        },
+    }
 
 
 def test_track_whales_filters_and_writes_v2_output(
@@ -301,6 +368,104 @@ def test_track_whales_filters_and_writes_v2_output(
         "closed_positions_truncated_count": 0,
         "roi_unavailable_count": 0,
     }
+
+
+def test_track_whales_ranks_before_writing_outputs(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
+    output_path = tmp_path / "whales.json"
+    database_path = output_path.with_suffix(".sqlite3")
+    monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
+    get_settings.cache_clear()
+    profile = _profile(output_path)
+    _create_test_schema(database_path)
+    now = datetime(2026, 5, 20, tzinfo=UTC)
+    FrozenDateTime.frozen_now = now
+    wallets = [WALLET_ONE, WALLET_TWO, WALLET_THREE, WALLET_FOUR]
+    whales = {
+        wallet: _tracked_whale_payload(
+            wallet,
+            current_position_value=current_position_value,
+        )
+        for wallet, current_position_value in zip(wallets, [10, 20, 30, 40])
+    }
+
+    async def fake_fetch_candidate_entries(
+        self: WhaleTracker,
+        client: Any,
+    ) -> CandidateEntries:
+        return CandidateEntries(
+            pnl_entries={},
+            vol_entries={},
+            candidates=[
+                Candidate(
+                    proxy_wallet=wallet,
+                    source="core",
+                    matched_pools=["core"],
+                )
+                for wallet in wallets
+            ],
+            pool_summary=Counter({"core": len(wallets)}),
+        )
+
+    async def fake_process_candidate_batches(
+        self: WhaleTracker,
+        client: Any,
+        entries: CandidateEntries,
+        now: datetime,
+    ) -> CandidateScan:
+        return CandidateScan(
+            whales=whales,
+            reject_summary=Counter(),
+            reject_group_summary={},
+            checked_wallet_count=len(entries.candidates),
+            checked_group_summary=Counter({"core": len(entries.candidates)}),
+        )
+
+    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
+    monkeypatch.setattr(tracker_module, "datetime", FrozenDateTime)
+    monkeypatch.setattr(
+        WhaleTracker,
+        "_fetch_candidate_entries",
+        fake_fetch_candidate_entries,
+    )
+    monkeypatch.setattr(
+        WhaleTracker,
+        "_process_candidate_batches",
+        fake_process_candidate_batches,
+    )
+
+    result = asyncio.run(
+        WhaleTracker(profile=profile).run(
+            run_id="ranked-run",
+            started_at=now,
+        )
+    )
+
+    assert list(result.whales) == [WALLET_TWO, WALLET_THREE, WALLET_FOUR]
+    assert result.accepted_wallet_count == 3
+
+    report_files = list(tmp_path.glob("whales_report_*.json"))
+    assert len(report_files) == 1
+    report_payload = json.loads(report_files[0].read_text(encoding="utf-8"))
+    assert report_payload["metadata"]["wallet_count"] == 3
+    assert report_payload["candidate_funnel"]["accepted_count"] == 3
+
+    engine = create_database_engine(database_path)
+    with Session(engine) as session:
+        run_row = session.execute(
+            select(WhaleTrackerRun).where(WhaleTrackerRun.run_id == "ranked-run")
+        ).scalar_one()
+        persisted_wallets = session.execute(
+            select(TrackedWhale.proxy_wallet)
+            .where(TrackedWhale.run_id == "ranked-run")
+            .order_by(TrackedWhale.current_position_value)
+        ).scalars().all()
+
+    assert run_row.accepted_wallet_count == 3
+    assert persisted_wallets == [WALLET_TWO, WALLET_THREE, WALLET_FOUR]
 
 
 def test_load_default_workflow_profile() -> None:

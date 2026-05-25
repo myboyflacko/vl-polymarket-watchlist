@@ -60,6 +60,9 @@ from void_liquidity.adapters.polymarket.discovery.whales.repository import (
 from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
+from void_liquidity.adapters.polymarket.scoring import (
+    filter_bottom_percentile_whales,
+)
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -134,8 +137,9 @@ class WhaleTracker:
                 entries=entries,
                 now=now,
             )
+            ranked_whales = filter_bottom_percentile_whales(scan.whales)
             self._persist_outputs(
-                whales=scan.whales,
+                whales=ranked_whales,
                 context=PersistContext(
                     reject_summary=scan.reject_summary,
                     reject_group_summary=scan.reject_group_summary,
@@ -149,10 +153,10 @@ class WhaleTracker:
                 ),
             )
             return WhaleTrackerResult(
-                whales=scan.whales,
+                whales=ranked_whales,
                 candidate_wallet_count=len(entries.candidates),
                 checked_wallet_count=scan.checked_wallet_count,
-                accepted_wallet_count=len(scan.whales),
+                accepted_wallet_count=len(ranked_whales),
                 request_errors=scan.request_errors,
             )
 
