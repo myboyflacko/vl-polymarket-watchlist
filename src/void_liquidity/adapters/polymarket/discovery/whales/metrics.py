@@ -271,19 +271,48 @@ def _qualification_reasons(
     closed_metrics: dict[str, Any],
     activity_metrics: dict[str, Any],
 ) -> list[str]:
+    return [
+        *_exposure_qualification_reasons(
+            profile=profile,
+            exposure_metrics=exposure_metrics,
+        ),
+        *_closed_qualification_reasons(
+            profile=profile,
+            closed_metrics=closed_metrics,
+        ),
+        *_activity_qualification_reasons(
+            profile=profile,
+            activity_metrics=activity_metrics,
+        ),
+    ]
+
+
+def _exposure_qualification_reasons(
+    profile: WhaleTrackingProfile,
+    exposure_metrics: dict[str, Any],
+) -> list[str]:
     reasons: list[str] = []
 
     if not exposure_metrics["current_positions_complete"]:
         reasons.append("current_positions_incomplete")
-
-    if not closed_metrics["closed_positions_complete"]:
-        reasons.append("closed_positions_incomplete")
 
     if (
         exposure_metrics["current_position_value"]
         < profile.filters.min_current_position_value
     ):
         reasons.append("current_position_value_below_min")
+
+    return reasons
+
+
+def _closed_qualification_reasons(
+    profile: WhaleTrackingProfile,
+    closed_metrics: dict[str, Any],
+) -> list[str]:
+    reasons: list[str] = []
+
+    if not closed_metrics["closed_positions_complete"]:
+        reasons.append("closed_positions_incomplete")
 
     if closed_metrics["closed_trade_count"] < profile.filters.min_closed_trade_count:
         reasons.append("closed_trade_count_below_min")
@@ -317,6 +346,14 @@ def _qualification_reasons(
     ):
         reasons.append("largest_win_share_above_max")
 
+    return reasons
+
+
+def _activity_qualification_reasons(
+    profile: WhaleTrackingProfile,
+    activity_metrics: dict[str, Any],
+) -> list[str]:
+    reasons: list[str] = []
     activity_capped = activity_metrics["activity_capped"]
 
     if (

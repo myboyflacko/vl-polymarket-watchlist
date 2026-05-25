@@ -48,9 +48,11 @@ from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
     _aggregate_activity,
     _aggregate_closed_positions,
     _aggregate_current_positions,
+    _activity_qualification_reasons,
     _build_candidate_pool,
+    _closed_qualification_reasons,
+    _exposure_qualification_reasons,
     _leaderboard_metrics,
-    _qualification_reasons,
 )
 from void_liquidity.adapters.polymarket.discovery.whales.report import (
     build_report_payload,
@@ -180,13 +182,15 @@ class WhaleTracker:
         self,
         client: HTTPClient,
     ) -> CandidateEntries:
-        pnl_entries = await self._fetch_leaderboard_top(
-            client=client,
-            order_by="PNL",
-        )
-        vol_entries = await self._fetch_leaderboard_top(
-            client=client,
-            order_by="VOL",
+        pnl_entries, vol_entries = await asyncio.gather(
+            self._fetch_leaderboard_top(
+                client=client,
+                order_by="PNL",
+            ),
+            self._fetch_leaderboard_top(
+                client=client,
+                order_by="VOL",
+            ),
         )
         candidates = _build_candidate_pool(
             pnl_entries=pnl_entries,
@@ -353,6 +357,18 @@ class WhaleTracker:
             current_positions=current_positions.rows,
             is_complete=current_positions.complete,
         )
+        reasons = _exposure_qualification_reasons(
+            profile=self.profile,
+            exposure_metrics=exposure_metrics,
+        )
+
+        if reasons:
+            return CandidateValidation(
+                candidate=candidate,
+                whale=None,
+                reject_reasons=reasons,
+                request_errors=request_errors,
+            )
 
         closed_positions = await self._fetch_all_closed_positions(
             client=client,
@@ -368,6 +384,18 @@ class WhaleTracker:
             unknown_timestamp_count=closed_positions.unknown_timestamp_count,
             is_truncated=closed_positions.truncated,
         )
+        reasons = _closed_qualification_reasons(
+            profile=self.profile,
+            closed_metrics=closed_metrics,
+        )
+
+        if reasons:
+            return CandidateValidation(
+                candidate=candidate,
+                whale=None,
+                reject_reasons=reasons,
+                request_errors=request_errors,
+            )
 
         activity_rows = await self._fetch_all_activity(
             client=client,
@@ -384,11 +412,8 @@ class WhaleTracker:
             window_start=activity_window_start,
             now=now,
         )
-
-        reasons = _qualification_reasons(
+        reasons = _activity_qualification_reasons(
             profile=self.profile,
-            exposure_metrics=exposure_metrics,
-            closed_metrics=closed_metrics,
             activity_metrics=activity_metrics,
         )
 

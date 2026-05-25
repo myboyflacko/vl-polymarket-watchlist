@@ -371,6 +371,223 @@ def test_track_whales_filters_and_writes_v2_output(
     }
 
 
+def test_fetch_candidate_entries_loads_leaderboards_concurrently(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
+    profile = _profile(tmp_path / "whales.json")
+    vol_started = asyncio.Event()
+
+    async def fake_fetch_leaderboard_top(
+        self: WhaleTracker,
+        client: Any,
+        order_by: str,
+    ) -> dict[str, dict[str, Any]]:
+        if order_by == "PNL":
+            await vol_started.wait()
+            return {WALLET_ONE: {"proxyWallet": WALLET_ONE, "pnl": 100}}
+
+        vol_started.set()
+        return {WALLET_ONE: {"proxyWallet": WALLET_ONE, "pnl": 100}}
+
+    monkeypatch.setattr(
+        WhaleTracker,
+        "_fetch_leaderboard_top",
+        fake_fetch_leaderboard_top,
+    )
+
+    entries = asyncio.run(
+        asyncio.wait_for(
+            WhaleTracker(profile=profile)._fetch_candidate_entries(
+                client=FakeHTTPClient(),
+            ),
+            timeout=1,
+        )
+    )
+
+    assert entries.pnl_entries == {WALLET_ONE: {"proxyWallet": WALLET_ONE, "pnl": 100}}
+    assert entries.vol_entries == {WALLET_ONE: {"proxyWallet": WALLET_ONE, "pnl": 100}}
+    assert entries.candidates == [
+        Candidate(
+            proxy_wallet=WALLET_ONE,
+            source="core",
+            matched_pools=["core", "pnl_top", "volume_top"],
+        )
+    ]
+
+
+def test_validate_candidate_skips_closed_and_activity_when_current_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
+    profile = _profile(tmp_path / "whales.json")
+
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        return [{"currentValue": 1_000}]
+
+    async def fail_get_closed_positions(client: Any, params: Any) -> list[Any]:
+        pytest.fail("closed positions should be skipped")
+
+    async def fail_get_activity(client: Any, params: Any) -> list[Any]:
+        pytest.fail("activity should be skipped")
+
+    monkeypatch.setattr(
+        tracker_module,
+        "get_current_positions",
+        fake_get_current_positions,
+    )
+    monkeypatch.setattr(
+        tracker_module,
+        "get_closed_positions",
+        fail_get_closed_positions,
+    )
+    monkeypatch.setattr(tracker_module, "get_activity", fail_get_activity)
+
+    result = asyncio.run(
+        WhaleTracker(profile=profile)._validate_candidate(
+            client=FakeHTTPClient(),
+            candidate=Candidate(
+                proxy_wallet=WALLET_ONE,
+                source="core",
+                matched_pools=["core"],
+            ),
+            pnl_entry=None,
+            vol_entry=None,
+            now=datetime(2026, 5, 20, tzinfo=UTC),
+        )
+    )
+
+    assert result.accepted is False
+    assert result.reject_reasons == ["current_position_value_below_min"]
+
+
+def test_validate_candidate_skips_activity_when_closed_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
+    profile = _profile(tmp_path / "whales.json")
+    now = datetime(2026, 5, 20, tzinfo=UTC)
+
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        return [{"currentValue": 15_000}]
+
+    async def fake_get_closed_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        return [
+            {
+                "timestamp": int((now - timedelta(days=1)).timestamp()),
+                "realizedPnl": 100,
+                "totalBought": 1_000,
+                "avgPrice": 0.5,
+            }
+        ]
+
+    async def fail_get_activity(client: Any, params: Any) -> list[Any]:
+        pytest.fail("activity should be skipped")
+
+    monkeypatch.setattr(
+        tracker_module,
+        "get_current_positions",
+        fake_get_current_positions,
+    )
+    monkeypatch.setattr(
+        tracker_module,
+        "get_closed_positions",
+        fake_get_closed_positions,
+    )
+    monkeypatch.setattr(tracker_module, "get_activity", fail_get_activity)
+
+    result = asyncio.run(
+        WhaleTracker(profile=profile)._validate_candidate(
+            client=FakeHTTPClient(),
+            candidate=Candidate(
+                proxy_wallet=WALLET_ONE,
+                source="core",
+                matched_pools=["core"],
+            ),
+            pnl_entry=None,
+            vol_entry=None,
+            now=now,
+        )
+    )
+
+    assert result.accepted is False
+    assert "closed_trade_count_below_min" in result.reject_reasons
+
+
+def test_validate_candidate_fetches_activity_after_current_and_closed_pass(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("VOID_LIQUIDITY_LOG_DIR", str(tmp_path / "logs"))
+    profile = _profile(tmp_path / "whales.json")
+    now = datetime(2026, 5, 20, tzinfo=UTC)
+    activity_calls = 0
+
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        return [{"currentValue": 15_000}]
+
+    async def fake_get_closed_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        if params.offset:
+            return []
+
+        return _closed_positions(now)
+
+    async def fake_get_activity(
+        client: Any,
+        params: ActivityParams,
+    ) -> list[dict[str, Any]]:
+        nonlocal activity_calls
+        activity_calls += 1
+        return _activity(now)
+
+    monkeypatch.setattr(
+        tracker_module,
+        "get_current_positions",
+        fake_get_current_positions,
+    )
+    monkeypatch.setattr(
+        tracker_module,
+        "get_closed_positions",
+        fake_get_closed_positions,
+    )
+    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
+
+    result = asyncio.run(
+        WhaleTracker(profile=profile)._validate_candidate(
+            client=FakeHTTPClient(),
+            candidate=Candidate(
+                proxy_wallet=WALLET_ONE,
+                source="core",
+                matched_pools=["core"],
+            ),
+            pnl_entry=None,
+            vol_entry=None,
+            now=now,
+        )
+    )
+
+    assert result.accepted is True
+    assert activity_calls == 1
+
+
 def test_track_whales_ranks_before_writing_outputs(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
