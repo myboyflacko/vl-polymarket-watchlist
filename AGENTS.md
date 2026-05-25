@@ -13,6 +13,8 @@ Codex soll:
 - Antworten kurz, knapp und informativ halten.
 - Nur ausführlicher erklären, wenn Flacko explizit um Erklärung, Hintergrund oder Details bittet.
 - Keine unnötigen Wiederholungen, langen Zusammenfassungen oder ausufernden Begründungen.
+- Final Answers standardmäßig auf drei Punkte begrenzen: geändert, verifiziert, offen.
+- Wenn nichts offen ist, explizit kurz sagen: `Offen: nichts`.
 
 ## Arbeitsstandard
 
@@ -26,6 +28,13 @@ Core behavior:
 - Keine Nebenbei-Refactors und keine spekulativen Features.
 - Orphans nur entfernen, wenn sie durch die eigene Änderung entstanden sind.
 - Bei mehrstufiger Arbeit kurze `Step -> Verify`-Checkpoints definieren und bis verifiziert oder blockiert weiterarbeiten.
+
+Definition of Done:
+
+- Änderung ist umgesetzt und der Diff wurde geprüft.
+- Relevante Tests/Linter wurden ausgeführt oder ein klarer Grund genannt, warum nicht.
+- Offene Risiken, Annahmen oder Folgearbeiten werden kurz genannt.
+- Die Aufgabe bleibt klein, thematisch geschlossen und ohne unrelated Changes.
 
 ## Python-Standard
 
@@ -61,7 +70,7 @@ Wenn das Arbeitsverzeichnis ein Git-Repository ist:
 - Falls andere Branches oder lokale Änderungen noch uncommitted Änderungen enthalten, prüfen, ob sie mit der aktuellen Aufgabe interferieren.
 - Wenn diese Änderungen nicht interferieren, kann von `dev` eine neue Branch erstellt werden.
 - Wenn sie interferieren könnten oder die Lage unklar ist, stoppen und Flacko um Clarification bitten.
-- Feature-Branches nach Möglichkeit direkt nach Abschluss committen.
+- Abgeschlossene Änderungen standardmäßig committen, außer Flacko sagt explizit, dass nicht committet werden soll.
 - Commit-Messages beschreiben die Änderung nach Funktionalität, nicht nach Dateinamen.
 - Pushen ist nur erlaubt, wenn die relevanten Tests vorher erfolgreich gelaufen sind.
 - Änderungen klein und thematisch halten.
