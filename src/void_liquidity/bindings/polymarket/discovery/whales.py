@@ -87,6 +87,7 @@ class PolymarketWhaleDiscoveryBinding:
                         "candidate_wallet_count": result.candidate_wallet_count,
                         "checked_wallet_count": result.checked_wallet_count,
                         "accepted_wallet_count": result.accepted_wallet_count,
+                        "scoring_method": result.scoring_method,
                         "request_error_count": len(result.request_errors),
                     },
                     metadata=metadata,
@@ -102,6 +103,7 @@ class PolymarketWhaleDiscoveryBinding:
                         "wallets": list(result.whales),
                         "accepted_wallet_count": result.accepted_wallet_count,
                         "checked_wallet_count": result.checked_wallet_count,
+                        "scoring_method": result.scoring_method,
                     },
                     metadata=metadata,
                 )

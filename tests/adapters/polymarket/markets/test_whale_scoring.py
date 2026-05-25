@@ -1,7 +1,11 @@
 from typing import Any
 
-from void_liquidity.adapters.polymarket.scoring import (
+import pytest
+
+from void_liquidity.adapters.polymarket.markets.whales.scoring import (
+    DEFAULT_WHALE_SCORING_METHOD,
     filter_bottom_percentile_whales,
+    resolve_whale_scoring_method,
 )
 
 
@@ -32,6 +36,17 @@ def _whale(
             },
         },
     }
+
+
+def test_resolve_whale_scoring_method_returns_default_percentile_method() -> None:
+    scoring_method = resolve_whale_scoring_method(DEFAULT_WHALE_SCORING_METHOD)
+
+    assert scoring_method is filter_bottom_percentile_whales
+
+
+def test_resolve_whale_scoring_method_rejects_unknown_method() -> None:
+    with pytest.raises(ValueError, match="Unknown whale scoring method"):
+        resolve_whale_scoring_method("unknown")
 
 
 def test_filter_bottom_percentile_whales_removes_bottom_quartile() -> None:

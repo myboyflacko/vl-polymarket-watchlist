@@ -51,6 +51,7 @@ def test_polymarket_whale_binding_publishes_pipeline_events(
                 candidate_wallet_count=2,
                 checked_wallet_count=1,
                 accepted_wallet_count=1,
+                scoring_method="percentile_v1",
                 request_errors=[],
             )
 
@@ -89,7 +90,9 @@ def test_polymarket_whale_binding_publishes_pipeline_events(
     assert emitted_events[1].payload["candidate_wallet_count"] == 2
     assert emitted_events[1].payload["checked_wallet_count"] == 1
     assert emitted_events[1].payload["accepted_wallet_count"] == 1
+    assert emitted_events[1].payload["scoring_method"] == "percentile_v1"
     assert emitted_events[2].payload["wallets"] == ["0xabc"]
+    assert emitted_events[2].payload["scoring_method"] == "percentile_v1"
 
 
 def test_polymarket_whale_binding_publishes_failed_event_and_reraises(

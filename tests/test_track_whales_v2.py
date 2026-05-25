@@ -446,6 +446,7 @@ def test_track_whales_ranks_before_writing_outputs(
 
     assert list(result.whales) == [WALLET_TWO, WALLET_THREE, WALLET_FOUR]
     assert result.accepted_wallet_count == 3
+    assert result.scoring_method == "percentile_v1"
 
     report_files = list(tmp_path.glob("whales_report_*.json"))
     assert len(report_files) == 1

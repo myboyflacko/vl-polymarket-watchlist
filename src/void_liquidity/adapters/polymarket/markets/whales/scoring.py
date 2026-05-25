@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any, Literal
 
 
 PercentileDirection = Literal["bottom", "top"]
+WhaleScoringMethod = Callable[
+    [dict[str, dict[str, Any]]],
+    dict[str, dict[str, Any]],
+]
 
+DEFAULT_WHALE_SCORING_METHOD = "percentile_v1"
 RANKING_CRITERIA: tuple[tuple[str, str, PercentileDirection], ...] = (
     ("exposure", "current_position_value", "bottom"),
     ("closed_positions", "closed_trade_count", "bottom"),
@@ -33,6 +39,22 @@ def filter_bottom_percentile_whales(
         )
 
     return ranked_whales
+
+
+WHALE_SCORING_METHODS: dict[str, WhaleScoringMethod] = {
+    DEFAULT_WHALE_SCORING_METHOD: filter_bottom_percentile_whales,
+}
+
+
+def resolve_whale_scoring_method(method_name: str) -> WhaleScoringMethod:
+    try:
+        return WHALE_SCORING_METHODS[method_name]
+    except KeyError as exc:
+        available_methods = ", ".join(sorted(WHALE_SCORING_METHODS))
+        raise ValueError(
+            f"Unknown whale scoring method {method_name!r}. "
+            f"Available methods: {available_methods}",
+        ) from exc
 
 
 def _filter_metric_percentile(

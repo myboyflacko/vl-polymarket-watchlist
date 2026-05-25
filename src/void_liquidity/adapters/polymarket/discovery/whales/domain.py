@@ -94,4 +94,5 @@ class WhaleTrackerResult:
     candidate_wallet_count: int
     checked_wallet_count: int
     accepted_wallet_count: int
+    scoring_method: str = "percentile_v1"
     request_errors: list[dict[str, Any]] = field(default_factory=list)

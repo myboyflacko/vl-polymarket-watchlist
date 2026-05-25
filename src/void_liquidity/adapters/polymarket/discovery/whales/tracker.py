@@ -60,8 +60,9 @@ from void_liquidity.adapters.polymarket.discovery.whales.repository import (
 from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.adapters.polymarket.scoring import (
-    filter_bottom_percentile_whales,
+from void_liquidity.adapters.polymarket.markets.whales.scoring import (
+    DEFAULT_WHALE_SCORING_METHOD,
+    resolve_whale_scoring_method,
 )
 
 
@@ -118,8 +119,11 @@ class WhaleTracker:
     def __init__(
         self,
         profile: WhaleTrackingProfile | None = None,
+        scoring_method: str = DEFAULT_WHALE_SCORING_METHOD,
     ) -> None:
         self.profile = profile or load_workflow_profile()
+        self.scoring_method = scoring_method
+        self._score_whales = resolve_whale_scoring_method(scoring_method)
 
     async def run(
         self,
@@ -137,7 +141,7 @@ class WhaleTracker:
                 entries=entries,
                 now=now,
             )
-            ranked_whales = filter_bottom_percentile_whales(scan.whales)
+            ranked_whales = self._score_whales(scan.whales)
             self._persist_outputs(
                 whales=ranked_whales,
                 context=PersistContext(
@@ -157,6 +161,7 @@ class WhaleTracker:
                 candidate_wallet_count=len(entries.candidates),
                 checked_wallet_count=scan.checked_wallet_count,
                 accepted_wallet_count=len(ranked_whales),
+                scoring_method=self.scoring_method,
                 request_errors=scan.request_errors,
             )
 
