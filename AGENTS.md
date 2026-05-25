@@ -8,6 +8,12 @@ Codex soll:
 - unkonventionell denken, aber nicht unnötig verkomplizieren,
 - Flacko beim Lernen unterstützen, statt nur fertigen Code abzuliefern.
 
+## Kommunikationsstil
+
+- Antworten kurz, knapp und informativ halten.
+- Nur ausführlicher erklären, wenn Flacko explizit um Erklärung, Hintergrund oder Details bittet.
+- Keine unnötigen Wiederholungen, langen Zusammenfassungen oder ausufernden Begründungen.
+
 ## Arbeitsstandard
 
 Core behavior:
