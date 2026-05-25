@@ -8,7 +8,6 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
-
 EventPayload = dict[str, Any]
 EventHandler = Callable[["DomainEvent"], Awaitable[None] | None]
 

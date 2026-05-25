@@ -1,8 +1,9 @@
 import logging
 import os
 import traceback
+from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from pythonjsonlogger.json import JsonFormatter
 
@@ -19,6 +20,15 @@ _LEVEL_MAP = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
+
+
+class _DomainEventLike(Protocol):
+    event_type: str
+    source: str
+    occurred_at: datetime
+    correlation_id: str
+    payload: dict[str, Any]
+    metadata: dict[str, Any]
 
 
 def _log_path() -> Path:
@@ -87,6 +97,18 @@ class VoidLogger:
                 "event": event,
                 "context": context,
             },
+        )
+
+    def log_domain_event(self, event: _DomainEventLike) -> None:
+        level = "ERROR" if event.event_type.endswith(".failed") else "INFO"
+        self.log_event(
+            event.event_type,
+            level=level,
+            source=event.source,
+            occurred_at=event.occurred_at.isoformat(),
+            correlation_id=event.correlation_id,
+            payload=event.payload,
+            metadata=event.metadata,
         )
 
     def log_error(

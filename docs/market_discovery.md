@@ -43,7 +43,7 @@ DomainEvent -> Runtime -> BindingRegistry -> Binding -> DomainEvent
 ```
 
 `track_whales` kann weiter direkt ausgefuehrt werden, ist aber auch ueber
-`PolymarketSignalDiscoveryBinding` event-getrieben anschliessbar. Market Discovery
+`PolymarketWhaleDiscoveryBinding` event-getrieben anschliessbar. Market Discovery
 soll spaeter genauso angebunden werden: ein Binding konsumiert Whale-Events oder
 persistierte Whale-Snapshots und produziert Market-Candidate-Events.
 
@@ -130,44 +130,46 @@ src/void_liquidity/
     runtime.py         # kleine Runtime fuer Event-Routing
 
   pipeline/
-    signal_discovery/
-      events.py        # generische Signal-Discovery-Events
+    discovery/
+      whales/
+        events.py      # generische Whale-Discovery-Events
 
   bindings/
     polymarket/
-      signal_discovery.py
+      discovery/
+        whales.py
 
   adapters/
     polymarket/
       api/             # HTTP/API-Details
-      signal_discovery/
-        whales/        # aktuell whale-basierte Signal Discovery
+      discovery/
+        whales/        # aktuell whale-basierte Discovery
 ```
 
 Market Discovery sollte spaeter als eigener Pipeline-Vertrag unter
-`pipeline/market_discovery/` entstehen. Die konkrete Polymarket-Ableitung aus
-Whale-Signalen kann dann unter `adapters/polymarket/market_discovery/` liegen
-und auf `polymarket.signal_discovery.whales.discovered` reagieren.
+`pipeline/markets/` entstehen. Die konkrete Polymarket-Ableitung aus
+Whale-Daten kann dann unter `adapters/polymarket/markets/` liegen
+und auf `polymarket.discovery.whales.discovered` reagieren.
 
 ## Spaetere Verantwortlichkeiten
 
-`pipeline/market_discovery/models.py`
+`pipeline/markets/models.py`
 
 - definiert das stabile Output-Schema
 - enthaelt keine Polymarket-API-Logik
 
-`pipeline/market_discovery/sources.py`
+`pipeline/markets/sources.py`
 
 - definiert das Interface fuer Discovery-Sources
 - jede Source liefert `list[MarketCandidate]`
 
-`pipeline/market_discovery/whale_markets.py`
+`pipeline/markets/whale_markets.py`
 
 - implementiert die erste konkrete Source
 - nutzt Whale-Daten als Input
 - erzeugt normierte Market-Kandidaten
 
-`bindings/polymarket/market_discovery.py`
+`bindings/polymarket/markets.py`
 
 - orchestriert eine oder mehrere Sources
 - dedupliziert Markets

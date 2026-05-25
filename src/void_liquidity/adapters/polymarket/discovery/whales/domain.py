@@ -42,6 +42,7 @@ class CandidateValidation:
     candidate: Candidate
     whale: dict[str, Any] | None
     reject_reasons: list[str]
+    request_errors: list[dict[str, Any]] = field(default_factory=list)
 
     @property
     def accepted(self) -> bool:
@@ -55,6 +56,7 @@ class CandidateScan:
     reject_group_summary: dict[str, Counter[str]]
     checked_wallet_count: int
     checked_group_summary: Counter[str]
+    request_errors: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -63,6 +65,9 @@ class PagedRows:
     complete: bool
     unknown_timestamp_count: int = 0
     truncated: bool = False
+    error_type: str | None = None
+    error: str | None = None
+    error_context: dict[str, Any] = field(default_factory=dict)
 
     def __iter__(self):
         yield self.rows
@@ -81,3 +86,12 @@ class PersistContext:
     generated_at: datetime | None = None
     run_id: str | None = None
     started_at: datetime | None = None
+
+
+@dataclass(frozen=True)
+class WhaleTrackerResult:
+    whales: dict[str, dict[str, Any]]
+    candidate_wallet_count: int
+    checked_wallet_count: int
+    accepted_wallet_count: int
+    request_errors: list[dict[str, Any]] = field(default_factory=list)

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from void_liquidity.core import DomainEvent
 from void_liquidity.logging import (
     DEFAULT_LOG_FILE_NAME,
     LOG_DIR_ENV,
@@ -68,3 +69,57 @@ def test_log_error_writes_agent_readable_error_payload(
     assert payload["error"] == "bad payload"
     assert payload["context"] == {"endpoint": "/activity"}
     assert "ValueError: bad payload" in payload["traceback"]
+
+
+def test_log_domain_event_writes_event_context(
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    log_dir = tmp_path / "logs"
+    monkeypatch.setenv(LOG_DIR_ENV, str(log_dir))
+    logger = VoidLogger("void_liquidity.test")
+    event = DomainEvent.create(
+        event_type="pipeline.discovery.whales.started",
+        source="polymarket.whale_tracker",
+        payload={"run_id": "run-1"},
+        correlation_id="correlation-1",
+        metadata={"profile": "quality"},
+    )
+
+    logger.log_domain_event(event)
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
+
+    [payload] = _read_log_lines(log_dir)
+    assert payload["levelname"] == "INFO"
+    assert payload["name"] == "void_liquidity.test"
+    assert payload["event"] == "pipeline.discovery.whales.started"
+    assert payload["context"] == {
+        "source": "polymarket.whale_tracker",
+        "occurred_at": event.occurred_at.isoformat(),
+        "correlation_id": "correlation-1",
+        "payload": {"run_id": "run-1"},
+        "metadata": {"profile": "quality"},
+    }
+
+
+def test_log_domain_event_uses_error_level_for_failed_events(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    log_dir = tmp_path / "logs"
+    monkeypatch.setenv(LOG_DIR_ENV, str(log_dir))
+    logger = VoidLogger("void_liquidity.test")
+    event = DomainEvent.create(
+        event_type="pipeline.discovery.whales.failed",
+        source="polymarket.whale_tracker",
+    )
+
+    logger.log_domain_event(event)
+
+    [payload] = _read_log_lines(log_dir)
+    assert payload["levelname"] == "ERROR"
+    assert payload["event"] == "pipeline.discovery.whales.failed"

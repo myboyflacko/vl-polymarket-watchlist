@@ -22,22 +22,20 @@ from void_liquidity.adapters.polymarket.api.params import (
     CurrentPositionsParams,
     LeaderboardParams,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.config import (
+from void_liquidity.adapters.polymarket.discovery.whales.config import (
     _resolve_project_path,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.domain import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     Candidate,
     CandidateEntries,
     CandidateScan,
     CandidateValidation,
     PagedRows,
     PersistContext,
+    WhaleTrackerResult,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.events import (
-    POLYMARKET_WHALES_DISCOVERED,
-)
-from void_liquidity.adapters.polymarket.signal_discovery.whales.helpers import (
+from void_liquidity.adapters.polymarket.discovery.whales.helpers import (
     _build_activity_params,
     _build_closed_positions_params,
     _build_current_positions_params,
@@ -45,7 +43,7 @@ from void_liquidity.adapters.polymarket.signal_discovery.whales.helpers import (
     _field_le,
     _parse_row_timestamp,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.metrics import (
+from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
     _aggregate_activity,
     _aggregate_closed_positions,
     _aggregate_current_positions,
@@ -53,28 +51,15 @@ from void_liquidity.adapters.polymarket.signal_discovery.whales.metrics import (
     _leaderboard_metrics,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.report import (
+from void_liquidity.adapters.polymarket.discovery.whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.repository import (
+from void_liquidity.adapters.polymarket.discovery.whales.repository import (
     persist_whale_tracker_run,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.run_log import (
-    WhaleTrackerRunLog,
-)
-from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
+from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
-from void_liquidity.core.events import DomainEvent, EventBus
-from void_liquidity.pipeline.signal_discovery.events import (
-    SIGNAL_DISCOVERY_COMPLETED,
-    SIGNAL_DISCOVERY_FAILED,
-    SIGNAL_DISCOVERY_STARTED,
-)
-from void_liquidity.logging import VoidLogger
-
-
-logger = VoidLogger(__name__)
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -85,35 +70,64 @@ def _append_report_run_id_to_path(path: Path, run_id: str) -> Path:
     return path.with_name(f"{path.stem}_report_{run_id}{path.suffix}")
 
 
+def _request_error(
+    *,
+    exc: Exception,
+    request_type: str,
+    proxy_wallet: str | None = None,
+    offset: int | None = None,
+    is_rate_limited: bool = False,
+    params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    context: dict[str, Any] = {
+        "request_type": request_type,
+        "is_rate_limited": is_rate_limited,
+    }
+
+    if proxy_wallet is not None:
+        context["proxy_wallet"] = proxy_wallet
+
+    if offset is not None:
+        context["offset"] = offset
+
+    if params is not None:
+        context["params"] = params
+
+    return {
+        "error_type": type(exc).__name__,
+        "error": str(exc),
+        "error_context": context,
+    }
+
+
+def _paged_request_error(rows: PagedRows) -> dict[str, Any] | None:
+    if rows.error_type is None:
+        return None
+
+    return {
+        "error_type": rows.error_type,
+        "error": rows.error,
+        "error_context": rows.error_context,
+    }
+
+
 class WhaleTracker:
     def __init__(
         self,
         profile: WhaleTrackingProfile | None = None,
-        event_bus: EventBus | None = None,
     ) -> None:
         self.profile = profile or load_workflow_profile()
-        self.event_bus = event_bus
 
     async def run(
         self,
-        correlation_id: str | None = None,
-    ) -> dict[str, dict[str, Any]]:
+        *,
+        run_id: str,
+        started_at: datetime,
+    ) -> WhaleTrackerResult:
         client = HTTPClient()
         now = datetime.now(UTC)
-        run_id = _build_run_id(now)
-        run_log = WhaleTrackerRunLog(profile=self.profile, run_id=run_id)
 
         try:
-            run_log.start()
-            await self._publish_event(
-                event_type=SIGNAL_DISCOVERY_STARTED,
-                run_id=run_id,
-                correlation_id=correlation_id,
-                payload={
-                    "profile_version": self.profile.profile_version,
-                    "target_wallet_count": self.profile.target_wallet_count,
-                },
-            )
             entries = await self._fetch_candidate_entries(client=client)
             scan = await self._process_candidate_batches(
                 client=client,
@@ -131,76 +145,19 @@ class WhaleTracker:
                     candidate_pool_summary=entries.pool_summary,
                     generated_at=now,
                     run_id=run_id,
-                    started_at=run_log.started_at,
+                    started_at=started_at,
                 ),
             )
-            run_log.report(
+            return WhaleTrackerResult(
+                whales=scan.whales,
                 candidate_wallet_count=len(entries.candidates),
                 checked_wallet_count=scan.checked_wallet_count,
-                whales=scan.whales,
-                reject_summary=scan.reject_summary,
-                candidate_pool_summary=entries.pool_summary,
+                accepted_wallet_count=len(scan.whales),
+                request_errors=scan.request_errors,
             )
-            run_log.finish()
-            await self._publish_event(
-                event_type=SIGNAL_DISCOVERY_COMPLETED,
-                run_id=run_id,
-                correlation_id=correlation_id,
-                payload={
-                    "candidate_wallet_count": len(entries.candidates),
-                    "checked_wallet_count": scan.checked_wallet_count,
-                    "accepted_wallet_count": len(scan.whales),
-                },
-            )
-            await self._publish_event(
-                event_type=POLYMARKET_WHALES_DISCOVERED,
-                run_id=run_id,
-                correlation_id=correlation_id,
-                payload={
-                    "wallets": list(scan.whales),
-                    "accepted_wallet_count": len(scan.whales),
-                    "checked_wallet_count": scan.checked_wallet_count,
-                },
-            )
-            return scan.whales
-        except Exception as exc:
-            run_log.fail(exc)
-            await self._publish_event(
-                event_type=SIGNAL_DISCOVERY_FAILED,
-                run_id=run_id,
-                correlation_id=correlation_id,
-                payload={
-                    "error_type": type(exc).__name__,
-                    "error": str(exc),
-                },
-            )
-            raise
 
         finally:
             await client.close()
-
-    async def _publish_event(
-        self,
-        *,
-        event_type: str,
-        run_id: str,
-        correlation_id: str | None,
-        payload: dict[str, Any],
-    ) -> None:
-        if self.event_bus is None:
-            return
-
-        await self.event_bus.publish(
-            DomainEvent.create(
-                event_type=event_type,
-                source="polymarket.whale_tracker",
-                payload={
-                    "run_id": run_id,
-                    **payload,
-                },
-                correlation_id=correlation_id,
-            )
-        )
 
     async def _fetch_candidate_entries(
         self,
@@ -250,17 +207,7 @@ class WhaleTracker:
                 offset=offset,
             )
 
-            try:
-                page = await get_leaderboard(client=client, params=params)
-            except Exception as exc:
-                logger.log_error(
-                    "polymarket.leaderboard_fetch_failed",
-                    exc,
-                    order_by=order_by,
-                    offset=offset,
-                    params=params.model_dump(exclude_none=True),
-                )
-                raise
+            page = await get_leaderboard(client=client, params=params)
 
             if not isinstance(page, list) or not page:
                 break
@@ -297,6 +244,7 @@ class WhaleTracker:
         reject_summary: Counter[str] = Counter()
         reject_group_summary: dict[str, Counter[str]] = {}
         checked_group_summary: Counter[str] = Counter()
+        request_errors: list[dict[str, Any]] = []
         checked_wallet_count = 0
 
         for batch_start in range(
@@ -327,6 +275,7 @@ class WhaleTracker:
                 candidate = result.candidate
                 checked_wallet_count += 1
                 checked_group_summary.update([candidate.source])
+                request_errors.extend(result.request_errors)
 
                 if not result.accepted:
                     reject_summary.update(result.reject_reasons)
@@ -347,6 +296,7 @@ class WhaleTracker:
             reject_group_summary=reject_group_summary,
             checked_wallet_count=checked_wallet_count,
             checked_group_summary=checked_group_summary,
+            request_errors=request_errors,
         )
 
     async def _validate_candidate(
@@ -375,6 +325,13 @@ class WhaleTracker:
             client=client,
             proxy_wallet=proxy_wallet,
         )
+        request_errors = [
+            error
+            for error in [
+                _paged_request_error(current_positions),
+            ]
+            if error is not None
+        ]
         exposure_metrics = _aggregate_current_positions(
             current_positions=current_positions.rows,
             is_complete=current_positions.complete,
@@ -385,6 +342,9 @@ class WhaleTracker:
             proxy_wallet=proxy_wallet,
             cutoff=closed_cutoff,
         )
+        closed_positions_error = _paged_request_error(closed_positions)
+        if closed_positions_error is not None:
+            request_errors.append(closed_positions_error)
         closed_metrics = _aggregate_closed_positions(
             closed_positions=closed_positions.rows,
             is_complete=closed_positions.complete,
@@ -398,6 +358,9 @@ class WhaleTracker:
             start=activity_fetch_start,
             end=now,
         )
+        activity_error = _paged_request_error(activity_rows)
+        if activity_error is not None:
+            request_errors.append(activity_error)
         activity_metrics = _aggregate_activity(
             activity_rows=activity_rows.rows,
             is_complete=activity_rows.complete,
@@ -417,6 +380,7 @@ class WhaleTracker:
                 candidate=candidate,
                 whale=None,
                 reject_reasons=reasons,
+                request_errors=request_errors,
             )
 
         identity_entry = pnl_entry or vol_entry or {}
@@ -448,7 +412,12 @@ class WhaleTracker:
                 },
             },
         }
-        return CandidateValidation(candidate=candidate, whale=whale, reject_reasons=[])
+        return CandidateValidation(
+            candidate=candidate,
+            whale=whale,
+            reject_reasons=[],
+            request_errors=request_errors,
+        )
 
     async def _fetch_all_current_positions(
         self,
@@ -469,25 +438,37 @@ class WhaleTracker:
             try:
                 page = await get_current_positions(client=client, params=params)
             except PolymarketRateLimitError as exc:
-                logger.log_error(
-                    "polymarket.current_positions_fetch_failed",
-                    exc,
+                error = _request_error(
+                    exc=exc,
+                    request_type="current_positions",
                     proxy_wallet=proxy_wallet,
                     offset=offset,
                     is_rate_limited=True,
                     params=params.model_dump(exclude_none=True),
                 )
-                return PagedRows(rows=current_positions, complete=False)
+                return PagedRows(
+                    rows=current_positions,
+                    complete=False,
+                    error_type=error["error_type"],
+                    error=error["error"],
+                    error_context=error["error_context"],
+                )
             except Exception as exc:
-                logger.log_error(
-                    "polymarket.current_positions_fetch_failed",
-                    exc,
+                error = _request_error(
+                    exc=exc,
+                    request_type="current_positions",
                     proxy_wallet=proxy_wallet,
                     offset=offset,
                     is_rate_limited=False,
                     params=params.model_dump(exclude_none=True),
                 )
-                return PagedRows(rows=current_positions, complete=False)
+                return PagedRows(
+                    rows=current_positions,
+                    complete=False,
+                    error_type=error["error_type"],
+                    error=error["error"],
+                    error_context=error["error_context"],
+                )
 
             if not isinstance(page, list) or not page:
                 return PagedRows(rows=current_positions, complete=True)
@@ -526,9 +507,9 @@ class WhaleTracker:
             try:
                 page = await get_closed_positions(client=client, params=params)
             except PolymarketRateLimitError as exc:
-                logger.log_error(
-                    "polymarket.closed_positions_fetch_failed",
-                    exc,
+                error = _request_error(
+                    exc=exc,
+                    request_type="closed_positions",
                     proxy_wallet=proxy_wallet,
                     offset=offset,
                     is_rate_limited=True,
@@ -538,11 +519,14 @@ class WhaleTracker:
                     rows=closed_positions,
                     complete=False,
                     unknown_timestamp_count=unknown_timestamp_count,
+                    error_type=error["error_type"],
+                    error=error["error"],
+                    error_context=error["error_context"],
                 )
             except Exception as exc:
-                logger.log_error(
-                    "polymarket.closed_positions_fetch_failed",
-                    exc,
+                error = _request_error(
+                    exc=exc,
+                    request_type="closed_positions",
                     proxy_wallet=proxy_wallet,
                     offset=offset,
                     is_rate_limited=False,
@@ -552,6 +536,9 @@ class WhaleTracker:
                     rows=closed_positions,
                     complete=False,
                     unknown_timestamp_count=unknown_timestamp_count,
+                    error_type=error["error_type"],
+                    error=error["error"],
+                    error_context=error["error_context"],
                 )
 
             if not isinstance(page, list) or not page:
@@ -639,25 +626,37 @@ class WhaleTracker:
             try:
                 page = await get_activity(client=client, params=params)
             except PolymarketRateLimitError as exc:
-                logger.log_error(
-                    "polymarket.activity_fetch_failed",
-                    exc,
+                error = _request_error(
+                    exc=exc,
+                    request_type="activity",
                     proxy_wallet=proxy_wallet,
                     offset=offset,
                     is_rate_limited=True,
                     params=params.model_dump(exclude_none=True),
                 )
-                return PagedRows(rows=activity_rows, complete=False)
+                return PagedRows(
+                    rows=activity_rows,
+                    complete=False,
+                    error_type=error["error_type"],
+                    error=error["error"],
+                    error_context=error["error_context"],
+                )
             except Exception as exc:
-                logger.log_error(
-                    "polymarket.activity_fetch_failed",
-                    exc,
+                error = _request_error(
+                    exc=exc,
+                    request_type="activity",
                     proxy_wallet=proxy_wallet,
                     offset=offset,
                     is_rate_limited=False,
                     params=params.model_dump(exclude_none=True),
                 )
-                return PagedRows(rows=activity_rows, complete=False)
+                return PagedRows(
+                    rows=activity_rows,
+                    complete=False,
+                    error_type=error["error_type"],
+                    error=error["error"],
+                    error_context=error["error_context"],
+                )
 
             if not isinstance(page, list) or not page:
                 return PagedRows(rows=activity_rows, complete=True)
@@ -724,7 +723,13 @@ def main() -> None:
     tracker = WhaleTracker(
         profile=load_workflow_profile(args.profile) if args.profile else None,
     )
-    asyncio.run(tracker.run())
+    started_at = datetime.now(UTC)
+    asyncio.run(
+        tracker.run(
+            run_id=_build_run_id(started_at),
+            started_at=started_at,
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -7,8 +7,12 @@ from pathlib import Path
 from typing import Sequence
 
 from void_liquidity.core import DomainEvent, EventBus, Runtime
-from void_liquidity.pipeline.signal_discovery import SIGNAL_DISCOVERY_REQUESTED
-from void_liquidity.bindings.polymarket import PolymarketSignalDiscoveryBinding
+from void_liquidity.pipeline.discovery.whales import WHALE_DISCOVERY_REQUESTED
+from void_liquidity.bindings.polymarket import PolymarketWhaleDiscoveryBinding
+from void_liquidity.logging import VoidLogger
+
+
+logger = VoidLogger("void_liquidity.workflows.track_whales")
 
 
 def build_track_whales_event(
@@ -22,15 +26,16 @@ def build_track_whales_event(
         payload["profile_path"] = str(profile_path)
 
     return DomainEvent.create(
-        event_type=SIGNAL_DISCOVERY_REQUESTED,
+        event_type=WHALE_DISCOVERY_REQUESTED,
         source=source,
         payload=payload,
+        metadata={"workflow": "track_whales"},
     )
 
 
 def build_track_whales_runtime(bus: EventBus | None = None) -> Runtime:
     runtime = Runtime(bus=bus)
-    runtime.install(PolymarketSignalDiscoveryBinding())
+    runtime.install(PolymarketWhaleDiscoveryBinding())
     return runtime
 
 
@@ -40,6 +45,7 @@ async def run_track_whales(
     echo_events: bool = False,
 ) -> None:
     bus = EventBus()
+    bus.subscribe(EventBus.WILDCARD, logger.log_domain_event)
 
     if echo_events:
         bus.subscribe(EventBus.WILDCARD, _print_event)
@@ -50,11 +56,11 @@ async def run_track_whales(
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Run Polymarket whale-based signal discovery.",
+        description="Run Polymarket whale discovery.",
     )
     parser.add_argument(
         "--profile",
-        help="Path to a Polymarket signal-discovery profile JSON file.",
+        help="Path to a Polymarket whale-discovery profile JSON file.",
     )
     parser.add_argument(
         "--echo-events",

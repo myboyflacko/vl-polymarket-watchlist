@@ -17,7 +17,7 @@ pipeline
 
 adapters
   External systems and provider-specific pipeline implementations. Polymarket
-  HTTP APIs and Polymarket signal discovery live here.
+  HTTP APIs and Polymarket whale discovery live here.
 
 bindings
   Runtime connectors. A binding maps a pipeline event to a concrete adapter or
@@ -48,11 +48,11 @@ from the previous step.
 Example:
 
 ```text
-pipeline.signal_discovery.requested
-  -> polymarket.signal_discovery
-  -> pipeline.signal_discovery.started
-  -> pipeline.signal_discovery.completed
-  -> polymarket.signal_discovery.whales.discovered
+pipeline.discovery.whales.requested
+  -> polymarket.discovery.whales
+  -> pipeline.discovery.whales.started
+  -> pipeline.discovery.whales.completed
+  -> polymarket.discovery.whales.discovered
 ```
 
 ## Extension Rule
@@ -67,7 +67,7 @@ When adding a new capability:
 
 ## Current Boundary
 
-The active stage is signal discovery. The current Polymarket implementation
-is `adapters/polymarket/signal_discovery/whales`. It produces qualified whale
+The active stage is whale discovery. The current Polymarket implementation
+is `adapters/polymarket/discovery/whales`. It produces qualified whale
 signals and emits a Polymarket-specific whale event for later market discovery.
 It does not derive markets, place orders, score trades, or decide execution.

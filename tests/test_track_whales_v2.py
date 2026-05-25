@@ -11,47 +11,38 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.api.params import ActivityParams
-from void_liquidity.adapters.polymarket.signal_discovery.whales import (
+from void_liquidity.adapters.polymarket.discovery.whales import (
     WhaleTracker,
     WhaleTrackingProfile,
     load_workflow_profile,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.config import (
+from void_liquidity.adapters.polymarket.discovery.whales.config import (
     PROJECT_ROOT,
     QUALITY_PROFILE_PATH,
     _resolve_project_path,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.models import (
+from void_liquidity.adapters.polymarket.discovery.whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.metrics import (
+from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
     _aggregate_closed_positions,
     _build_candidate_pool,
     _qualification_reasons,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.report import (
+from void_liquidity.adapters.polymarket.discovery.whales.report import (
     build_report_payload,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
+from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     ActivityConfig,
     CandidatePoolConfig,
     ClosedPositionsConfig,
     CurrentPositionsConfig,
     WhaleFilterConfig,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales import (
+from void_liquidity.adapters.polymarket.discovery.whales import (
     tracker as tracker_module,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.events import (
-    POLYMARKET_WHALES_DISCOVERED,
-)
-from void_liquidity.core import EventBus
-from void_liquidity.pipeline.signal_discovery.events import (
-    SIGNAL_DISCOVERY_COMPLETED,
-    SIGNAL_DISCOVERY_STARTED,
-)
-from void_liquidity.logging import DEFAULT_LOG_FILE_NAME
 from void_liquidity.data import Base, create_database_engine, database_session
 from void_liquidity.settings import DEFAULT_SQLITE_PATH, get_settings
 
@@ -236,18 +227,18 @@ def test_track_whales_filters_and_writes_v2_output(
     monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
     monkeypatch.setattr(tracker_module, "datetime", FrozenDateTime)
 
-    emitted_events = []
-    event_bus = EventBus()
-    event_bus.subscribe(EventBus.WILDCARD, emitted_events.append)
+    result = asyncio.run(
+        WhaleTracker(profile=profile).run(
+            run_id="test-run",
+            started_at=now,
+        )
+    )
 
-    whales = asyncio.run(WhaleTracker(profile=profile, event_bus=event_bus).run())
-
-    assert list(whales) == [WALLET_ONE]
-    assert [event.event_type for event in emitted_events] == [
-        SIGNAL_DISCOVERY_STARTED,
-        SIGNAL_DISCOVERY_COMPLETED,
-        POLYMARKET_WHALES_DISCOVERED,
-    ]
+    assert list(result.whales) == [WALLET_ONE]
+    assert result.candidate_wallet_count == 2
+    assert result.checked_wallet_count == 2
+    assert result.accepted_wallet_count == 1
+    assert result.request_errors == []
     assert [
         path
         for path in tmp_path.glob("whales_*.json")
@@ -258,7 +249,7 @@ def test_track_whales_filters_and_writes_v2_output(
 
     report_payload = json.loads(report_files[0].read_text(encoding="utf-8"))
     run_id = report_payload["metadata"]["run_id"]
-    assert run_id
+    assert run_id == "test-run"
     assert report_payload["metadata"]["mode"] == "fresh_discovery"
     assert report_payload["metadata"]["wallet_count"] == 1
     assert report_payload["candidate_funnel"]["reject_summary"] == {
@@ -310,22 +301,6 @@ def test_track_whales_filters_and_writes_v2_output(
         "closed_positions_truncated_count": 0,
         "roi_unavailable_count": 0,
     }
-
-    log_path = tmp_path / "logs" / DEFAULT_LOG_FILE_NAME
-    log_payloads = [
-        json.loads(line)
-        for line in log_path.read_text(encoding="utf-8").splitlines()
-    ]
-    log_events = [payload["event"] for payload in log_payloads]
-    assert log_events == [
-        "polymarket.track_whales.run_started",
-        "polymarket.track_whales.report",
-        "polymarket.track_whales.run_finished",
-    ]
-    assert [
-        payload["context"]["run_id"]
-        for payload in log_payloads
-    ] == [run_id, run_id, run_id]
 
 
 def test_load_default_workflow_profile() -> None:
@@ -416,7 +391,7 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
     assert is_complete is False
 
 
-def test_fetch_all_activity_logs_fetch_errors_with_wallet_context(
+def test_fetch_all_activity_returns_fetch_error_context(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -432,7 +407,7 @@ def test_fetch_all_activity_logs_fetch_errors_with_wallet_context(
 
     monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
 
-    rows, is_complete = asyncio.run(
+    result = asyncio.run(
         WhaleTracker(profile=profile)._fetch_all_activity(
             client=FakeHTTPClient(),
             proxy_wallet=WALLET_ONE,
@@ -441,20 +416,14 @@ def test_fetch_all_activity_logs_fetch_errors_with_wallet_context(
         )
     )
 
-    assert rows == []
-    assert is_complete is False
-
-    log_path = tmp_path / "logs" / DEFAULT_LOG_FILE_NAME
-    [payload] = [
-        json.loads(line)
-        for line in log_path.read_text(encoding="utf-8").splitlines()
-    ]
-    assert payload["event"] == "polymarket.activity_fetch_failed"
-    assert payload["error_type"] == "RuntimeError"
-    assert payload["error"] == "api down"
-    assert payload["context"]["proxy_wallet"] == WALLET_ONE
-    assert payload["context"]["offset"] == 0
-    assert payload["context"]["is_rate_limited"] is False
+    assert result.rows == []
+    assert result.complete is False
+    assert result.error_type == "RuntimeError"
+    assert result.error == "api down"
+    assert result.error_context["request_type"] == "activity"
+    assert result.error_context["proxy_wallet"] == WALLET_ONE
+    assert result.error_context["offset"] == 0
+    assert result.error_context["is_rate_limited"] is False
 
 
 def test_incomplete_activity_is_not_a_reject_reason_when_volume_passes(

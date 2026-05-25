@@ -3,11 +3,11 @@ from datetime import datetime
 from statistics import mean, median
 from typing import Any
 
-from void_liquidity.adapters.polymarket.signal_discovery.whales.metrics import (
+from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
     _metric_quality_summary,
     _qualification_thresholds,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
+from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
 

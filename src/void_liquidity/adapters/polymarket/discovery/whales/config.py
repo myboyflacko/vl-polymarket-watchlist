@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
+from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
 

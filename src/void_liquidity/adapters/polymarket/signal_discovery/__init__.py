@@ -1,1 +1,0 @@
-"""Polymarket signal discovery implementations."""

@@ -1,6 +1,6 @@
 # Polymarket Whale Tracking Service
 
-This document explains `src/void_liquidity/adapters/polymarket/signal_discovery/whales/tracker.py`.
+This document explains `src/void_liquidity/adapters/polymarket/discovery/whales/tracker.py`.
 
 The service builds a fresh daily Polymarket signal-whale snapshot. It does not place live trades, create orders, cancel orders, or move funds. It only reads public Polymarket Data API endpoints.
 
@@ -29,19 +29,19 @@ The flow is:
 There is no cache-refresh mode in V2. Running the script always performs a fresh discovery.
 
 The tracker can still be called directly, but it also supports the event-driven
-runtime through `PolymarketSignalDiscoveryBinding`. The binding consumes
-`pipeline.signal_discovery.requested` and the tracker emits:
+runtime through `PolymarketWhaleDiscoveryBinding`. The binding consumes
+`pipeline.discovery.whales.requested` and the tracker emits:
 
 ```text
-pipeline.signal_discovery.started
-pipeline.signal_discovery.completed
-pipeline.signal_discovery.failed
-polymarket.signal_discovery.whales.discovered
+pipeline.discovery.whales.started
+pipeline.discovery.whales.completed
+pipeline.discovery.whales.failed
+polymarket.discovery.whales.discovered
 ```
 
-This makes Polymarket whale-based signal discovery available without forcing
+This makes Polymarket whale discovery available without forcing
 downstream steps to import provider internals directly. Future Market Discovery
-handlers can subscribe to `polymarket.signal_discovery.whales.discovered` and
+handlers can subscribe to `polymarket.discovery.whales.discovered` and
 load the persisted run by `run_id`.
 
 ## Workflow Profile
@@ -51,13 +51,13 @@ Whale-specific strategy settings are no longer read from `Settings.whale_tracker
 The default profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/signal_discovery/whales/profiles/whale_tracking_profile.json
+src/void_liquidity/adapters/polymarket/discovery/whales/profiles/whale_tracking_profile.json
 ```
 
 The stricter quality profile is:
 
 ```text
-src/void_liquidity/adapters/polymarket/signal_discovery/whales/profiles/whale_tracking_profile_quality.json
+src/void_liquidity/adapters/polymarket/discovery/whales/profiles/whale_tracking_profile_quality.json
 ```
 
 The profile controls:
@@ -298,14 +298,14 @@ Run the event-driven workflow:
 python -m void_liquidity.workflows.track_whales --echo-events
 ```
 
-The workflow publishes `pipeline.signal_discovery.requested`, the Polymarket
-signal-discovery binding handles that event, and the adapter implementation
+The workflow publishes `pipeline.discovery.whales.requested`, the Polymarket
+whale-discovery binding handles that event, and the adapter implementation
 persists accepted whales.
 
 Run the provider implementation directly:
 
 ```bash
-python -m void_liquidity.adapters.polymarket.signal_discovery.whales.tracker
+python -m void_liquidity.adapters.polymarket.discovery.whales.tracker
 ```
 
 The script loads the default workflow profile, performs fresh discovery, writes
@@ -315,7 +315,7 @@ Run the quality profile:
 
 ```bash
 python -m void_liquidity.workflows.track_whales \
-  --profile src/void_liquidity/adapters/polymarket/signal_discovery/whales/profiles/whale_tracking_profile_quality.json
+  --profile src/void_liquidity/adapters/polymarket/discovery/whales/profiles/whale_tracking_profile_quality.json
 ```
 
 ## Tests

@@ -7,7 +7,7 @@ from void_liquidity.adapters.polymarket.api.params import (
     CurrentPositionsParams,
     LeaderboardParams,
 )
-from void_liquidity.adapters.polymarket.signal_discovery.whales.schemas import (
+from void_liquidity.adapters.polymarket.discovery.whales.schemas import (
     WhaleTrackingProfile,
 )
 
