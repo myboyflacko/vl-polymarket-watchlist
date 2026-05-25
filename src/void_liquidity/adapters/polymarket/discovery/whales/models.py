@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, JSON, String
-from sqlalchemy import UniqueConstraint
+from sqlalchemy import DateTime, Index, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from void_liquidity.data import Base
@@ -29,28 +28,19 @@ class WhaleTrackerRun(Base):
 class TrackedWhale(Base):
     __tablename__ = "tracked_whales"
     __table_args__ = (
-        UniqueConstraint("run_id", "proxy_wallet", name="uq_tracked_whales_run_wallet"),
         Index("ix_tracked_whales_proxy_wallet", "proxy_wallet"),
-        Index("ix_tracked_whales_run_source", "run_id", "candidate_pool_source"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    run_id: Mapped[str] = mapped_column(
-        ForeignKey("whale_tracker_runs.run_id", ondelete="CASCADE"),
-        nullable=False,
-    )
     proxy_wallet: Mapped[str] = mapped_column(String, nullable=False)
-    user_name: Mapped[str | None] = mapped_column(String, nullable=True)
-    x_username: Mapped[str | None] = mapped_column(String, nullable=True)
-    verified_badge: Mapped[bool] = mapped_column(nullable=False, default=False)
-    candidate_pool_source: Mapped[str] = mapped_column(String, nullable=False)
-    current_position_value: Mapped[float] = mapped_column(Float, nullable=False)
-    closed_positions_pnl: Mapped[float] = mapped_column(Float, nullable=False)
-    roi: Mapped[float | None] = mapped_column(Float, nullable=True)
-    profit_factor: Mapped[float | None] = mapped_column(Float, nullable=True)
-    activity_volume_window: Mapped[float] = mapped_column(Float, nullable=False)
-    last_activity_at: Mapped[str | None] = mapped_column(String, nullable=True)
-    leaderboard: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    exposure: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    closed_positions: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    activity: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    first_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+    last_seen: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
