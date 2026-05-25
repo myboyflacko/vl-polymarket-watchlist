@@ -55,8 +55,12 @@ Wenn das Arbeitsverzeichnis ein Git-Repository ist:
 - Standard-Arbeitsbasis ist immer `dev`.
 - Wenn der Checkout nicht auf `dev` ist, vor neuen Änderungen nach `dev` wechseln, sofern das ohne Verlust oder Konflikt mit lokalen Änderungen möglich ist.
 - Wenn lokale Änderungen einen sicheren Wechsel nach `dev` verhindern, stoppen, den Zustand erklären und Flacko entscheiden lassen.
-- Größere Changes immer auf einer neuen Feature-Branch umsetzen.
-- Feature-Branches entstehen immer von `dev`.
+- Für jede Code-Änderung muss eine eigene Branch erstellt werden; das ist Pflicht.
+- Branches für Code-Änderungen entstehen immer von `dev`.
+- Der Branch-Typ wird anhand des Prompts gewählt, z. B. `feature/*`, `refactor/*`, `fix/*` oder `docs/*`.
+- Falls andere Branches oder lokale Änderungen noch uncommitted Änderungen enthalten, prüfen, ob sie mit der aktuellen Aufgabe interferieren.
+- Wenn diese Änderungen nicht interferieren, kann von `dev` eine neue Branch erstellt werden.
+- Wenn sie interferieren könnten oder die Lage unklar ist, stoppen und Flacko um Clarification bitten.
 - Feature-Branches nach Möglichkeit direkt nach Abschluss committen.
 - Commit-Messages beschreiben die Änderung nach Funktionalität, nicht nach Dateinamen.
 - Pushen ist nur erlaubt, wenn die relevanten Tests vorher erfolgreich gelaufen sind.
