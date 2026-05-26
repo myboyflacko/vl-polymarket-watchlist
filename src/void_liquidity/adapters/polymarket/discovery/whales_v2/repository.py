@@ -29,6 +29,8 @@ def persist_whale_tracker_v2_run(
     whales: Whales,
     ranking_result: WhaleRankingResult | None = None,
 ) -> None:
+    selected_whales = ranking_result.whales if ranking_result is not None else whales.whales
+
     with database_session() as session:
         session.add(
             WhaleTrackerRun(
@@ -40,7 +42,7 @@ def persist_whale_tracker_v2_run(
                 generated_at=generated_at,
                 candidate_wallet_count=whales.candidate_wallet_count,
                 checked_wallet_count=whales.checked_wallet_count,
-                accepted_wallet_count=whales.wallet_count,
+                accepted_wallet_count=len(selected_whales),
                 profile=profile.model_dump(mode="json"),
                 report_path=None,
             )
@@ -50,7 +52,7 @@ def persist_whale_tracker_v2_run(
             session=session,
             run_id=run_id,
             seen_at=generated_at,
-            whales=whales.whales,
+            whales=selected_whales,
         )
         _insert_metric_snapshots(
             session=session,
@@ -139,10 +141,10 @@ def _ranking_by_wallet(
         for index, ranked_whale in enumerate(ranking_result.ranked_whales, start=1)
     }
 
-    for wallet in ranking_result.removed_wallets:
-        ranked[wallet] = {
+    for ranked_whale in ranking_result.removed_whales:
+        ranked[ranked_whale.whale.proxy_wallet] = {
             "method": ranking_result.method,
-            "score": 0.0,
+            "score": ranked_whale.score,
             "rank": 0,
             "removed": True,
         }

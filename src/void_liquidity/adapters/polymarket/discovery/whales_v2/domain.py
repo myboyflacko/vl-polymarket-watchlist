@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 CandidateSource = Literal["pnl", "volume", "both"]
 TradeSortOrder = Literal["desc", "unknown"]
+WalletCollectionStage = Literal["trades", "current_positions"]
 
 
 class WhaleIdentity(BaseModel):
@@ -79,16 +80,36 @@ class Whale(BaseModel):
         return self.identity.proxy_wallet
 
 
+class WalletCollectionError(BaseModel):
+    proxy_wallet: str
+    stage: WalletCollectionStage
+    error_type: str
+    error: str
+
+
 class Whales(BaseModel):
     whales: list[Whale]
     candidate_wallet_count: int
     checked_wallet_count: int
     generated_at: datetime
     profile_version: str
+    collection_errors: list[WalletCollectionError] = Field(default_factory=list)
 
     @property
     def wallet_count(self) -> int:
         return len(self.whales)
+
+    @property
+    def successful_wallet_count(self) -> int:
+        return len(self.whales)
+
+    @property
+    def failed_wallet_count(self) -> int:
+        return len(self.collection_errors)
+
+    @property
+    def partial(self) -> bool:
+        return bool(self.collection_errors)
 
     def proxy_wallets(self) -> list[str]:
         return [whale.proxy_wallet for whale in self.whales]

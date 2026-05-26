@@ -12,6 +12,7 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
     Whale,
     WhaleIdentity,
     WhaleMetrics,
+    WalletCollectionError,
     Whales,
 )
 from void_liquidity.adapters.polymarket.discovery.whales_v2.events import (
@@ -71,6 +72,22 @@ def _request() -> DomainEvent:
     )
 
 
+def _partial_whales() -> Whales:
+    whales = _whales()
+    return whales.model_copy(
+        update={
+            "collection_errors": [
+                WalletCollectionError(
+                    proxy_wallet="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    stage="trades",
+                    error_type="RuntimeError",
+                    error="api down",
+                )
+            ]
+        }
+    )
+
+
 def test_polymarket_whale_v2_binding_declares_runtime_contract() -> None:
     binding = PolymarketWhaleDiscoveryV2Binding()
 
@@ -121,6 +138,80 @@ def test_polymarket_whale_v2_binding_runs_scores_persists_and_publishes(
         "binding.polymarket.discovery.whales_v2"
     }
     assert {event.correlation_id for event in emitted_events} == {"correlation-v2"}
+    assert emitted_events[-1].payload["collected_wallet_count"] == 1
+    assert emitted_events[-1].payload["ranked_wallet_count"] == 1
+    assert emitted_events[-1].payload["failed_wallet_count"] == 0
+    assert emitted_events[-1].payload["partial"] is False
+
+
+def test_polymarket_whale_v2_binding_uses_profile_ranking_weights(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    persisted: list[dict] = []
+
+    class FakeTracker:
+        def __init__(self, profile) -> None:
+            self.profile = profile
+
+        async def run(self, *, now: datetime | None = None) -> Whales:
+            return _whales()
+
+        def persist(self, **kwargs) -> None:
+            persisted.append(kwargs)
+
+    request = DomainEvent.create(
+        event_type=POLYMARKET_WHALES_V2_REQUESTED,
+        source="workflow.track_whales_v2",
+        correlation_id="correlation-v2",
+        metadata={"workflow": "track_whales_v2"},
+        payload={
+            "profile": {
+                "wallet_count": 1,
+                "ranking": {
+                    "pnl_weight": 1,
+                    "volume_weight": 0,
+                    "trade_activity_weight": 0,
+                    "recency_weight": 0,
+                    "exposure_weight": 0,
+                    "concentration_penalty_weight": 0,
+                    "bottom_cut_percentile": 0,
+                },
+            }
+        },
+    )
+    monkeypatch.setattr(binding_module, "WhaleTrackerV2", FakeTracker)
+    bus = EventBus()
+
+    asyncio.run(PolymarketWhaleDiscoveryV2Binding().handle(event=request, bus=bus))
+
+    ranking_result = persisted[0]["ranking_result"]
+    assert len(ranking_result.ranked_whales) == 1
+
+
+def test_polymarket_whale_v2_binding_publishes_partial_counts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeTracker:
+        def __init__(self, profile) -> None:
+            self.profile = profile
+
+        async def run(self, *, now: datetime | None = None) -> Whales:
+            return _partial_whales()
+
+        def persist(self, **kwargs) -> None:
+            return None
+
+    monkeypatch.setattr(binding_module, "WhaleTrackerV2", FakeTracker)
+    bus = EventBus()
+    emitted_events: list[DomainEvent] = []
+    bus.subscribe(EventBus.WILDCARD, emitted_events.append)
+
+    asyncio.run(PolymarketWhaleDiscoveryV2Binding().handle(event=_request(), bus=bus))
+
+    completed = emitted_events[-1]
+    assert completed.payload["partial"] is True
+    assert completed.payload["failed_wallet_count"] == 1
+    assert completed.payload["collection_error_count"] == 1
 
 
 def test_polymarket_whale_v2_binding_publishes_failed_event_and_reraises(

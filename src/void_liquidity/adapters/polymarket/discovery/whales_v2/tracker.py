@@ -21,6 +21,7 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
     Whale,
     WhaleIdentity,
     WhaleMetrics,
+    WalletCollectionError,
     Whales,
 )
 from void_liquidity.adapters.polymarket.discovery.whales_v2.helpers import (
@@ -71,6 +72,12 @@ class _CurrentPositionRows:
     complete: bool
 
 
+@dataclass(frozen=True)
+class _WalletCollectionResult:
+    whale: Whale | None = None
+    error: WalletCollectionError | None = None
+
+
 class WhaleTrackerV2:
     def __init__(self, profile: WhaleTrackerV2Profile | None = None) -> None:
         self.profile = profile or WhaleTrackerV2Profile()
@@ -92,6 +99,7 @@ class WhaleTrackerV2:
                 checked_wallet_count=len(candidates),
                 generated_at=generated_at,
                 profile_version=self.profile.profile_version,
+                collection_errors=self._collection_errors,
             )
         finally:
             await client.close()
@@ -198,23 +206,53 @@ class WhaleTrackerV2:
         now: datetime,
     ) -> list[Whale]:
         whales: list[Whale] = []
+        self._collection_errors: list[WalletCollectionError] = []
 
         for batch_start in range(0, len(candidates), self.profile.wallet_batch_size):
             batch = candidates[batch_start:batch_start + self.profile.wallet_batch_size]
-            whales.extend(
-                await asyncio.gather(
-                    *[
-                        self._collect_whale(
-                            client=client,
-                            candidate=candidate,
-                            now=now,
-                        )
-                        for candidate in batch
-                    ]
-                )
+            results = await asyncio.gather(
+                *[
+                    self._collect_whale_safely(
+                        client=client,
+                        candidate=candidate,
+                        now=now,
+                    )
+                    for candidate in batch
+                ]
             )
 
+            for result in results:
+                if result.whale is not None:
+                    whales.append(result.whale)
+                if result.error is not None:
+                    self._collection_errors.append(result.error)
+
         return whales
+
+    async def _collect_whale_safely(
+        self,
+        *,
+        client: HTTPClient,
+        candidate: _Candidate,
+        now: datetime,
+    ) -> _WalletCollectionResult:
+        try:
+            return _WalletCollectionResult(
+                whale=await self._collect_whale(
+                    client=client,
+                    candidate=candidate,
+                    now=now,
+                )
+            )
+        except _WalletStageError as exc:
+            return _WalletCollectionResult(
+                error=WalletCollectionError(
+                    proxy_wallet=candidate.proxy_wallet,
+                    stage=exc.stage,
+                    error_type=type(exc.__cause__ or exc).__name__,
+                    error=str(exc.__cause__ or exc),
+                )
+            )
 
     async def _collect_whale(
         self,
@@ -223,11 +261,14 @@ class WhaleTrackerV2:
         candidate: _Candidate,
         now: datetime,
     ) -> Whale:
-        trade_rows = await self._fetch_window_trades(
-            client=client,
-            proxy_wallet=candidate.proxy_wallet,
-            now=now,
-        )
+        try:
+            trade_rows = await self._fetch_window_trades(
+                client=client,
+                proxy_wallet=candidate.proxy_wallet,
+                now=now,
+            )
+        except Exception as exc:
+            raise _WalletStageError("trades") from exc
         trade_metrics, market_metrics, quality, condition_ids = aggregate_trades(
             trades=trade_rows.rows,
             now=now,
@@ -237,11 +278,14 @@ class WhaleTrackerV2:
             trades_sort_order=trade_rows.sort_order,
             invalid_trade_row_count=trade_rows.invalid_row_count,
         )
-        current_positions = await self._fetch_current_positions(
-            client=client,
-            proxy_wallet=candidate.proxy_wallet,
-            condition_ids=condition_ids,
-        )
+        try:
+            current_positions = await self._fetch_current_positions(
+                client=client,
+                proxy_wallet=candidate.proxy_wallet,
+                condition_ids=condition_ids,
+            )
+        except Exception as exc:
+            raise _WalletStageError("current_positions") from exc
         exposure_metrics, current_positions_complete = aggregate_current_positions(
             positions=current_positions.rows,
             current_positions_complete=current_positions.complete,
@@ -424,3 +468,9 @@ class WhaleTrackerV2:
 
 def _is_descending(values: list[datetime]) -> bool:
     return all(left >= right for left, right in zip(values, values[1:], strict=False))
+
+
+class _WalletStageError(RuntimeError):
+    def __init__(self, stage: str) -> None:
+        super().__init__(stage)
+        self.stage = stage

@@ -12,6 +12,9 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
     Whales,
 )
 from void_liquidity.adapters.polymarket.ranking import rank_trade_first_whales
+from void_liquidity.adapters.polymarket.ranking.trade_first import (
+    TradeFirstRankingWeights,
+)
 
 
 NOW = datetime(2026, 5, 26, tzinfo=UTC)
@@ -71,6 +74,7 @@ def test_rank_trade_first_whales_sorts_by_composite_score_and_cuts_bottom_25() -
         "wallet-2",
     ]
     assert result.removed_wallets == ["wallet-1"]
+    assert result.removed_whales[0].score > 0
 
 
 def test_rank_trade_first_whales_penalizes_extreme_concentration() -> None:
@@ -104,3 +108,45 @@ def test_rank_trade_first_whales_penalizes_extreme_concentration() -> None:
     result = rank_trade_first_whales(whales)
 
     assert result.ranked_whales[0].whale.proxy_wallet == "balanced"
+
+
+def test_rank_trade_first_whales_accepts_custom_weights() -> None:
+    whales = Whales(
+        whales=[
+            _whale(
+                "pnl-leader",
+                pnl=100,
+                volume=10,
+                trade_volume=10,
+                exposure=10,
+                last_trade_age_days=5,
+            ),
+            _whale(
+                "volume-leader",
+                pnl=10,
+                volume=100,
+                trade_volume=100,
+                exposure=100,
+                last_trade_age_days=1,
+            ),
+        ],
+        candidate_wallet_count=2,
+        checked_wallet_count=2,
+        generated_at=NOW,
+        profile_version="test",
+    )
+
+    result = rank_trade_first_whales(
+        whales,
+        weights=TradeFirstRankingWeights(
+            pnl=1,
+            volume=0,
+            trade_activity=0,
+            recency=0,
+            exposure=0,
+            concentration_penalty=0,
+            bottom_cut_percentile=0,
+        ),
+    )
+
+    assert result.ranked_whales[0].whale.proxy_wallet == "pnl-leader"

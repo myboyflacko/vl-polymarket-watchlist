@@ -16,7 +16,10 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
     POLYMARKET_WHALES_V2_STARTED,
 )
-from void_liquidity.adapters.polymarket.ranking import rank_trade_first_whales
+from void_liquidity.adapters.polymarket.ranking import (
+    TradeFirstRankingWeights,
+    rank_trade_first_whales,
+)
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus
 
@@ -83,7 +86,10 @@ class PolymarketWhaleDiscoveryV2Binding:
             )
 
             whales = await tracker.run(now=started_at)
-            ranking = rank_trade_first_whales(whales)
+            ranking = rank_trade_first_whales(
+                whales,
+                weights=TradeFirstRankingWeights.from_profile(profile.ranking),
+            )
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALES_V2_DISCOVERED,
@@ -92,9 +98,13 @@ class PolymarketWhaleDiscoveryV2Binding:
                     payload={
                         "run_id": run_id,
                         "wallets": whales.proxy_wallets(),
-                        "wallet_count": whales.wallet_count,
+                        "collected_wallet_count": whales.wallet_count,
                         "candidate_wallet_count": whales.candidate_wallet_count,
                         "checked_wallet_count": whales.checked_wallet_count,
+                        "successful_wallet_count": whales.successful_wallet_count,
+                        "failed_wallet_count": whales.failed_wallet_count,
+                        "partial": whales.partial,
+                        "collection_error_count": len(whales.collection_errors),
                     },
                     metadata=metadata,
                 )
@@ -106,7 +116,8 @@ class PolymarketWhaleDiscoveryV2Binding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
-                        "wallet_count": whales.wallet_count,
+                        "collected_wallet_count": whales.wallet_count,
+                        "ranked_wallet_count": len(ranking.ranked_whales),
                     },
                     metadata=metadata,
                 )
@@ -142,7 +153,8 @@ class PolymarketWhaleDiscoveryV2Binding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
-                        "wallet_count": whales.wallet_count,
+                        "collected_wallet_count": whales.wallet_count,
+                        "ranked_wallet_count": len(ranking.ranked_whales),
                     },
                     metadata=metadata,
                 )
@@ -156,7 +168,12 @@ class PolymarketWhaleDiscoveryV2Binding:
                         "run_id": run_id,
                         "candidate_wallet_count": whales.candidate_wallet_count,
                         "checked_wallet_count": whales.checked_wallet_count,
-                        "wallet_count": whales.wallet_count,
+                        "collected_wallet_count": whales.wallet_count,
+                        "ranked_wallet_count": len(ranking.ranked_whales),
+                        "successful_wallet_count": whales.successful_wallet_count,
+                        "failed_wallet_count": whales.failed_wallet_count,
+                        "partial": whales.partial,
+                        "collection_error_count": len(whales.collection_errors),
                         "ranking_method": ranking.method,
                         "ranked_wallets": [
                             ranked.whale.proxy_wallet

@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from pydantic import BaseModel
 
 from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import Whale, Whales
+from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+    TradeFirstRankingProfile,
+)
 
 
 DEFAULT_TRADE_FIRST_RANKING_METHOD = "trade_first_percentile_v1"
@@ -20,6 +23,21 @@ class TradeFirstRankingWeights:
     concentration_penalty: float = 0.10
     bottom_cut_percentile: float = 0.25
 
+    @classmethod
+    def from_profile(
+        cls,
+        profile: TradeFirstRankingProfile,
+    ) -> "TradeFirstRankingWeights":
+        return cls(
+            pnl=profile.pnl_weight,
+            volume=profile.volume_weight,
+            trade_activity=profile.trade_activity_weight,
+            recency=profile.recency_weight,
+            exposure=profile.exposure_weight,
+            concentration_penalty=profile.concentration_penalty_weight,
+            bottom_cut_percentile=profile.bottom_cut_percentile,
+        )
+
 
 class RankedWhale(BaseModel):
     whale: Whale
@@ -29,11 +47,15 @@ class RankedWhale(BaseModel):
 class WhaleRankingResult(BaseModel):
     method: str
     ranked_whales: list[RankedWhale]
-    removed_wallets: list[str]
+    removed_whales: list[RankedWhale]
 
     @property
     def whales(self) -> list[Whale]:
         return [ranked.whale for ranked in self.ranked_whales]
+
+    @property
+    def removed_wallets(self) -> list[str]:
+        return [ranked.whale.proxy_wallet for ranked in self.removed_whales]
 
 
 def rank_trade_first_whales(
@@ -46,7 +68,7 @@ def rank_trade_first_whales(
         return WhaleRankingResult(
             method=DEFAULT_TRADE_FIRST_RANKING_METHOD,
             ranked_whales=[],
-            removed_wallets=[],
+            removed_whales=[],
         )
 
     scores = _score_whales(whales.whales, weights)
@@ -65,7 +87,7 @@ def rank_trade_first_whales(
     return WhaleRankingResult(
         method=DEFAULT_TRADE_FIRST_RANKING_METHOD,
         ranked_whales=kept,
-        removed_wallets=[item.whale.proxy_wallet for item in removed],
+        removed_whales=removed,
     )
 
 
