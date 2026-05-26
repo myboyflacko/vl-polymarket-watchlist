@@ -142,23 +142,46 @@ Quelle: largest_position_value / current_position_value
 Bedeutung: Konzentrationsrisiko innerhalb der offenen Positionen.
 ```
 
+## Aggregation vor Filterung
+
+Der erste Schritt sollte keine harten fachlichen Filter enthalten. Besser ist:
+erst alle Kandidaten sammeln, dann pro Wallet eine vollstaendige Metric Row
+bauen und danach scoren.
+
+```text
+1. Candidate Wallets aus Leaderboard PNL und VOL sammeln.
+2. Trades und Current Positions fuer jeden Kandidaten aggregieren.
+3. Eine Metric Row pro Wallet erzeugen.
+4. Metriken normalisieren oder in Perzentile umwandeln.
+5. Composite Score pro Wallet berechnen.
+6. Nach Composite Score sortieren.
+7. Untere 25% entfernen.
+8. Top N fuer den finalen Whale-Snapshot behalten.
+```
+
+Der Vorteil: Einzelne schwache Metriken werfen einen Wallet nicht sofort raus.
+Ein Wallet kann z. B. weniger offene Positionen haben, aber starkes PnL,
+hohes Volumen und sehr frische Aktivitaet zeigen.
+
 ## Filter-Logik
 
-Harte Filter sollten nur auf robuste, klar interpretierbare Metriken gehen:
+Harte Filter sollten nur technische Mindestqualitaet und offensichtliche
+Nicht-Kandidaten abdecken:
 
 ```text
 leaderboard_pnl_month > 0
-leaderboard_volume_month >= min_month_volume
-trade_count_30d >= min_trade_count_30d
-trade_volume_30d >= min_trade_volume_30d
-trade_count_7d >= min_trade_count_7d
-last_trade_age_days <= max_last_trade_age_days
+leaderboard_volume_month > 0
+trade_count_30d > 0
+last_trade_at exists
 ```
 
-`current_position_value` ist optional als harter Filter. Wenn nur aktive Trader
-gefunden werden sollen, reicht Trade-Aktivitaet. Wenn nur Whales mit aktuellem
-offenem Kapital relevant sind, sollte `current_position_value` zusaetzlich
-gefordert werden.
+Alles andere sollte ueber den Composite Score laufen. Der eigentliche Cut
+passiert nach dem Sortieren: die unteren 25% werden entfernt.
+
+`current_position_value` sollte nicht zwingend hart filtern. Wenn nur aktive
+Trader gefunden werden sollen, reicht Trade-Aktivitaet. Wenn nur Whales mit
+aktuellem offenem Kapital relevant sind, kann offenes Exposure im Score hoeher
+gewichtet werden.
 
 ## Scoring
 
@@ -190,6 +213,42 @@ risk_score:
   position_concentration
   market_concentration_30d
 ```
+
+Beispiel fuer einen Composite Score:
+
+```text
+composite_score =
+  0.30 * pnl_percentile
++ 0.25 * volume_percentile
++ 0.20 * trade_activity_percentile
++ 0.15 * recency_percentile
++ 0.10 * exposure_percentile
+- 0.10 * concentration_penalty
+```
+
+Richtung der Metriken:
+
+```text
+hoeher ist besser:
+  leaderboard_pnl_month
+  leaderboard_volume_month
+  trade_volume_30d
+  trade_volume_7d
+  trade_count_30d
+  trade_count_7d
+  current_position_value
+
+niedriger ist besser:
+  last_trade_age_days
+
+Penalty bei extremen Werten:
+  market_concentration_30d
+  position_concentration
+```
+
+Konzentration sollte nicht pauschal als schlecht gelten. Hohe Konzentration
+kann Conviction bedeuten. Extrem hohe Konzentration ist aber ein Risiko und
+sollte nur als Penalty in den Score eingehen.
 
 Wichtig: Leaderboard-PnL und Leaderboard-Volumen bleiben die Performance-Basis.
 Trades erklaeren nur, wie aktiv und in welchen Maerkten der Wallet zuletzt war.
