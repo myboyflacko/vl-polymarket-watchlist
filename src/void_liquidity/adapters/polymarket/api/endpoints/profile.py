@@ -11,6 +11,7 @@ from void_liquidity.adapters.polymarket.api.params import (
     ActivityParams,
     ClosedPositionsParams,
     CurrentPositionsParams,
+    TradesParams,
 )
 from void_liquidity.adapters.polymarket.api.params.base import BaseParams
 from void_liquidity.settings import Settings
@@ -78,6 +79,23 @@ async def get_activity(
     return await _get_profile_endpoint(
         client=client,
         endpoint="/activity",
+        params=params,
+    )
+
+
+async def get_trades(
+    client: HTTPClient,
+    params: TradesParams,
+) -> dict[str, Any] | list[Any]:
+    """Fetch trades for a Polymarket user or markets.
+
+    Reference:
+        https://docs.polymarket.com/api-reference/core/get-trades-for-a-user-or-markets
+    """
+
+    return await _get_profile_endpoint(
+        client=client,
+        endpoint="/trades",
         params=params,
     )
 

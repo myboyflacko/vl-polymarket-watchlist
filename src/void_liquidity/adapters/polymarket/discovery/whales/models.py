@@ -54,3 +54,24 @@ class TrackedWhale(Base):
         onupdate=lambda: datetime.now(UTC),
     )
     tracker_run: Mapped[WhaleTrackerRun] = relationship(back_populates="tracked_whales")
+
+
+class TrackedWhaleMetricSnapshot(Base):
+    __tablename__ = "tracked_whale_metric_snapshots"
+    __table_args__ = (
+        Index(
+            "ix_tracked_whale_metric_snapshots_run_wallet",
+            "run_id",
+            "proxy_wallet",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("whale_tracker_runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    proxy_wallet: Mapped[str] = mapped_column(String, nullable=False)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    collection_quality: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

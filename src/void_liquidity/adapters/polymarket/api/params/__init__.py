@@ -4,6 +4,7 @@ from void_liquidity.adapters.polymarket.api.params.profile import (
     ActivityParams,
     ClosedPositionsParams,
     CurrentPositionsParams,
+    TradesParams,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "ClosedPositionsParams",
     "CurrentPositionsParams",
     "LeaderboardParams",
+    "TradesParams",
 ]

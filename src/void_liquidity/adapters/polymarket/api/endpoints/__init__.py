@@ -5,6 +5,7 @@ from void_liquidity.adapters.polymarket.api.endpoints.profile import (
     get_closed_positions,
     get_current_positions,
     get_profile,
+    get_trades,
 )
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "get_current_positions",
     "get_leaderboard",
     "get_profile",
+    "get_trades",
 ]
