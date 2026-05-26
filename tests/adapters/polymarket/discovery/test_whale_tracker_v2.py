@@ -19,6 +19,7 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.tracker import (
 from void_liquidity.adapters.polymarket.discovery.whales_v2 import (
     tracker as tracker_module,
 )
+from void_liquidity.adapters.polymarket.ranking import rank_trade_first_whales
 from void_liquidity.data import Base, create_database_engine, database_session
 from void_liquidity.settings import get_settings
 
@@ -180,6 +181,7 @@ def test_whale_tracker_v2_persists_metric_snapshots(
         run_id="run-v2",
         started_at=NOW,
         finished_at=NOW,
+        ranking_result=rank_trade_first_whales(whales),
     )
 
     with database_session(database_path) as session:
@@ -194,6 +196,8 @@ def test_whale_tracker_v2_persists_metric_snapshots(
     assert snapshot is not None
     assert snapshot.proxy_wallet == WALLET_ONE
     assert snapshot.metrics["trades"]["net_flow_30d"] == 38
+    assert snapshot.metrics["ranking"]["method"] == "trade_first_percentile_v1"
+    assert snapshot.metrics["ranking"]["rank"] == 1
 
 
 async def _build_persistable_whales(monkeypatch) -> Any:

@@ -15,6 +15,7 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import Whale,
 from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
     WhaleTrackerV2Profile,
 )
+from void_liquidity.adapters.polymarket.ranking.trade_first import WhaleRankingResult
 from void_liquidity.data import database_session
 
 
@@ -26,6 +27,7 @@ def persist_whale_tracker_v2_run(
     finished_at: datetime,
     generated_at: datetime,
     whales: Whales,
+    ranking_result: WhaleRankingResult | None = None,
 ) -> None:
     with database_session() as session:
         session.add(
@@ -55,6 +57,7 @@ def persist_whale_tracker_v2_run(
             run_id=run_id,
             generated_at=generated_at,
             whales=whales.whales,
+            ranking_result=ranking_result,
         )
         session.commit()
 
@@ -97,12 +100,17 @@ def _insert_metric_snapshots(
     run_id: str,
     generated_at: datetime,
     whales: Iterable[Whale],
+    ranking_result: WhaleRankingResult | None,
 ) -> None:
+    ranking_by_wallet = _ranking_by_wallet(ranking_result)
     rows = [
         {
             "run_id": run_id,
             "proxy_wallet": whale.proxy_wallet,
-            "metrics": whale.metrics.model_dump(mode="json"),
+            "metrics": {
+                **whale.metrics.model_dump(mode="json"),
+                "ranking": ranking_by_wallet.get(whale.proxy_wallet),
+            },
             "collection_quality": whale.metrics.collection_quality.model_dump(
                 mode="json"
             ),
@@ -113,3 +121,30 @@ def _insert_metric_snapshots(
 
     if rows:
         session.add_all(TrackedWhaleMetricSnapshot(**row) for row in rows)
+
+
+def _ranking_by_wallet(
+    ranking_result: WhaleRankingResult | None,
+) -> dict[str, dict[str, float | int | str | bool]]:
+    if ranking_result is None:
+        return {}
+
+    ranked = {
+        ranked_whale.whale.proxy_wallet: {
+            "method": ranking_result.method,
+            "score": ranked_whale.score,
+            "rank": index,
+            "removed": False,
+        }
+        for index, ranked_whale in enumerate(ranking_result.ranked_whales, start=1)
+    }
+
+    for wallet in ranking_result.removed_wallets:
+        ranked[wallet] = {
+            "method": ranking_result.method,
+            "score": 0.0,
+            "rank": 0,
+            "removed": True,
+        }
+
+    return ranked
