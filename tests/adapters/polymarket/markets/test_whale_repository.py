@@ -9,7 +9,9 @@ from void_liquidity.adapters.polymarket.discovery.whales.models import (
 )
 from void_liquidity.adapters.polymarket.markets.whales.domain import MarketCandidate
 from void_liquidity.adapters.polymarket.markets.whales.models import (
-    WhaleMarketCandidate,
+    WhaleMarket,
+    WhaleMarketCandidateRun,
+    WhaleMarketMetricSnapshot,
 )
 from void_liquidity.adapters.polymarket.markets.whales.repository import (
     list_tracked_whale_wallets,
@@ -69,12 +71,24 @@ def test_persist_market_candidates_ignores_empty_candidates(
 ) -> None:
     _prepare_database(monkeypatch, tmp_path)
 
-    persist_market_candidates([])
+    persist_market_candidates(
+        [],
+        run_id="run-empty",
+        min_whale_count=3,
+        position_count=0,
+        error_count=0,
+    )
 
     with database_session() as session:
-        rows = session.scalars(select(WhaleMarketCandidate)).all()
+        run = session.scalar(select(WhaleMarketCandidateRun))
+        markets = session.scalars(select(WhaleMarket)).all()
+        snapshots = session.scalars(select(WhaleMarketMetricSnapshot)).all()
 
-    assert rows == []
+    assert run is not None
+    assert run.run_id == "run-empty"
+    assert run.candidate_count == 0
+    assert markets == []
+    assert snapshots == []
 
 
 def test_persist_market_candidates_inserts_candidate(
@@ -83,29 +97,49 @@ def test_persist_market_candidates_inserts_candidate(
 ) -> None:
     database_path = _prepare_database(monkeypatch, tmp_path)
 
-    persist_market_candidates([_candidate()], seen_at=NOW)
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=1,
+        seen_at=NOW,
+    )
 
     with database_session(database_path) as session:
-        row = session.scalar(select(WhaleMarketCandidate))
+        run = session.scalar(select(WhaleMarketCandidateRun))
+        market = session.scalar(select(WhaleMarket))
+        snapshot = session.scalar(select(WhaleMarketMetricSnapshot))
 
-    assert row is not None
-    assert row.token_id == "token-1"
-    assert row.condition_id == "0x" + "1" * 64
-    assert row.title == "Will this happen?"
-    assert row.slug == "will-this-happen"
-    assert row.outcome == "Yes"
-    assert row.whale_count == 3
-    assert row.wallets == ["wallet-1", "wallet-2", "wallet-3"]
-    assert row.total_size == 30
-    assert row.total_current_value == 15
-    assert row.weighted_avg_price == 0.4
-    assert row.cur_price == 0.5
-    assert row.opposite_token_id == "token-2"
-    assert row.opposite_outcome == "No"
-    assert row.end_date == date(2026, 7, 20)
-    assert row.negative_risk is False
-    assert row.first_seen_at == _sqlite_datetime(NOW)
-    assert row.last_seen_at == _sqlite_datetime(NOW)
+    assert run is not None
+    assert run.run_id == "run-1"
+    assert run.generated_at == _sqlite_datetime(NOW)
+    assert run.min_whale_count == 3
+    assert run.candidate_count == 1
+    assert run.position_count == 10
+    assert run.error_count == 1
+    assert market is not None
+    assert market.token_id == "token-1"
+    assert market.condition_id == "0x" + "1" * 64
+    assert market.title == "Will this happen?"
+    assert market.slug == "will-this-happen"
+    assert market.outcome == "Yes"
+    assert market.opposite_token_id == "token-2"
+    assert market.opposite_outcome == "No"
+    assert market.end_date == date(2026, 7, 20)
+    assert market.negative_risk is False
+    assert market.first_seen_at == _sqlite_datetime(NOW)
+    assert market.last_seen_at == _sqlite_datetime(NOW)
+    assert snapshot is not None
+    assert snapshot.run_id == "run-1"
+    assert snapshot.token_id == "token-1"
+    assert snapshot.whale_count == 3
+    assert snapshot.wallets == ["wallet-1", "wallet-2", "wallet-3"]
+    assert snapshot.total_size == 30
+    assert snapshot.total_current_value == 15
+    assert snapshot.weighted_avg_price == 0.4
+    assert snapshot.cur_price == 0.5
+    assert snapshot.generated_at == _sqlite_datetime(NOW)
 
 
 def test_persist_market_candidates_updates_existing_candidate_on_token_conflict(
@@ -115,7 +149,14 @@ def test_persist_market_candidates_updates_existing_candidate_on_token_conflict(
     database_path = _prepare_database(monkeypatch, tmp_path)
     later = datetime(2026, 5, 29, tzinfo=UTC)
 
-    persist_market_candidates([_candidate()], seen_at=NOW)
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
     persist_market_candidates(
         [
             _candidate(
@@ -126,21 +167,74 @@ def test_persist_market_candidates_updates_existing_candidate_on_token_conflict(
                 cur_price=0.6,
             )
         ],
+        run_id="run-2",
+        min_whale_count=3,
+        position_count=12,
+        error_count=0,
         seen_at=later,
     )
 
     with database_session(database_path) as session:
-        rows = session.scalars(select(WhaleMarketCandidate)).all()
+        runs = session.scalars(
+            select(WhaleMarketCandidateRun).order_by(WhaleMarketCandidateRun.run_id)
+        ).all()
+        markets = session.scalars(select(WhaleMarket)).all()
+        snapshots = session.scalars(
+            select(WhaleMarketMetricSnapshot).order_by(WhaleMarketMetricSnapshot.run_id)
+        ).all()
 
-    assert len(rows) == 1
-    row = rows[0]
-    assert row.title == "Updated title"
-    assert row.whale_count == 4
-    assert row.total_current_value == 25
-    assert row.wallets == ["wallet-1", "wallet-2", "wallet-3", "wallet-4"]
-    assert row.cur_price == 0.6
-    assert row.first_seen_at == _sqlite_datetime(NOW)
-    assert row.last_seen_at == _sqlite_datetime(later)
+    assert [run.run_id for run in runs] == ["run-1", "run-2"]
+    assert len(markets) == 1
+    market = markets[0]
+    assert market.title == "Updated title"
+    assert market.first_seen_at == _sqlite_datetime(NOW)
+    assert market.last_seen_at == _sqlite_datetime(later)
+    assert len(snapshots) == 2
+    assert snapshots[0].run_id == "run-1"
+    assert snapshots[0].whale_count == 3
+    assert snapshots[0].total_current_value == 15
+    assert snapshots[1].run_id == "run-2"
+    assert snapshots[1].whale_count == 4
+    assert snapshots[1].total_current_value == 25
+    assert snapshots[1].wallets == ["wallet-1", "wallet-2", "wallet-3", "wallet-4"]
+    assert snapshots[1].cur_price == 0.6
+
+
+def test_persist_market_candidates_updates_snapshot_on_same_run_token_conflict(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_path = _prepare_database(monkeypatch, tmp_path)
+
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
+    persist_market_candidates(
+        [_candidate(whale_count=5, total_current_value=35)],
+        run_id="run-1",
+        min_whale_count=4,
+        position_count=12,
+        error_count=1,
+        seen_at=NOW,
+    )
+
+    with database_session(database_path) as session:
+        run = session.scalar(select(WhaleMarketCandidateRun))
+        snapshots = session.scalars(select(WhaleMarketMetricSnapshot)).all()
+
+    assert run is not None
+    assert run.min_whale_count == 4
+    assert run.candidate_count == 1
+    assert run.position_count == 12
+    assert run.error_count == 1
+    assert len(snapshots) == 1
+    assert snapshots[0].whale_count == 5
+    assert snapshots[0].total_current_value == 35
 
 
 def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
