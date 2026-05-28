@@ -14,6 +14,10 @@ from void_liquidity.adapters.polymarket.api.params import (
     TradesParams,
 )
 from void_liquidity.adapters.polymarket.api.params.base import BaseParams
+from void_liquidity.adapters.polymarket.api.rate_limit import (
+    PolymarketDataEndpoint,
+    wait_for_data_api,
+)
 from void_liquidity.settings import Settings
 
 settings = Settings()
@@ -46,6 +50,7 @@ async def get_closed_positions(
         client=client,
         endpoint="/v1/closed-positions",
         params=params,
+        rate_limit_endpoint=PolymarketDataEndpoint.POSITIONS,
     )
 
 
@@ -63,6 +68,7 @@ async def get_current_positions(
         client=client,
         endpoint="/v1/positions",
         params=params,
+        rate_limit_endpoint=PolymarketDataEndpoint.POSITIONS,
     )
 
 
@@ -80,6 +86,7 @@ async def get_activity(
         client=client,
         endpoint="/activity",
         params=params,
+        rate_limit_endpoint=PolymarketDataEndpoint.POSITIONS,
     )
 
 
@@ -97,6 +104,7 @@ async def get_trades(
         client=client,
         endpoint="/trades",
         params=params,
+        rate_limit_endpoint=PolymarketDataEndpoint.TRADES,
     )
 
 
@@ -104,6 +112,7 @@ async def _get_profile_endpoint(
     client: HTTPClient,
     endpoint: str,
     params: BaseParams,
+    rate_limit_endpoint: PolymarketDataEndpoint,
 ) -> dict[str, Any] | list[Any]:
     base_url = settings.polymarket.data_api
     query_params = params.output_params()
@@ -111,6 +120,7 @@ async def _get_profile_endpoint(
 
     for attempt in range(1, max_attempts + 1):
         try:
+            await wait_for_data_api(rate_limit_endpoint)
             async with profile_request_semaphore:
                 if settings.polymarket.request_delay_seconds:
                     await asyncio.sleep(settings.polymarket.request_delay_seconds)

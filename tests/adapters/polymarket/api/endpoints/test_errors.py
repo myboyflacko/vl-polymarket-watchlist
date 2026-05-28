@@ -42,7 +42,16 @@ class RateLimitedClient:
         )
 
 
-def test_leaderboard_endpoint_propagates_client_errors() -> None:
+def test_leaderboard_endpoint_propagates_client_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from void_liquidity.adapters.polymarket.api.endpoints import leaderboard
+
+    async def fake_wait_for_data_api(endpoint: Any) -> None:
+        return None
+
+    monkeypatch.setattr(leaderboard, "wait_for_data_api", fake_wait_for_data_api)
+
     with pytest.raises(RuntimeError, match="boom for /v1/leaderboard"):
         asyncio.run(
             get_leaderboard(
@@ -58,6 +67,12 @@ def test_profile_endpoint_translates_429_status_to_rate_limit_error(
     from void_liquidity.adapters.polymarket.api.endpoints import profile
 
     monkeypatch.setattr(profile.settings.polymarket, "rate_limit_retry_attempts", 0)
+    monkeypatch.setattr(profile.settings.polymarket, "request_delay_seconds", 0)
+
+    async def fake_wait_for_data_api(endpoint: Any) -> None:
+        return None
+
+    monkeypatch.setattr(profile, "wait_for_data_api", fake_wait_for_data_api)
 
     with pytest.raises(PolymarketRateLimitError):
         asyncio.run(
@@ -68,7 +83,18 @@ def test_profile_endpoint_translates_429_status_to_rate_limit_error(
         )
 
 
-def test_profile_endpoint_propagates_non_rate_limit_client_errors() -> None:
+def test_profile_endpoint_propagates_non_rate_limit_client_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from void_liquidity.adapters.polymarket.api.endpoints import profile
+
+    monkeypatch.setattr(profile.settings.polymarket, "request_delay_seconds", 0)
+
+    async def fake_wait_for_data_api(endpoint: Any) -> None:
+        return None
+
+    monkeypatch.setattr(profile, "wait_for_data_api", fake_wait_for_data_api)
+
     with pytest.raises(RuntimeError, match="boom for /v1/positions"):
         asyncio.run(
             get_current_positions(

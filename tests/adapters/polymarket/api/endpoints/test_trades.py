@@ -1,6 +1,9 @@
 import asyncio
 from typing import Any
 
+import pytest
+
+from void_liquidity.adapters.polymarket.api.endpoints import profile
 from void_liquidity.adapters.polymarket.api.endpoints.profile import get_trades
 from void_liquidity.adapters.polymarket.api.params import TradesParams
 
@@ -29,7 +32,13 @@ class FakeClient:
         return []
 
 
-def test_get_trades_uses_trades_endpoint() -> None:
+def test_get_trades_uses_trades_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def fake_wait_for_data_api(endpoint: Any) -> None:
+        return None
+
+    monkeypatch.setattr(profile, "wait_for_data_api", fake_wait_for_data_api)
+    monkeypatch.setattr(profile.settings.polymarket, "request_delay_seconds", 0)
+
     client = FakeClient()
 
     asyncio.run(get_trades(client=client, params=TradesParams(user=WALLET)))
