@@ -1,6 +1,6 @@
 from void_liquidity.adapters.polymarket.api.endpoints.leaderboard import get_leaderboard
+from void_liquidity.adapters.polymarket.api.errors import PolymarketRateLimitError
 from void_liquidity.adapters.polymarket.api.endpoints.profile import (
-    PolymarketRateLimitError,
     get_activity,
     get_closed_positions,
     get_current_positions,

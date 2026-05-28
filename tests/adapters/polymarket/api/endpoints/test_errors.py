@@ -7,10 +7,8 @@ from void_liquidity.adapters.polymarket.api.endpoints.leaderboard import (
     get_leaderboard,
 )
 from void_liquidity.adapters.polymarket.api.endpoints.profile import (
-    PolymarketRateLimitError,
     get_current_positions,
 )
-from void_liquidity.adapters.polymarket.api.client import HTTPStatusCodeError
 from void_liquidity.adapters.polymarket.api.params import CurrentPositionsParams
 from void_liquidity.adapters.polymarket.api.params.leaderboard import LeaderboardParams
 
@@ -18,87 +16,53 @@ from void_liquidity.adapters.polymarket.api.params.leaderboard import Leaderboar
 WALLET = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
-class FailingClient:
-    async def get(
-        self,
-        base_url: str,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | list[Any]:
-        raise RuntimeError(f"boom for {endpoint}")
+class UnusedClient:
+    pass
 
 
-class RateLimitedClient:
-    async def get(
-        self,
-        base_url: str,
-        endpoint: str,
-        params: dict[str, Any] | None = None,
-    ) -> dict[str, Any] | list[Any]:
-        raise HTTPStatusCodeError(
-            url=f"{base_url}{endpoint}",
-            status_code=429,
-            response_text="too many requests",
-        )
+class FailingDataClient:
+    async def get_leaderboard(self, params: Any) -> list[Any]:
+        raise RuntimeError("boom for /v1/leaderboard")
+
+    async def get_current_positions(self, params: Any) -> list[Any]:
+        raise RuntimeError("boom for /v1/positions")
 
 
-def test_leaderboard_endpoint_propagates_client_errors(
+def test_leaderboard_endpoint_propagates_data_client_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from void_liquidity.adapters.polymarket.api.endpoints import leaderboard
 
-    async def fake_wait_for_data_api(endpoint: Any) -> None:
-        return None
-
-    monkeypatch.setattr(leaderboard, "wait_for_data_api", fake_wait_for_data_api)
+    monkeypatch.setattr(
+        leaderboard,
+        "get_polymarket_data_client",
+        lambda: FailingDataClient(),
+    )
 
     with pytest.raises(RuntimeError, match="boom for /v1/leaderboard"):
         asyncio.run(
             get_leaderboard(
-                client=FailingClient(),
+                client=UnusedClient(),
                 params=LeaderboardParams(),
             )
         )
 
 
-def test_profile_endpoint_translates_429_status_to_rate_limit_error(
+def test_profile_endpoint_propagates_data_client_errors(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from void_liquidity.adapters.polymarket.api.endpoints import profile
 
-    monkeypatch.setattr(profile.settings.polymarket, "rate_limit_retry_attempts", 0)
-    monkeypatch.setattr(profile.settings.polymarket, "request_delay_seconds", 0)
-
-    async def fake_wait_for_data_api(endpoint: Any) -> None:
-        return None
-
-    monkeypatch.setattr(profile, "wait_for_data_api", fake_wait_for_data_api)
-
-    with pytest.raises(PolymarketRateLimitError):
-        asyncio.run(
-            get_current_positions(
-                client=RateLimitedClient(),
-                params=CurrentPositionsParams(user=WALLET),
-            )
-        )
-
-
-def test_profile_endpoint_propagates_non_rate_limit_client_errors(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from void_liquidity.adapters.polymarket.api.endpoints import profile
-
-    monkeypatch.setattr(profile.settings.polymarket, "request_delay_seconds", 0)
-
-    async def fake_wait_for_data_api(endpoint: Any) -> None:
-        return None
-
-    monkeypatch.setattr(profile, "wait_for_data_api", fake_wait_for_data_api)
+    monkeypatch.setattr(
+        profile,
+        "get_polymarket_data_client",
+        lambda: FailingDataClient(),
+    )
 
     with pytest.raises(RuntimeError, match="boom for /v1/positions"):
         asyncio.run(
             get_current_positions(
-                client=FailingClient(),
+                client=UnusedClient(),
                 params=CurrentPositionsParams(user=WALLET),
             )
         )

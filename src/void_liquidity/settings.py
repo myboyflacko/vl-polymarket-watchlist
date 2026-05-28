@@ -40,6 +40,66 @@ class PolymarketSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+
+class PolymarketDataApiClientSettings(BaseSettings):
+    base_url: str = Field(
+        default="https://data-api.polymarket.com",
+        alias="POLYMARKET_DATA_API_BASE_URL",
+    )
+    timeout_seconds: float = Field(
+        default=10.0,
+        ge=0,
+        alias="POLYMARKET_DATA_API_TIMEOUT_SECONDS",
+    )
+    max_concurrent_requests: int = Field(
+        default=4,
+        ge=1,
+        alias="POLYMARKET_DATA_API_MAX_CONCURRENT_REQUESTS",
+    )
+    request_delay_seconds: float = Field(
+        default=0.5,
+        ge=0,
+        alias="POLYMARKET_DATA_API_REQUEST_DELAY_SECONDS",
+    )
+    rate_limit_retry_attempts: int = Field(
+        default=5,
+        ge=0,
+        alias="POLYMARKET_DATA_API_RATE_LIMIT_RETRY_ATTEMPTS",
+    )
+    rate_limit_backoff_seconds: float = Field(
+        default=60.0,
+        ge=0,
+        alias="POLYMARKET_DATA_API_RATE_LIMIT_BACKOFF_SECONDS",
+    )
+    requests_per_second: float = Field(
+        default=80,
+        gt=0,
+        alias="POLYMARKET_DATA_API_REQUESTS_PER_SECOND",
+    )
+    trades_requests_per_second: float = Field(
+        default=12,
+        gt=0,
+        alias="POLYMARKET_TRADES_REQUESTS_PER_SECOND",
+    )
+    positions_requests_per_second: float = Field(
+        default=8,
+        gt=0,
+        alias="POLYMARKET_POSITIONS_REQUESTS_PER_SECOND",
+    )
+    leaderboard_requests_per_second: float = Field(
+        default=3,
+        gt=0,
+        alias="POLYMARKET_LEADERBOARD_REQUESTS_PER_SECOND",
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_file_encoding="utf-8",
+        populate_by_name=True,
         extra="ignore",
     )
 
@@ -67,6 +127,9 @@ class DatabaseSettings(BaseSettings):
 
 class Settings(BaseSettings):
     polymarket: PolymarketSettings = Field(default_factory=PolymarketSettings)
+    polymarket_data_api_client: PolymarketDataApiClientSettings = Field(
+        default_factory=PolymarketDataApiClientSettings,
+    )
     database: DatabaseSettings = Field(default_factory=DatabaseSettings)
 
 

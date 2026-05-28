@@ -3,7 +3,6 @@ from typing import Any
 
 import pytest
 
-from void_liquidity.adapters.polymarket.api.endpoints import profile
 from void_liquidity.adapters.polymarket.api.endpoints.profile import get_trades
 from void_liquidity.adapters.polymarket.api.params import TradesParams
 
@@ -11,37 +10,29 @@ from void_liquidity.adapters.polymarket.api.params import TradesParams
 WALLET = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 
-class FakeClient:
-    def __init__(self) -> None:
-        self.calls: list[dict[str, Any]] = []
+class UnusedClient:
+    pass
 
-    async def get(
-        self,
-        *,
-        base_url: str,
-        endpoint: str,
-        params: dict[str, Any],
-    ) -> list[dict[str, Any]]:
-        self.calls.append(
-            {
-                "base_url": base_url,
-                "endpoint": endpoint,
-                "params": params,
-            }
-        )
+
+class RecordingDataClient:
+    def __init__(self) -> None:
+        self.params: list[Any] = []
+
+    async def get_trades(self, params: TradesParams) -> list[Any]:
+        self.params.append(params)
         return []
 
 
-def test_get_trades_uses_trades_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
-    async def fake_wait_for_data_api(endpoint: Any) -> None:
-        return None
+def test_get_trades_delegates_to_data_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    from void_liquidity.adapters.polymarket.api.endpoints import profile
 
-    monkeypatch.setattr(profile, "wait_for_data_api", fake_wait_for_data_api)
-    monkeypatch.setattr(profile.settings.polymarket, "request_delay_seconds", 0)
+    data_client = RecordingDataClient()
+    monkeypatch.setattr(
+        profile,
+        "get_polymarket_data_client",
+        lambda: data_client,
+    )
 
-    client = FakeClient()
+    asyncio.run(get_trades(client=UnusedClient(), params=TradesParams(user=WALLET)))
 
-    asyncio.run(get_trades(client=client, params=TradesParams(user=WALLET)))
-
-    assert client.calls[0]["endpoint"] == "/trades"
-    assert client.calls[0]["params"]["user"] == WALLET
+    assert data_client.params[0].user == WALLET

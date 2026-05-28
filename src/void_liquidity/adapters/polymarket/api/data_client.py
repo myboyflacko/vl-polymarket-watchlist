@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
+from collections.abc import Callable
+from enum import StrEnum
+from functools import lru_cache
+from typing import Any, Protocol
+from urllib.parse import urljoin
 
-from void_liquidity.adapters.polymarket.api.client import (
-    HTTPClient,
-    HTTPStatusCodeError,
-)
+import httpx
+from asynciolimiter import StrictLimiter
+
 from void_liquidity.adapters.polymarket.api.errors import PolymarketRateLimitError
 from void_liquidity.adapters.polymarket.api.params import (
     ActivityParams,
@@ -16,24 +19,49 @@ from void_liquidity.adapters.polymarket.api.params import (
     TradesParams,
 )
 from void_liquidity.adapters.polymarket.api.params.base import BaseParams
-from void_liquidity.adapters.polymarket.api.rate_limit import (
-    PolymarketDataEndpoint,
-    wait_for_data_api,
-)
-from void_liquidity.settings import Settings
+from void_liquidity.settings import PolymarketDataApiClientSettings, get_settings
 
 
-settings = Settings()
+class PolymarketDataEndpoint(StrEnum):
+    TRADES = "trades"
+    POSITIONS = "positions"
+    LEADERBOARD = "leaderboard"
 
-data_api_request_semaphore = asyncio.Semaphore(
-    settings.polymarket.max_concurrent_profile_requests,
-)
+
+class AsyncRateLimiter(Protocol):
+    async def wait(self) -> None:
+        ...
 
 
 class PolymarketDataClient:
-    def __init__(self, http_client: HTTPClient | None = None) -> None:
-        self._client = http_client or HTTPClient()
-        self._owns_client = http_client is None
+    def __init__(
+        self,
+        *,
+        settings: PolymarketDataApiClientSettings | None = None,
+        async_client: httpx.AsyncClient | None = None,
+        limiter_factory: Callable[[float], AsyncRateLimiter] = StrictLimiter,
+        semaphore: asyncio.Semaphore | None = None,
+    ) -> None:
+        self.settings = settings or get_settings().polymarket_data_api_client
+        self._client = async_client or httpx.AsyncClient(
+            timeout=self.settings.timeout_seconds,
+        )
+        self._owns_client = async_client is None
+        self._semaphore = semaphore or asyncio.Semaphore(
+            self.settings.max_concurrent_requests,
+        )
+        self._data_api_limiter = limiter_factory(self.settings.requests_per_second)
+        self._endpoint_limiters = {
+            PolymarketDataEndpoint.TRADES: limiter_factory(
+                self.settings.trades_requests_per_second,
+            ),
+            PolymarketDataEndpoint.POSITIONS: limiter_factory(
+                self.settings.positions_requests_per_second,
+            ),
+            PolymarketDataEndpoint.LEADERBOARD: limiter_factory(
+                self.settings.leaderboard_requests_per_second,
+            ),
+        }
 
     async def __aenter__(self) -> PolymarketDataClient:
         return self
@@ -93,7 +121,7 @@ class PolymarketDataClient:
 
     async def close(self) -> None:
         if self._owns_client:
-            await self._client.close()
+            await self._client.aclose()
 
     async def _get_data_api_endpoint(
         self,
@@ -103,26 +131,28 @@ class PolymarketDataClient:
         rate_limit_endpoint: PolymarketDataEndpoint,
     ) -> dict[str, Any] | list[Any]:
         query_params = params.output_params()
-        max_attempts = settings.polymarket.rate_limit_retry_attempts + 1
+        max_attempts = self.settings.rate_limit_retry_attempts + 1
+        url = urljoin(self.settings.base_url, endpoint)
 
         for attempt in range(1, max_attempts + 1):
             try:
-                await wait_for_data_api(rate_limit_endpoint)
-                async with data_api_request_semaphore:
-                    if settings.polymarket.request_delay_seconds:
-                        await asyncio.sleep(settings.polymarket.request_delay_seconds)
+                await self._wait_for_rate_limit(rate_limit_endpoint)
+                async with self._semaphore:
+                    if self.settings.request_delay_seconds:
+                        await asyncio.sleep(self.settings.request_delay_seconds)
 
-                    return await self._client.get(
-                        base_url=settings.polymarket.data_api,
-                        endpoint=endpoint,
+                    response = await self._client.get(
+                        url=url,
                         params=query_params,
                     )
+                    response.raise_for_status()
+                    return response.json()
 
             except Exception as exc:
                 is_rate_limited = _is_rate_limited(exc)
 
                 if is_rate_limited and attempt < max_attempts:
-                    wait_seconds = settings.polymarket.rate_limit_backoff_seconds * attempt
+                    wait_seconds = self.settings.rate_limit_backoff_seconds * attempt
                     await asyncio.sleep(wait_seconds)
                     continue
 
@@ -135,6 +165,18 @@ class PolymarketDataClient:
 
         raise RuntimeError(f"Request attempts exhausted for {endpoint}")
 
+    async def _wait_for_rate_limit(
+        self,
+        rate_limit_endpoint: PolymarketDataEndpoint,
+    ) -> None:
+        await self._data_api_limiter.wait()
+        await self._endpoint_limiters[rate_limit_endpoint].wait()
+
 
 def _is_rate_limited(exc: Exception) -> bool:
-    return isinstance(exc, HTTPStatusCodeError) and exc.status_code == 429
+    return isinstance(exc, httpx.HTTPStatusError) and exc.response.status_code == 429
+
+
+@lru_cache(maxsize=1)
+def get_polymarket_data_client() -> PolymarketDataClient:
+    return PolymarketDataClient()
