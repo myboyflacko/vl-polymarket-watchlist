@@ -7,6 +7,7 @@ from void_liquidity.adapters.polymarket.api.client import (
     HTTPClient,
     HTTPStatusCodeError,
 )
+from void_liquidity.adapters.polymarket.api.errors import PolymarketRateLimitError
 from void_liquidity.adapters.polymarket.api.params import (
     ActivityParams,
     ClosedPositionsParams,
@@ -24,10 +25,6 @@ settings = Settings()
 profile_request_semaphore = asyncio.Semaphore(
     settings.polymarket.max_concurrent_profile_requests,
 )
-
-
-class PolymarketRateLimitError(RuntimeError):
-    pass
 
 
 def _is_rate_limited(exc: Exception) -> bool:

@@ -1,3 +1,4 @@
+from void_liquidity.adapters.polymarket.api.data_client import PolymarketDataClient
 from void_liquidity.adapters.polymarket.api.endpoints.leaderboard import get_leaderboard
 from void_liquidity.adapters.polymarket.api.endpoints.profile import (
     PolymarketRateLimitError,
@@ -9,6 +10,7 @@ from void_liquidity.adapters.polymarket.api.endpoints.profile import (
 )
 
 __all__ = [
+    "PolymarketDataClient",
     "PolymarketRateLimitError",
     "get_activity",
     "get_closed_positions",

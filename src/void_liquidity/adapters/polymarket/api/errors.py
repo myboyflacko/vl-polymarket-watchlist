@@ -1,0 +1,2 @@
+class PolymarketRateLimitError(RuntimeError):
+    pass
