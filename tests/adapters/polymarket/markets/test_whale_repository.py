@@ -14,6 +14,9 @@ from void_liquidity.adapters.polymarket.markets.whales.models import (
     WhaleMarketMetricSnapshot,
 )
 from void_liquidity.adapters.polymarket.markets.whales.repository import (
+    get_latest_market_candidate_run,
+    list_latest_market_candidates,
+    list_market_snapshots,
     list_tracked_whale_wallets,
     persist_market_candidates,
 )
@@ -237,6 +240,192 @@ def test_persist_market_candidates_updates_snapshot_on_same_run_token_conflict(
     assert snapshots[0].total_current_value == 35
 
 
+def test_get_latest_market_candidate_run_returns_none_without_runs(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+
+    assert get_latest_market_candidate_run() is None
+
+
+def test_get_latest_market_candidate_run_returns_newest_run(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+    later = datetime(2026, 5, 29, tzinfo=UTC)
+
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
+    persist_market_candidates(
+        [_candidate(token_id="token-2", total_current_value=25)],
+        run_id="run-2",
+        min_whale_count=4,
+        position_count=12,
+        error_count=1,
+        seen_at=later,
+    )
+
+    run = get_latest_market_candidate_run()
+
+    assert run is not None
+    assert run.run_id == "run-2"
+    assert run.generated_at == _sqlite_datetime(later)
+    assert run.min_whale_count == 4
+    assert run.candidate_count == 1
+    assert run.position_count == 12
+    assert run.error_count == 1
+
+
+def test_list_latest_market_candidates_returns_empty_list_without_runs(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+
+    assert list_latest_market_candidates() == []
+
+
+def test_list_latest_market_candidates_returns_latest_run_candidates_sorted(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+    later = datetime(2026, 5, 29, tzinfo=UTC)
+
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
+    persist_market_candidates(
+        [
+            _candidate(
+                token_id="token-2",
+                whale_count=4,
+                total_current_value=20,
+            ),
+            _candidate(
+                token_id="token-3",
+                whale_count=5,
+                total_current_value=10,
+            ),
+            _candidate(
+                token_id="token-4",
+                whale_count=4,
+                total_current_value=30,
+            ),
+        ],
+        run_id="run-2",
+        min_whale_count=3,
+        position_count=12,
+        error_count=0,
+        seen_at=later,
+    )
+
+    candidates = list_latest_market_candidates()
+
+    assert [candidate.token_id for candidate in candidates] == [
+        "token-3",
+        "token-4",
+        "token-2",
+    ]
+    assert candidates[0].whale_count == 5
+    assert candidates[0].total_current_value == 10
+    assert candidates[0].condition_id == "0x" + "1" * 64
+
+
+def test_list_latest_market_candidates_applies_limit(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+
+    persist_market_candidates(
+        [
+            _candidate(token_id="token-1", whale_count=3),
+            _candidate(token_id="token-2", whale_count=4),
+        ],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
+
+    candidates = list_latest_market_candidates(limit=1)
+
+    assert [candidate.token_id for candidate in candidates] == ["token-2"]
+
+
+def test_list_market_snapshots_returns_token_history_newest_first(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+    later = datetime(2026, 5, 29, tzinfo=UTC)
+
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
+    persist_market_candidates(
+        [
+            _candidate(whale_count=4, total_current_value=25),
+            _candidate(token_id="token-2", whale_count=5, total_current_value=35),
+        ],
+        run_id="run-2",
+        min_whale_count=3,
+        position_count=12,
+        error_count=0,
+        seen_at=later,
+    )
+
+    snapshots = list_market_snapshots("token-1")
+
+    assert [snapshot.run_id for snapshot in snapshots] == ["run-2", "run-1"]
+    assert [snapshot.generated_at for snapshot in snapshots] == [
+        _sqlite_datetime(later),
+        _sqlite_datetime(NOW),
+    ]
+    assert snapshots[0].token_id == "token-1"
+    assert snapshots[0].whale_count == 4
+    assert snapshots[0].total_current_value == 25
+    assert snapshots[0].title == "Will this happen?"
+
+
+def test_list_market_snapshots_returns_empty_list_for_unknown_token(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    _prepare_database(monkeypatch, tmp_path)
+
+    persist_market_candidates(
+        [_candidate()],
+        run_id="run-1",
+        min_whale_count=3,
+        position_count=10,
+        error_count=0,
+        seen_at=NOW,
+    )
+
+    assert list_market_snapshots("unknown-token") == []
+
+
 def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
     database_path = tmp_path / "whales.sqlite3"
     monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
@@ -248,6 +437,7 @@ def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
 
 def _candidate(
     *,
+    token_id: str = "token-1",
     title: str = "Will this happen?",
     whale_count: int = 3,
     total_current_value: float = 15,
@@ -255,7 +445,7 @@ def _candidate(
     cur_price: float = 0.5,
 ) -> MarketCandidate:
     return MarketCandidate(
-        token_id="token-1",
+        token_id=token_id,
         condition_id="0x" + "1" * 64,
         title=title,
         slug="will-this-happen",

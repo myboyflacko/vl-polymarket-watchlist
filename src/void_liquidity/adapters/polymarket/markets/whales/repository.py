@@ -3,11 +3,15 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
-from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 
 from void_liquidity.adapters.polymarket.discovery.whales.models import TrackedWhale
-from void_liquidity.adapters.polymarket.markets.whales.domain import MarketCandidate
+from void_liquidity.adapters.polymarket.markets.whales.domain import (
+    MarketCandidate,
+    WhaleMarketCandidateRunSummary,
+    WhaleMarketSnapshot,
+)
 from void_liquidity.adapters.polymarket.markets.whales.models import (
     WhaleMarket,
     WhaleMarketCandidateRun,
@@ -23,6 +27,77 @@ def list_tracked_whale_wallets() -> list[str]:
                 select(TrackedWhale.proxy_wallet).order_by(TrackedWhale.id)
             )
         )
+
+
+def get_latest_market_candidate_run() -> WhaleMarketCandidateRunSummary | None:
+    with database_session() as session:
+        run = session.scalar(_latest_run_statement())
+
+    if run is None:
+        return None
+
+    return _run_summary(run)
+
+
+def list_latest_market_candidates(
+    *,
+    limit: int | None = None,
+) -> list[MarketCandidate]:
+    latest_run = get_latest_market_candidate_run()
+    if latest_run is None:
+        return []
+
+    with database_session() as session:
+        statement = (
+            select(WhaleMarket, WhaleMarketMetricSnapshot)
+            .join(
+                WhaleMarketMetricSnapshot,
+                WhaleMarketMetricSnapshot.token_id == WhaleMarket.token_id,
+            )
+            .where(WhaleMarketMetricSnapshot.run_id == latest_run.run_id)
+            .order_by(
+                WhaleMarketMetricSnapshot.whale_count.desc(),
+                WhaleMarketMetricSnapshot.total_current_value.desc(),
+            )
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+
+        rows = session.execute(statement).all()
+
+    return [
+        _market_candidate(market=market, snapshot=snapshot)
+        for market, snapshot in rows
+    ]
+
+
+def list_market_snapshots(
+    token_id: str,
+    *,
+    limit: int | None = None,
+) -> list[WhaleMarketSnapshot]:
+    with database_session() as session:
+        statement = (
+            select(WhaleMarket, WhaleMarketMetricSnapshot)
+            .join(
+                WhaleMarketMetricSnapshot,
+                WhaleMarketMetricSnapshot.token_id == WhaleMarket.token_id,
+            )
+            .where(WhaleMarket.token_id == token_id)
+            .order_by(
+                WhaleMarketMetricSnapshot.generated_at.desc(),
+                WhaleMarketMetricSnapshot.run_id.desc(),
+            )
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+
+        rows = session.execute(statement).all()
+
+    return [
+        _market_snapshot(market=market, snapshot=snapshot)
+        for market, snapshot in rows
+    ]
 
 
 def persist_market_candidates(
@@ -60,6 +135,78 @@ def persist_market_candidates(
             session=session,
         )
         session.commit()
+
+
+def _latest_run_statement():
+    return (
+        select(WhaleMarketCandidateRun)
+        .order_by(
+            WhaleMarketCandidateRun.generated_at.desc(),
+            WhaleMarketCandidateRun.run_id.desc(),
+        )
+        .limit(1)
+    )
+
+
+def _run_summary(run: WhaleMarketCandidateRun) -> WhaleMarketCandidateRunSummary:
+    return WhaleMarketCandidateRunSummary(
+        run_id=run.run_id,
+        generated_at=run.generated_at,
+        min_whale_count=run.min_whale_count,
+        candidate_count=run.candidate_count,
+        position_count=run.position_count,
+        error_count=run.error_count,
+    )
+
+
+def _market_candidate(
+    *,
+    market: WhaleMarket,
+    snapshot: WhaleMarketMetricSnapshot,
+) -> MarketCandidate:
+    return MarketCandidate(
+        token_id=market.token_id,
+        condition_id=market.condition_id,
+        title=market.title,
+        slug=market.slug,
+        outcome=market.outcome,
+        whale_count=snapshot.whale_count,
+        wallets=snapshot.wallets,
+        total_size=snapshot.total_size,
+        total_current_value=snapshot.total_current_value,
+        weighted_avg_price=snapshot.weighted_avg_price,
+        cur_price=snapshot.cur_price,
+        opposite_token_id=market.opposite_token_id,
+        opposite_outcome=market.opposite_outcome,
+        end_date=market.end_date,
+        negative_risk=market.negative_risk,
+    )
+
+
+def _market_snapshot(
+    *,
+    market: WhaleMarket,
+    snapshot: WhaleMarketMetricSnapshot,
+) -> WhaleMarketSnapshot:
+    return WhaleMarketSnapshot(
+        run_id=snapshot.run_id,
+        generated_at=snapshot.generated_at,
+        token_id=market.token_id,
+        condition_id=market.condition_id,
+        title=market.title,
+        slug=market.slug,
+        outcome=market.outcome,
+        whale_count=snapshot.whale_count,
+        wallets=snapshot.wallets,
+        total_size=snapshot.total_size,
+        total_current_value=snapshot.total_current_value,
+        weighted_avg_price=snapshot.weighted_avg_price,
+        cur_price=snapshot.cur_price,
+        opposite_token_id=market.opposite_token_id,
+        opposite_outcome=market.opposite_outcome,
+        end_date=market.end_date,
+        negative_risk=market.negative_risk,
+    )
 
 
 def _upsert_markets(
