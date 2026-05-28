@@ -10,6 +10,7 @@ from void_liquidity.adapters.polymarket.markets.whales.domain import (
 )
 from void_liquidity.adapters.polymarket.markets.whales.repository import (
     list_tracked_whale_wallets,
+    persist_market_candidates,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "build_market_candidates",
     "collect_whale_market_candidates",
     "list_tracked_whale_wallets",
+    "persist_market_candidates",
 ]

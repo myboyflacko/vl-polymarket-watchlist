@@ -1,4 +1,5 @@
 import asyncio
+from datetime import date
 from typing import Any
 
 from void_liquidity.adapters.polymarket.markets.whales import collector as collector_module
@@ -43,6 +44,7 @@ def test_build_market_candidates_groups_positions_by_token_id() -> None:
     assert candidates[0].total_current_value == 150
     assert candidates[0].total_size == 15
     assert candidates[0].weighted_avg_price == 0.4
+    assert candidates[0].end_date == date(2026, 7, 20)
     assert candidates[1].condition_id == CONDITION_ID
     assert candidates[1].outcome == "No"
 
@@ -178,6 +180,7 @@ def _whale_position(
         cur_price=0.5,
         opposite_token_id=NO_TOKEN,
         opposite_outcome="No",
+        end_date=date(2026, 7, 20),
     )
 
 

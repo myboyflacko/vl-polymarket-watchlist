@@ -182,6 +182,7 @@ def _build_market_candidate(
         cur_price=first_position.cur_price,
         opposite_token_id=first_position.opposite_token_id,
         opposite_outcome=first_position.opposite_outcome,
+        end_date=first_position.end_date,
         negative_risk=first_position.negative_risk,
     )
 

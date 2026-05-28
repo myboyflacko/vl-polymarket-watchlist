@@ -37,6 +37,7 @@ class MarketCandidate(BaseModel):
     cur_price: float
     opposite_token_id: str | None = None
     opposite_outcome: str | None = None
+    end_date: date | None = None
     negative_risk: bool = False
 
 

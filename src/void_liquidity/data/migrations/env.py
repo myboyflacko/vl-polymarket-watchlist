@@ -12,10 +12,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from void_liquidity.adapters.polymarket.discovery.whales import (
     models as track_whales_models,
 )
+from void_liquidity.adapters.polymarket.markets.whales import (
+    models as whale_market_models,
+)
 from void_liquidity.data import Base, build_sqlite_url, ensure_database_parent
 
 
-_ = track_whales_models
+_ = track_whales_models, whale_market_models
 
 
 config = context.config
