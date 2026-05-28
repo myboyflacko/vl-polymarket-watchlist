@@ -6,7 +6,6 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 
-from void_liquidity.adapters.polymarket.discovery.whales.models import TrackedWhale
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     MarketCandidate,
     WhaleMarketCandidateRunSummary,
@@ -18,15 +17,6 @@ from void_liquidity.adapters.polymarket.markets.whales.models import (
     WhaleMarketMetricSnapshot,
 )
 from void_liquidity.data import database_session
-
-
-def list_tracked_whale_wallets() -> list[str]:
-    with database_session() as session:
-        return list(
-            session.scalars(
-                select(TrackedWhale.proxy_wallet).order_by(TrackedWhale.id)
-            )
-        )
 
 
 def get_latest_market_candidate_run() -> WhaleMarketCandidateRunSummary | None:

@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import datetime
 
+from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
@@ -17,6 +18,28 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
 )
 from void_liquidity.adapters.polymarket.ranking.trade_first import WhaleRankingResult
 from void_liquidity.data import database_session
+
+
+def list_tracked_whale_wallets() -> list[str]:
+    with database_session() as session:
+        latest_run_id = session.scalar(
+            select(WhaleTrackerRun.run_id)
+            .order_by(
+                WhaleTrackerRun.generated_at.desc(),
+                WhaleTrackerRun.run_id.desc(),
+            )
+            .limit(1)
+        )
+        if latest_run_id is None:
+            return []
+
+        return list(
+            session.scalars(
+                select(TrackedWhale.proxy_wallet)
+                .where(TrackedWhale.run_id == latest_run_id)
+                .order_by(TrackedWhale.id)
+            )
+        )
 
 
 def persist_whale_tracker_v2_run(

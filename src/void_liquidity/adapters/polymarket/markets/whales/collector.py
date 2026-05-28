@@ -10,14 +10,14 @@ from typing import Any
 from void_liquidity.adapters.polymarket.api import get_current_positions
 from void_liquidity.adapters.polymarket.api.client import HTTPClient
 from void_liquidity.adapters.polymarket.api.params import CurrentPositionsParams
+from void_liquidity.adapters.polymarket.discovery.whales_v2.repository import (
+    list_tracked_whale_wallets,
+)
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     MarketCandidate,
     WhaleMarketCandidates,
     WhalePosition,
     WhalePositionCollectionError,
-)
-from void_liquidity.adapters.polymarket.markets.whales.repository import (
-    list_tracked_whale_wallets,
 )
 
 

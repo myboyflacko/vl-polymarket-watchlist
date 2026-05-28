@@ -14,7 +14,6 @@ from void_liquidity.adapters.polymarket.markets.whales.repository import (
     get_latest_market_candidate_run,
     list_latest_market_candidates,
     list_market_snapshots,
-    list_tracked_whale_wallets,
     persist_market_candidates,
 )
 
@@ -30,6 +29,5 @@ __all__ = [
     "get_latest_market_candidate_run",
     "list_latest_market_candidates",
     "list_market_snapshots",
-    "list_tracked_whale_wallets",
     "persist_market_candidates",
 ]

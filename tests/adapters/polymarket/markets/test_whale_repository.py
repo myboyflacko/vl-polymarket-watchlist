@@ -3,10 +3,6 @@ from pathlib import Path
 
 from sqlalchemy import select
 
-from void_liquidity.adapters.polymarket.discovery.whales.models import (
-    TrackedWhale,
-    WhaleTrackerRun,
-)
 from void_liquidity.adapters.polymarket.markets.whales.domain import MarketCandidate
 from void_liquidity.adapters.polymarket.markets.whales.models import (
     WhaleMarket,
@@ -17,7 +13,6 @@ from void_liquidity.adapters.polymarket.markets.whales.repository import (
     get_latest_market_candidate_run,
     list_latest_market_candidates,
     list_market_snapshots,
-    list_tracked_whale_wallets,
     persist_market_candidates,
 )
 from void_liquidity.data import Base, create_database_engine, database_session
@@ -25,47 +20,6 @@ from void_liquidity.settings import get_settings
 
 
 NOW = datetime(2026, 5, 28, tzinfo=UTC)
-
-
-def test_list_tracked_whale_wallets_returns_empty_list(
-    monkeypatch,
-    tmp_path: Path,
-) -> None:
-    _prepare_database(monkeypatch, tmp_path)
-
-    assert list_tracked_whale_wallets() == []
-
-
-def test_list_tracked_whale_wallets_returns_wallets_in_insert_order(
-    monkeypatch,
-    tmp_path: Path,
-) -> None:
-    database_path = _prepare_database(monkeypatch, tmp_path)
-
-    with database_session(database_path) as session:
-        session.add(_tracker_run())
-        session.add_all(
-            [
-                TrackedWhale(
-                    run_id="run-1",
-                    proxy_wallet="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                    first_seen=NOW,
-                    last_seen=NOW,
-                ),
-                TrackedWhale(
-                    run_id="run-1",
-                    proxy_wallet="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    first_seen=NOW,
-                    last_seen=NOW,
-                ),
-            ]
-        )
-        session.commit()
-
-    assert list_tracked_whale_wallets() == [
-        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    ]
 
 
 def test_persist_market_candidates_ignores_empty_candidates(
@@ -465,19 +419,3 @@ def _candidate(
 
 def _sqlite_datetime(value: datetime) -> datetime:
     return value.replace(tzinfo=None)
-
-
-def _tracker_run() -> WhaleTrackerRun:
-    return WhaleTrackerRun(
-        run_id="run-1",
-        profile_version="test",
-        status="completed",
-        started_at=NOW,
-        finished_at=NOW,
-        generated_at=NOW,
-        candidate_wallet_count=2,
-        checked_wallet_count=2,
-        accepted_wallet_count=2,
-        profile={},
-        report_path=None,
-    )
