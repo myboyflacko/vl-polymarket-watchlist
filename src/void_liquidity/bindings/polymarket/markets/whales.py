@@ -6,6 +6,9 @@ from datetime import UTC, datetime
 from void_liquidity.adapters.polymarket.markets.whales import (
     collect_whale_market_candidates,
 )
+from void_liquidity.adapters.polymarket.markets.whales.domain import (
+    WhaleMarketCandidates,
+)
 from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -20,7 +23,6 @@ from void_liquidity.core.events import DomainEvent, EventBus
 EVENT_SOURCE = "binding.polymarket.markets.whales"
 ADAPTER_NAME = "polymarket.markets.whales"
 PROVIDER_NAME = "polymarket"
-MAX_LOGGED_CANDIDATES = 10
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -41,7 +43,7 @@ class PolymarketWhaleMarketsBinding:
         ),
     )
 
-    async def handle(self, event: DomainEvent, bus: EventBus) -> None:
+    async def handle(self, event: DomainEvent, bus: EventBus) -> WhaleMarketCandidates:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
         metadata = {
@@ -62,10 +64,6 @@ class PolymarketWhaleMarketsBinding:
             )
 
             result = await collect_whale_market_candidates()
-            candidate_preview = [
-                candidate.model_dump(mode="json")
-                for candidate in result.candidates[:MAX_LOGGED_CANDIDATES]
-            ]
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -76,8 +74,6 @@ class PolymarketWhaleMarketsBinding:
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
-                        "candidate_preview_count": len(candidate_preview),
-                        "candidate_preview": candidate_preview,
                         "error_summary": _error_summary(result.errors),
                     },
                     metadata=metadata,
@@ -98,6 +94,7 @@ class PolymarketWhaleMarketsBinding:
                     metadata=metadata,
                 )
             )
+            return result
         except Exception as exc:
             await bus.publish(
                 DomainEvent.create(

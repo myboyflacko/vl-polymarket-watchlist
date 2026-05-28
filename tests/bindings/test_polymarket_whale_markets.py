@@ -93,8 +93,9 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     emitted_events: list[DomainEvent] = []
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
 
-    asyncio.run(PolymarketWhaleMarketsBinding().handle(event=_request(), bus=bus))
+    result = asyncio.run(PolymarketWhaleMarketsBinding().handle(event=_request(), bus=bus))
 
+    assert result == _result()
     assert [event.event_type for event in emitted_events] == [
         POLYMARKET_WHALE_MARKETS_STARTED,
         POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -110,9 +111,8 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert discovered["candidate_count"] == 12
     assert discovered["position_count"] == 1
     assert discovered["error_count"] == 1
-    assert discovered["candidate_preview_count"] == 10
-    assert len(discovered["candidate_preview"]) == 10
-    assert discovered["candidate_preview"][0]["token_id"] == "token-1"
+    assert "candidate_preview" not in discovered
+    assert "candidates" not in discovered
     assert discovered["error_summary"] == [{"message": "boom", "count": 1}]
     assert emitted_events[2].payload["partial"] is True
 
