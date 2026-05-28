@@ -6,6 +6,9 @@ from datetime import UTC, datetime
 from void_liquidity.adapters.polymarket.markets.whales import (
     collect_whale_market_candidates,
 )
+from void_liquidity.adapters.polymarket.markets.whales.collector import (
+    DEFAULT_MIN_WHALE_COUNT,
+)
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     WhaleMarketCandidates,
 )
@@ -43,6 +46,9 @@ class PolymarketWhaleMarketsBinding:
         ),
     )
 
+    def __init__(self, *, min_whale_count: int = DEFAULT_MIN_WHALE_COUNT) -> None:
+        self.min_whale_count = min_whale_count
+
     async def handle(self, event: DomainEvent, bus: EventBus) -> WhaleMarketCandidates:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
@@ -63,7 +69,9 @@ class PolymarketWhaleMarketsBinding:
                 )
             )
 
-            result = await collect_whale_market_candidates()
+            result = await collect_whale_market_candidates(
+                min_whale_count=self.min_whale_count,
+            )
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -74,6 +82,7 @@ class PolymarketWhaleMarketsBinding:
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
+                        "min_whale_count": self.min_whale_count,
                         "error_summary": _error_summary(result.errors),
                     },
                     metadata=metadata,
@@ -89,6 +98,7 @@ class PolymarketWhaleMarketsBinding:
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
+                        "min_whale_count": self.min_whale_count,
                         "partial": bool(result.errors),
                     },
                     metadata=metadata,

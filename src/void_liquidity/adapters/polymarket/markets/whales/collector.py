@@ -23,6 +23,7 @@ from void_liquidity.adapters.polymarket.markets.whales.repository import (
 
 MAX_POSITION_OFFSET = 10_000
 POSITION_PAGE_LIMIT = 500
+DEFAULT_MIN_WHALE_COUNT = 3
 
 
 @dataclass(frozen=True)
@@ -31,7 +32,10 @@ class _WalletPositionResult:
     errors: list[WhalePositionCollectionError]
 
 
-async def collect_whale_market_candidates() -> WhaleMarketCandidates:
+async def collect_whale_market_candidates(
+    *,
+    min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+) -> WhaleMarketCandidates:
     wallets = list_tracked_whale_wallets()
     if not wallets:
         return WhaleMarketCandidates()
@@ -56,7 +60,10 @@ async def collect_whale_market_candidates() -> WhaleMarketCandidates:
     ]
 
     return WhaleMarketCandidates(
-        candidates=build_market_candidates(positions),
+        candidates=build_market_candidates(
+            positions,
+            min_whale_count=min_whale_count,
+        ),
         positions=positions,
         errors=errors,
     )
@@ -64,14 +71,23 @@ async def collect_whale_market_candidates() -> WhaleMarketCandidates:
 
 def build_market_candidates(
     positions: Iterable[WhalePosition],
+    *,
+    min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
 ) -> list[MarketCandidate]:
     grouped: dict[str, list[WhalePosition]] = defaultdict(list)
     for position in positions:
         grouped[position.token_id].append(position)
 
     candidates = [
-        _build_market_candidate(token_id=token_id, positions=group_positions)
+        candidate
         for token_id, group_positions in grouped.items()
+        if (
+            candidate := _build_market_candidate(
+                token_id=token_id,
+                positions=group_positions,
+            )
+        ).whale_count
+        >= min_whale_count
     ]
     return sorted(
         candidates,

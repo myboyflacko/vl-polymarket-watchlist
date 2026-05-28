@@ -33,7 +33,8 @@ def test_build_market_candidates_groups_positions_by_token_id() -> None:
                 current_value=75,
                 size=15,
             ),
-        ]
+        ],
+        min_whale_count=1,
     )
 
     assert [candidate.token_id for candidate in candidates] == [YES_TOKEN, NO_TOKEN]
@@ -46,12 +47,23 @@ def test_build_market_candidates_groups_positions_by_token_id() -> None:
     assert candidates[1].outcome == "No"
 
 
+def test_build_market_candidates_filters_below_min_whale_count() -> None:
+    candidates = build_market_candidates(
+        [
+            _whale_position(WALLET_ONE, token_id=YES_TOKEN),
+            _whale_position(WALLET_TWO, token_id=YES_TOKEN),
+        ]
+    )
+
+    assert candidates == []
+
+
 def test_collect_whale_market_candidates_returns_empty_result_without_wallets(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(collector_module, "list_tracked_whale_wallets", lambda: [])
 
-    result = asyncio.run(collect_whale_market_candidates())
+    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 
     assert result.candidates == []
     assert result.positions == []
@@ -78,7 +90,7 @@ def test_collect_whale_market_candidates_fetches_and_groups_open_positions(
     monkeypatch.setattr(collector_module, "HTTPClient", FakeHTTPClient)
     monkeypatch.setattr(collector_module, "get_current_positions", fake_get_current_positions)
 
-    result = asyncio.run(collect_whale_market_candidates())
+    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 
     assert [(user, offset) for user, offset, _ in calls] == [
         (WALLET_ONE, 0),
@@ -109,7 +121,7 @@ def test_collect_whale_market_candidates_keeps_processing_after_wallet_error(
     monkeypatch.setattr(collector_module, "HTTPClient", FakeHTTPClient)
     monkeypatch.setattr(collector_module, "get_current_positions", fake_get_current_positions)
 
-    result = asyncio.run(collect_whale_market_candidates())
+    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 
     assert len(result.positions) == 1
     assert len(result.candidates) == 1
@@ -138,7 +150,7 @@ def test_collect_whale_market_candidates_paginates_positions(
     monkeypatch.setattr(collector_module, "POSITION_PAGE_LIMIT", 2)
     monkeypatch.setattr(collector_module, "get_current_positions", fake_get_current_positions)
 
-    result = asyncio.run(collect_whale_market_candidates())
+    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 
     assert calls == [0, 2]
     assert [position.token_id for position in result.positions] == ["1", "2", "3"]

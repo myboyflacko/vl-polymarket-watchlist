@@ -8,6 +8,9 @@ from typing import Sequence
 from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )
+from void_liquidity.adapters.polymarket.markets.whales.collector import (
+    DEFAULT_MIN_WHALE_COUNT,
+)
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     MarketCandidate,
 )
@@ -41,6 +44,7 @@ async def run_whale_market_candidates(
     *,
     echo_events: bool = False,
     print_candidates: bool = True,
+    min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
 ) -> None:
     bus = EventBus()
     bus.subscribe(EventBus.WILDCARD, logger.log_domain_event)
@@ -50,7 +54,9 @@ async def run_whale_market_candidates(
 
     event = build_whale_market_candidates_event()
     await bus.publish(event)
-    result = await PolymarketWhaleMarketsBinding().handle(event=event, bus=bus)
+    result = await PolymarketWhaleMarketsBinding(
+        min_whale_count=min_whale_count,
+    ).handle(event=event, bus=bus)
 
     if print_candidates:
         _print_market_candidates(result.candidates)
@@ -70,12 +76,19 @@ def main(argv: Sequence[str] | None = None) -> None:
         action="store_true",
         help="Do not print collected market candidates to stdout.",
     )
+    parser.add_argument(
+        "--min-whale-count",
+        type=int,
+        default=DEFAULT_MIN_WHALE_COUNT,
+        help="Minimum distinct whale wallets required per market candidate.",
+    )
     args = parser.parse_args(argv)
 
     asyncio.run(
         run_whale_market_candidates(
             echo_events=args.echo_events,
             print_candidates=not args.no_print_candidates,
+            min_whale_count=args.min_whale_count,
         )
     )
 

@@ -7,6 +7,9 @@ from void_liquidity.adapters.polymarket.markets.whales.domain import (
     MarketCandidate,
     WhaleMarketCandidates,
 )
+from void_liquidity.adapters.polymarket.markets.whales.collector import (
+    DEFAULT_MIN_WHALE_COUNT,
+)
 from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
@@ -69,11 +72,19 @@ def test_run_whale_market_candidates_registers_domain_event_logger(
             logged_events.append(event)
 
     class FakeBinding:
+        def __init__(
+            self,
+            *,
+            min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+        ) -> None:
+            self.min_whale_count = min_whale_count
+
         async def handle(
             self,
             event: DomainEvent,
             bus: EventBus,
         ) -> WhaleMarketCandidates:
+            assert self.min_whale_count == DEFAULT_MIN_WHALE_COUNT
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_COMPLETED,
@@ -110,11 +121,13 @@ def test_whale_market_candidates_main_runs_workflow(
         *,
         echo_events: bool = False,
         print_candidates: bool = True,
+        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
     ) -> None:
         captured_args.append(
             {
                 "echo_events": echo_events,
                 "print_candidates": print_candidates,
+                "min_whale_count": min_whale_count,
             }
         )
 
@@ -124,6 +137,12 @@ def test_whale_market_candidates_main_runs_workflow(
         fake_run_whale_market_candidates,
     )
 
-    workflow.main(["--echo-events", "--no-print-candidates"])
+    workflow.main(["--echo-events", "--no-print-candidates", "--min-whale-count", "4"])
 
-    assert captured_args == [{"echo_events": True, "print_candidates": False}]
+    assert captured_args == [
+        {
+            "echo_events": True,
+            "print_candidates": False,
+            "min_whale_count": 4,
+        }
+    ]

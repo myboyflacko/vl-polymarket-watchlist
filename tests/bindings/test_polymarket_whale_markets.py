@@ -8,6 +8,9 @@ from void_liquidity.adapters.polymarket.markets.whales.domain import (
     WhalePosition,
     WhalePositionCollectionError,
 )
+from void_liquidity.adapters.polymarket.markets.whales.collector import (
+    DEFAULT_MIN_WHALE_COUNT,
+)
 from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -81,7 +84,11 @@ def test_polymarket_whale_markets_binding_declares_runtime_contract() -> None:
 def test_polymarket_whale_markets_binding_collects_and_publishes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def fake_collect_whale_market_candidates() -> WhaleMarketCandidates:
+    async def fake_collect_whale_market_candidates(
+        *,
+        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+    ) -> WhaleMarketCandidates:
+        assert min_whale_count == DEFAULT_MIN_WHALE_COUNT
         return _result()
 
     monkeypatch.setattr(
@@ -111,6 +118,7 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert discovered["candidate_count"] == 12
     assert discovered["position_count"] == 1
     assert discovered["error_count"] == 1
+    assert discovered["min_whale_count"] == DEFAULT_MIN_WHALE_COUNT
     assert "candidate_preview" not in discovered
     assert "candidates" not in discovered
     assert discovered["error_summary"] == [{"message": "boom", "count": 1}]
@@ -120,7 +128,10 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
 def test_polymarket_whale_markets_binding_publishes_failed_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def fail_collect_whale_market_candidates() -> WhaleMarketCandidates:
+    async def fail_collect_whale_market_candidates(
+        *,
+        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+    ) -> WhaleMarketCandidates:
         raise RuntimeError("collector failed")
 
     monkeypatch.setattr(
