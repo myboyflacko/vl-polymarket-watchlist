@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
 
 from void_liquidity.adapters.polymarket.markets.whales import (
@@ -19,6 +20,7 @@ from void_liquidity.core.events import DomainEvent, EventBus
 EVENT_SOURCE = "binding.polymarket.markets.whales"
 ADAPTER_NAME = "polymarket.markets.whales"
 PROVIDER_NAME = "polymarket"
+MAX_LOGGED_CANDIDATES = 10
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -60,9 +62,9 @@ class PolymarketWhaleMarketsBinding:
             )
 
             result = await collect_whale_market_candidates()
-            candidates_payload = [
+            candidate_preview = [
                 candidate.model_dump(mode="json")
-                for candidate in result.candidates
+                for candidate in result.candidates[:MAX_LOGGED_CANDIDATES]
             ]
             await bus.publish(
                 DomainEvent.create(
@@ -74,11 +76,9 @@ class PolymarketWhaleMarketsBinding:
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
-                        "candidates": candidates_payload,
-                        "errors": [
-                            error.model_dump(mode="json")
-                            for error in result.errors
-                        ],
+                        "candidate_preview_count": len(candidate_preview),
+                        "candidate_preview": candidate_preview,
+                        "error_summary": _error_summary(result.errors),
                     },
                     metadata=metadata,
                 )
@@ -113,3 +113,11 @@ class PolymarketWhaleMarketsBinding:
                 )
             )
             raise
+
+
+def _error_summary(errors) -> list[dict[str, int | str]]:
+    messages = Counter(error.message for error in errors)
+    return [
+        {"message": message, "count": count}
+        for message, count in messages.most_common()
+    ]

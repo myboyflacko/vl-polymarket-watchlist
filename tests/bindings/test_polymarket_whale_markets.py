@@ -50,6 +50,7 @@ def _result() -> WhaleMarketCandidates:
                 weighted_avg_price=0.4,
                 cur_price=0.5,
             )
+            for _ in range(12)
         ],
         positions=[
             WhalePosition(
@@ -106,11 +107,13 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
         "correlation-markets"
     }
     discovered = emitted_events[1].payload
-    assert discovered["candidate_count"] == 1
+    assert discovered["candidate_count"] == 12
     assert discovered["position_count"] == 1
     assert discovered["error_count"] == 1
-    assert discovered["candidates"][0]["token_id"] == "token-1"
-    assert discovered["errors"][0]["message"] == "boom"
+    assert discovered["candidate_preview_count"] == 10
+    assert len(discovered["candidate_preview"]) == 10
+    assert discovered["candidate_preview"][0]["token_id"] == "token-1"
+    assert discovered["error_summary"] == [{"message": "boom", "count": 1}]
     assert emitted_events[2].payload["partial"] is True
 
 
