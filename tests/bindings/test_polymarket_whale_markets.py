@@ -15,6 +15,9 @@ from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
     POLYMARKET_WHALE_MARKETS_FAILED,
+    POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
+    POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
+    POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
@@ -79,11 +82,14 @@ def test_polymarket_whale_markets_binding_declares_runtime_contract() -> None:
     assert binding.spec.consumes == (POLYMARKET_WHALE_MARKETS_REQUESTED,)
     assert POLYMARKET_WHALE_MARKETS_COMPLETED in binding.spec.produces
     assert POLYMARKET_WHALE_MARKETS_DISCOVERED in binding.spec.produces
+    assert POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED in binding.spec.produces
 
 
 def test_polymarket_whale_markets_binding_collects_and_publishes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    persisted: list[dict] = []
+
     async def fake_collect_whale_market_candidates(
         *,
         min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
@@ -96,6 +102,15 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
         "collect_whale_market_candidates",
         fake_collect_whale_market_candidates,
     )
+
+    def fake_persist_market_candidates(candidates, **kwargs) -> None:
+        persisted.append({"candidates": candidates, **kwargs})
+
+    monkeypatch.setattr(
+        binding_module,
+        "persist_market_candidates",
+        fake_persist_market_candidates,
+    )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
@@ -106,8 +121,15 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert [event.event_type for event in emitted_events] == [
         POLYMARKET_WHALE_MARKETS_STARTED,
         POLYMARKET_WHALE_MARKETS_DISCOVERED,
+        POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+        POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
         POLYMARKET_WHALE_MARKETS_COMPLETED,
     ]
+    assert persisted
+    assert persisted[0]["run_id"] == emitted_events[0].payload["run_id"]
+    assert persisted[0]["min_whale_count"] == DEFAULT_MIN_WHALE_COUNT
+    assert persisted[0]["position_count"] == 1
+    assert persisted[0]["error_count"] == 1
     assert {event.source for event in emitted_events} == {
         "binding.polymarket.markets.whales"
     }
@@ -122,7 +144,7 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert "candidate_preview" not in discovered
     assert "candidates" not in discovered
     assert discovered["error_summary"] == [{"message": "boom", "count": 1}]
-    assert emitted_events[2].payload["partial"] is True
+    assert emitted_events[-1].payload["partial"] is True
 
 
 def test_polymarket_whale_markets_binding_publishes_failed_event(
@@ -152,3 +174,43 @@ def test_polymarket_whale_markets_binding_publishes_failed_event(
     ]
     assert emitted_events[-1].payload["error_type"] == "RuntimeError"
     assert emitted_events[-1].payload["error"] == "collector failed"
+
+
+def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def fake_collect_whale_market_candidates(
+        *,
+        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+    ) -> WhaleMarketCandidates:
+        return _result()
+
+    def fail_persist_market_candidates(candidates, **kwargs) -> None:
+        raise RuntimeError("db down")
+
+    monkeypatch.setattr(
+        binding_module,
+        "collect_whale_market_candidates",
+        fake_collect_whale_market_candidates,
+    )
+    monkeypatch.setattr(
+        binding_module,
+        "persist_market_candidates",
+        fail_persist_market_candidates,
+    )
+    bus = EventBus()
+    emitted_events: list[DomainEvent] = []
+    bus.subscribe(EventBus.WILDCARD, emitted_events.append)
+
+    with pytest.raises(RuntimeError, match="db down"):
+        asyncio.run(PolymarketWhaleMarketsBinding().handle(event=_request(), bus=bus))
+
+    assert [event.event_type for event in emitted_events] == [
+        POLYMARKET_WHALE_MARKETS_STARTED,
+        POLYMARKET_WHALE_MARKETS_DISCOVERED,
+        POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+        POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
+        POLYMARKET_WHALE_MARKETS_FAILED,
+    ]
+    assert emitted_events[-2].payload["error_type"] == "RuntimeError"
+    assert emitted_events[-2].payload["error"] == "db down"

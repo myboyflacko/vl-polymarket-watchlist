@@ -3,3 +3,10 @@ POLYMARKET_WHALE_MARKETS_STARTED = "pipeline.markets.whales.started"
 POLYMARKET_WHALE_MARKETS_COMPLETED = "pipeline.markets.whales.completed"
 POLYMARKET_WHALE_MARKETS_FAILED = "pipeline.markets.whales.failed"
 POLYMARKET_WHALE_MARKETS_DISCOVERED = "polymarket.markets.whales.discovered"
+POLYMARKET_WHALE_MARKETS_PERSIST_STARTED = (
+    "polymarket.markets.whales.persist_started"
+)
+POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED = (
+    "polymarket.markets.whales.persist_completed"
+)
+POLYMARKET_WHALE_MARKETS_PERSIST_FAILED = "polymarket.markets.whales.persist_failed"

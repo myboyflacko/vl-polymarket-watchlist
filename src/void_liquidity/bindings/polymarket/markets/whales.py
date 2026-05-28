@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from void_liquidity.adapters.polymarket.markets.whales import (
     collect_whale_market_candidates,
+    persist_market_candidates,
 )
 from void_liquidity.adapters.polymarket.markets.whales.collector import (
     DEFAULT_MIN_WHALE_COUNT,
@@ -16,6 +17,9 @@ from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
     POLYMARKET_WHALE_MARKETS_FAILED,
+    POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
+    POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
+    POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
@@ -43,6 +47,9 @@ class PolymarketWhaleMarketsBinding:
             POLYMARKET_WHALE_MARKETS_COMPLETED,
             POLYMARKET_WHALE_MARKETS_FAILED,
             POLYMARKET_WHALE_MARKETS_DISCOVERED,
+            POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+            POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
+            POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
         ),
     )
 
@@ -84,6 +91,61 @@ class PolymarketWhaleMarketsBinding:
                         "error_count": len(result.errors),
                         "min_whale_count": self.min_whale_count,
                         "error_summary": _error_summary(result.errors),
+                    },
+                    metadata=metadata,
+                )
+            )
+            await bus.publish(
+                DomainEvent.create(
+                    event_type=POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+                    source=EVENT_SOURCE,
+                    correlation_id=event.correlation_id,
+                    payload={
+                        "run_id": run_id,
+                        "candidate_count": len(result.candidates),
+                        "position_count": len(result.positions),
+                        "error_count": len(result.errors),
+                        "min_whale_count": self.min_whale_count,
+                    },
+                    metadata=metadata,
+                )
+            )
+            try:
+                persist_market_candidates(
+                    result.candidates,
+                    run_id=run_id,
+                    min_whale_count=self.min_whale_count,
+                    position_count=len(result.positions),
+                    error_count=len(result.errors),
+                    seen_at=started_at,
+                )
+            except Exception as exc:
+                await bus.publish(
+                    DomainEvent.create(
+                        event_type=POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
+                        source=EVENT_SOURCE,
+                        correlation_id=event.correlation_id,
+                        payload={
+                            "run_id": run_id,
+                            "error_type": type(exc).__name__,
+                            "error": str(exc),
+                        },
+                        metadata=metadata,
+                    )
+                )
+                raise
+
+            await bus.publish(
+                DomainEvent.create(
+                    event_type=POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
+                    source=EVENT_SOURCE,
+                    correlation_id=event.correlation_id,
+                    payload={
+                        "run_id": run_id,
+                        "candidate_count": len(result.candidates),
+                        "position_count": len(result.positions),
+                        "error_count": len(result.errors),
+                        "min_whale_count": self.min_whale_count,
                     },
                     metadata=metadata,
                 )
