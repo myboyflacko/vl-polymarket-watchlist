@@ -11,9 +11,9 @@ from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     WhaleMetrics,
     Whales,
 )
-from void_liquidity.adapters.polymarket.ranking import rank_trade_first_whales
 from void_liquidity.adapters.polymarket.ranking.trade_first import (
     TradeFirstRankingWeights,
+    rank_trade_first_whales,
 )
 
 

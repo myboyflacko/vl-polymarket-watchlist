@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import DateTime, ForeignKey, Index, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from void_liquidity.data import Base
+from void_liquidity.data.base import Base
 
 
 class WhaleTrackerRun(Base):

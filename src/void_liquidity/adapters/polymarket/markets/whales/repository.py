@@ -16,7 +16,7 @@ from void_liquidity.adapters.polymarket.markets.whales.models import (
     WhaleMarketCandidateRun,
     WhaleMarketMetricSnapshot,
 )
-from void_liquidity.data import database_session
+from void_liquidity.data.engine import database_session
 
 
 def get_latest_market_candidate_run() -> WhaleMarketCandidateRunSummary | None:

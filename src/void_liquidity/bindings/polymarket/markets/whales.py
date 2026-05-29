@@ -3,12 +3,9 @@ from __future__ import annotations
 from collections import Counter
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.markets.whales import (
-    collect_whale_market_candidates,
-    persist_market_candidates,
-)
 from void_liquidity.adapters.polymarket.markets.whales.collector import (
     DEFAULT_MIN_WHALE_COUNT,
+    collect_whale_market_candidates,
 )
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     WhaleMarketCandidates,
@@ -22,6 +19,9 @@ from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
+)
+from void_liquidity.adapters.polymarket.markets.whales.repository import (
+    persist_market_candidates,
 )
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus

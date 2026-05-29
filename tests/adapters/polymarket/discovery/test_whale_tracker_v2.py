@@ -19,8 +19,9 @@ from void_liquidity.adapters.polymarket.discovery.whales.tracker import (
 from void_liquidity.adapters.polymarket.discovery.whales import (
     tracker as tracker_module,
 )
-from void_liquidity.adapters.polymarket.ranking import rank_trade_first_whales
-from void_liquidity.data import Base, create_database_engine, database_session
+from void_liquidity.adapters.polymarket.ranking.trade_first import rank_trade_first_whales
+from void_liquidity.data.base import Base
+from void_liquidity.data.engine import create_database_engine, database_session
 from void_liquidity.settings import get_settings
 
 

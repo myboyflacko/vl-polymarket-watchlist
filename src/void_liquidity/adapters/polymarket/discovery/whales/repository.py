@@ -17,7 +17,7 @@ from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.adapters.polymarket.ranking.trade_first import WhaleRankingResult
-from void_liquidity.data import database_session
+from void_liquidity.data.engine import database_session
 
 
 def list_tracked_whale_wallets() -> list[str]:

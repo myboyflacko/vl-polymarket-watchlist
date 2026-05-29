@@ -25,7 +25,7 @@ from void_liquidity.bindings.polymarket.markets import whales as binding_module
 from void_liquidity.bindings.polymarket.markets.whales import (
     PolymarketWhaleMarketsBinding,
 )
-from void_liquidity.core import DomainEvent, EventBus
+from void_liquidity.core.events import DomainEvent, EventBus
 
 
 def _request() -> DomainEvent:

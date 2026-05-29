@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from void_liquidity.adapters.polymarket.api.params import TradesParams
+from void_liquidity.adapters.polymarket.api.params.profile.trades import TradesParams
 
 
 WALLET = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

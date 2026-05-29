@@ -11,9 +11,12 @@ from void_liquidity.adapters.polymarket.discovery.whales.events import (
 from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
-from void_liquidity.bindings.polymarket import PolymarketWhaleDiscoveryV2Binding
-from void_liquidity.core import DomainEvent, EventBus, Runtime
-from void_liquidity.logging import VoidLogger
+from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
+    PolymarketWhaleDiscoveryV2Binding,
+)
+from void_liquidity.core.events import DomainEvent, EventBus
+from void_liquidity.core.runtime import Runtime
+from void_liquidity.logging.log import VoidLogger
 
 
 logger = VoidLogger("void_liquidity.workflows.track_whales_v2")

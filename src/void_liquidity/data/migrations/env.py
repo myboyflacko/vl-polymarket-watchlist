@@ -15,7 +15,8 @@ from void_liquidity.adapters.polymarket.discovery.whales import (
 from void_liquidity.adapters.polymarket.markets.whales import (
     models as whale_market_models,
 )
-from void_liquidity.data import Base, build_sqlite_url, ensure_database_parent
+from void_liquidity.data.base import Base
+from void_liquidity.data.engine import build_sqlite_url, ensure_database_parent
 
 
 _ = track_whales_models, whale_market_models

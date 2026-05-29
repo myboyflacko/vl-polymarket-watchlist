@@ -3,8 +3,8 @@ from pathlib import Path
 
 import pytest
 
-from void_liquidity.core import DomainEvent
-from void_liquidity.logging import (
+from void_liquidity.core.events import DomainEvent
+from void_liquidity.logging.log import (
     DEFAULT_LOG_FILE_NAME,
     LOG_DIR_ENV,
     VoidLogger,

@@ -15,7 +15,8 @@ from void_liquidity.adapters.polymarket.markets.whales.repository import (
     list_market_snapshots,
     persist_market_candidates,
 )
-from void_liquidity.data import Base, create_database_engine, database_session
+from void_liquidity.data.base import Base
+from void_liquidity.data.engine import create_database_engine, database_session
 from void_liquidity.settings import get_settings
 
 

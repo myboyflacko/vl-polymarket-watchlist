@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from void_liquidity.adapters.polymarket.api import (
+from void_liquidity.adapters.polymarket.api.client import (
     PolymarketDataClient,
     get_polymarket_data_client,
 )
-from void_liquidity.adapters.polymarket.api.params import CurrentPositionsParams
+from void_liquidity.adapters.polymarket.api.params.profile.current_positions import (
+    CurrentPositionsParams,
+)
 from void_liquidity.adapters.polymarket.discovery.whales.repository import (
     list_tracked_whale_wallets,
 )

@@ -9,8 +9,10 @@ from void_liquidity.adapters.polymarket.discovery.whales.events import (
 from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
-from void_liquidity.bindings.polymarket import PolymarketWhaleDiscoveryV2Binding
-from void_liquidity.core import DomainEvent, EventBus
+from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
+    PolymarketWhaleDiscoveryV2Binding,
+)
+from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.workflows import track_whales_v2 as workflow
 from void_liquidity.workflows.track_whales_v2 import (
     build_track_whales_v2_event,

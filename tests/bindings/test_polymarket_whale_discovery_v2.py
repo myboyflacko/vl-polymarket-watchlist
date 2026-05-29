@@ -29,7 +29,7 @@ from void_liquidity.bindings.polymarket.discovery import whales_v2 as binding_mo
 from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
     PolymarketWhaleDiscoveryV2Binding,
 )
-from void_liquidity.core import DomainEvent, EventBus
+from void_liquidity.core.events import DomainEvent, EventBus
 
 
 NOW = datetime(2026, 5, 26, tzinfo=UTC)

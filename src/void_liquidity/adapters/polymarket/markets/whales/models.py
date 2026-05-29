@@ -5,7 +5,7 @@ from datetime import UTC, date, datetime
 from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from void_liquidity.data import Base
+from void_liquidity.data.base import Base
 
 
 class WhaleMarketCandidateRun(Base):

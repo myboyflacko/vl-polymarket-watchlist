@@ -14,9 +14,12 @@ from void_liquidity.adapters.polymarket.markets.whales.collector import (
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     MarketCandidate,
 )
-from void_liquidity.bindings.polymarket import PolymarketWhaleMarketsBinding
-from void_liquidity.core import DomainEvent, EventBus, Runtime
-from void_liquidity.logging import VoidLogger
+from void_liquidity.bindings.polymarket.markets.whales import (
+    PolymarketWhaleMarketsBinding,
+)
+from void_liquidity.core.events import DomainEvent, EventBus
+from void_liquidity.core.runtime import Runtime
+from void_liquidity.logging.log import VoidLogger
 
 
 logger = VoidLogger("void_liquidity.workflows.whale_market_candidates")

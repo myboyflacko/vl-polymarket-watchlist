@@ -2,13 +2,9 @@ import asyncio
 
 import pytest
 
-from void_liquidity.core import (
-    BindingRegistry,
-    BindingSpec,
-    DomainEvent,
-    EventBus,
-    Runtime,
-)
+from void_liquidity.core.bindings import BindingRegistry, BindingSpec
+from void_liquidity.core.events import DomainEvent, EventBus
+from void_liquidity.core.runtime import Runtime
 
 
 def test_event_bus_routes_specific_and_wildcard_handlers() -> None:

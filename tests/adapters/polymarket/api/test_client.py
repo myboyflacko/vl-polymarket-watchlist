@@ -11,13 +11,17 @@ from void_liquidity.adapters.polymarket.api.client import (
     get_polymarket_data_client,
 )
 from void_liquidity.adapters.polymarket.api.errors import PolymarketRateLimitError
-from void_liquidity.adapters.polymarket.api.params import (
-    ActivityParams,
-    ClosedPositionsParams,
-    CurrentPositionsParams,
+from void_liquidity.adapters.polymarket.api.params.leaderboard.leaderboard import (
     LeaderboardParams,
-    TradesParams,
 )
+from void_liquidity.adapters.polymarket.api.params.profile.activity import ActivityParams
+from void_liquidity.adapters.polymarket.api.params.profile.closed_positions import (
+    ClosedPositionsParams,
+)
+from void_liquidity.adapters.polymarket.api.params.profile.current_positions import (
+    CurrentPositionsParams,
+)
+from void_liquidity.adapters.polymarket.api.params.profile.trades import TradesParams
 from void_liquidity.settings import PolymarketDataApiClientSettings
 
 

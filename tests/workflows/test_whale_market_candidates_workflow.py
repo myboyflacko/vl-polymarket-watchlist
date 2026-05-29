@@ -14,8 +14,10 @@ from void_liquidity.adapters.polymarket.markets.whales.events import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )
-from void_liquidity.bindings.polymarket import PolymarketWhaleMarketsBinding
-from void_liquidity.core import DomainEvent, EventBus
+from void_liquidity.bindings.polymarket.markets.whales import (
+    PolymarketWhaleMarketsBinding,
+)
+from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.workflows import whale_market_candidates as workflow
 from void_liquidity.workflows.whale_market_candidates import (
     build_whale_market_candidates_event,

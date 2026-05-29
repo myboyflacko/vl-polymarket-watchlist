@@ -2,10 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.discovery.whales import (
-    WhaleTrackerV2,
-    WhaleTrackerV2Profile,
-)
 from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_DISCOVERED,
@@ -16,7 +12,11 @@ from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
     POLYMARKET_WHALES_V2_STARTED,
 )
-from void_liquidity.adapters.polymarket.ranking import (
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
+    WhaleTrackerV2Profile,
+)
+from void_liquidity.adapters.polymarket.discovery.whales.tracker import WhaleTrackerV2
+from void_liquidity.adapters.polymarket.ranking.trade_first import (
     TradeFirstRankingWeights,
     rank_trade_first_whales,
 )

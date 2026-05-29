@@ -2,8 +2,8 @@
 
 __all__ = [
     "api",
-    "client",
-    "params",
-    "schemas",
+    "discovery",
+    "markets",
+    "ranking",
     "services",
 ]

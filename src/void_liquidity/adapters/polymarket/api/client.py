@@ -11,14 +11,18 @@ import httpx
 from asynciolimiter import StrictLimiter
 
 from void_liquidity.adapters.polymarket.api.errors import PolymarketRateLimitError
-from void_liquidity.adapters.polymarket.api.params import (
-    ActivityParams,
-    ClosedPositionsParams,
-    CurrentPositionsParams,
-    LeaderboardParams,
-    TradesParams,
-)
 from void_liquidity.adapters.polymarket.api.params.base import BaseParams
+from void_liquidity.adapters.polymarket.api.params.leaderboard.leaderboard import (
+    LeaderboardParams,
+)
+from void_liquidity.adapters.polymarket.api.params.profile.activity import ActivityParams
+from void_liquidity.adapters.polymarket.api.params.profile.closed_positions import (
+    ClosedPositionsParams,
+)
+from void_liquidity.adapters.polymarket.api.params.profile.current_positions import (
+    CurrentPositionsParams,
+)
+from void_liquidity.adapters.polymarket.api.params.profile.trades import TradesParams
 from void_liquidity.settings import PolymarketDataApiClientSettings, get_settings
 
 
