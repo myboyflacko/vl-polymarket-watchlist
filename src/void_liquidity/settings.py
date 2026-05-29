@@ -61,7 +61,7 @@ class PolymarketDataApiClientSettings(BaseSettings):
         alias="POLYMARKET_DATA_API_MAX_CONCURRENT_REQUESTS",
     )
     request_delay_seconds: float = Field(
-        default=0.5,
+        default=0,
         ge=0,
         alias="POLYMARKET_DATA_API_REQUEST_DELAY_SECONDS",
     )
