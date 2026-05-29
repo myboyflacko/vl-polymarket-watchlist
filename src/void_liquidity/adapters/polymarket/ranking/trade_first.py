@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import Whale, Whales
-from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import Whale, Whales
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     TradeFirstRankingProfile,
 )
 

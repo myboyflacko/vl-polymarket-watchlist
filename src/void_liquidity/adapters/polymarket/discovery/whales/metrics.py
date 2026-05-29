@@ -2,13 +2,13 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     CollectionQuality,
     ExposureMetrics,
     MarketMetrics,
     TradeMetrics,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.helpers import (
+from void_liquidity.adapters.polymarket.discovery.whales.helpers import (
     is_condition_id,
     row_timestamp,
     to_float,

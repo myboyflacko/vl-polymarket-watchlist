@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     CollectionQuality,
     ExposureMetrics,
     LeaderboardMetrics,

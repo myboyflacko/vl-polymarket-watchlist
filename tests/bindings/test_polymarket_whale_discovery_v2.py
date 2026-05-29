@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     CollectionQuality,
     ExposureMetrics,
     LeaderboardMetrics,
@@ -15,7 +15,7 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
     WalletCollectionError,
     Whales,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.events import (
+from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_DISCOVERED,
     POLYMARKET_WHALES_V2_FAILED,
@@ -230,7 +230,9 @@ def test_polymarket_whale_v2_binding_publishes_failed_event_and_reraises(
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
 
     with pytest.raises(RuntimeError, match="api down"):
-        asyncio.run(PolymarketWhaleDiscoveryV2Binding().handle(event=_request(), bus=bus))
+        asyncio.run(
+            PolymarketWhaleDiscoveryV2Binding().handle(event=_request(), bus=bus)
+        )
 
     assert [event.event_type for event in emitted_events] == [
         POLYMARKET_WHALES_V2_STARTED,
@@ -258,7 +260,9 @@ def test_polymarket_whale_v2_binding_publishes_persist_failed_event(
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
 
     with pytest.raises(RuntimeError, match="db down"):
-        asyncio.run(PolymarketWhaleDiscoveryV2Binding().handle(event=_request(), bus=bus))
+        asyncio.run(
+            PolymarketWhaleDiscoveryV2Binding().handle(event=_request(), bus=bus)
+        )
 
     assert [event.event_type for event in emitted_events] == [
         POLYMARKET_WHALES_V2_STARTED,

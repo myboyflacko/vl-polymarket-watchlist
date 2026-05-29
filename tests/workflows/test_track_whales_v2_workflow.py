@@ -2,11 +2,11 @@ import asyncio
 
 import pytest
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.events import (
+from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_REQUESTED,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.bindings.polymarket import PolymarketWhaleDiscoveryV2Binding

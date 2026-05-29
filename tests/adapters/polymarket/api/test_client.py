@@ -5,8 +5,8 @@ from typing import Any
 import httpx
 import pytest
 
-from void_liquidity.adapters.polymarket.api import data_client
-from void_liquidity.adapters.polymarket.api.data_client import (
+from void_liquidity.adapters.polymarket.api import client as client_module
+from void_liquidity.adapters.polymarket.api.client import (
     PolymarketDataClient,
     get_polymarket_data_client,
 )
@@ -166,7 +166,7 @@ def test_data_client_uses_semaphore_and_request_delay(
     async def fake_sleep(seconds: float) -> None:
         sleeps.append(seconds)
 
-    monkeypatch.setattr(data_client.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(client_module.asyncio, "sleep", fake_sleep)
 
     client = PolymarketDataClient(
         settings=_settings(request_delay_seconds=0.25),
@@ -188,7 +188,7 @@ def test_data_client_translates_429_after_retries(
     async def fake_sleep(seconds: float) -> None:
         return None
 
-    monkeypatch.setattr(data_client.asyncio, "sleep", fake_sleep)
+    monkeypatch.setattr(client_module.asyncio, "sleep", fake_sleep)
 
     async_client = FakeAsyncClient(status_code=429)
     client = PolymarketDataClient(
@@ -210,7 +210,9 @@ def test_data_client_propagates_non_rate_limit_errors() -> None:
         limiter_factory=_limiter_factory([]),
     )
 
-    with pytest.raises(RuntimeError, match="boom for https://data-api.example.test/trades"):
+    with pytest.raises(
+        RuntimeError, match="boom for https://data-api.example.test/trades"
+    ):
         asyncio.run(client.get_trades(TradesParams(user=WALLET)))
 
 
@@ -218,7 +220,9 @@ def test_data_client_close_closes_owned_async_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     fake_async_client = FakeAsyncClient()
-    monkeypatch.setattr(data_client.httpx, "AsyncClient", lambda timeout: fake_async_client)
+    monkeypatch.setattr(
+        client_module.httpx, "AsyncClient", lambda timeout: fake_async_client
+    )
 
     client = PolymarketDataClient(settings=_settings())
 

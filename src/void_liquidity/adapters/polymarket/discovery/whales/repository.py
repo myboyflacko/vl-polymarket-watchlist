@@ -7,13 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.models import (
+from void_liquidity.adapters.polymarket.discovery.whales.models import (
     TrackedWhale,
     TrackedWhaleMetricSnapshot,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import Whale, Whales
-from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import Whale, Whales
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.adapters.polymarket.ranking.trade_first import WhaleRankingResult
@@ -52,7 +52,9 @@ def persist_whale_tracker_v2_run(
     whales: Whales,
     ranking_result: WhaleRankingResult | None = None,
 ) -> None:
-    selected_whales = ranking_result.whales if ranking_result is not None else whales.whales
+    selected_whales = (
+        ranking_result.whales if ranking_result is not None else whales.whales
+    )
 
     with database_session() as session:
         session.add(

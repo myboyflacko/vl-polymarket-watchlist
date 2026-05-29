@@ -5,10 +5,10 @@ import asyncio
 import json
 from typing import Sequence
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.events import (
+from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.bindings.polymarket import PolymarketWhaleDiscoveryV2Binding
@@ -98,9 +98,7 @@ def _build_profile_from_args(args: argparse.Namespace) -> WhaleTrackerV2Profile 
         "recent_window_days": args.recent_window_days,
     }
     profile_payload = {
-        key: value
-        for key, value in profile_overrides.items()
-        if value is not None
+        key: value for key, value in profile_overrides.items() if value is not None
     }
 
     if not profile_payload:

@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2 import (
+from void_liquidity.adapters.polymarket.discovery.whales import (
     WhaleTrackerV2,
     WhaleTrackerV2Profile,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.events import (
+from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_DISCOVERED,
     POLYMARKET_WHALES_V2_FAILED,

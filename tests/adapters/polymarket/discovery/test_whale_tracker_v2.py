@@ -5,18 +5,18 @@ from typing import Any
 
 from sqlalchemy import select
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.models import (
+from void_liquidity.adapters.polymarket.discovery.whales.models import (
     TrackedWhale,
     TrackedWhaleMetricSnapshot,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.tracker import (
+from void_liquidity.adapters.polymarket.discovery.whales.tracker import (
     WhaleTrackerV2,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2 import (
+from void_liquidity.adapters.polymarket.discovery.whales import (
     tracker as tracker_module,
 )
 from void_liquidity.adapters.polymarket.ranking import rank_trade_first_whales

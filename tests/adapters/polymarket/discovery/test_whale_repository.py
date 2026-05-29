@@ -1,11 +1,11 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2.models import (
+from void_liquidity.adapters.polymarket.discovery.whales.models import (
     TrackedWhale,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.repository import (
+from void_liquidity.adapters.polymarket.discovery.whales.repository import (
     list_tracked_whale_wallets,
 )
 from void_liquidity.data import Base, create_database_engine, database_session

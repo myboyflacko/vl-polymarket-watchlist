@@ -12,7 +12,7 @@ from void_liquidity.adapters.polymarket.api import (
     get_polymarket_data_client,
 )
 from void_liquidity.adapters.polymarket.api.params import CurrentPositionsParams
-from void_liquidity.adapters.polymarket.discovery.whales_v2.repository import (
+from void_liquidity.adapters.polymarket.discovery.whales.repository import (
     list_tracked_whale_wallets,
 )
 from void_liquidity.adapters.polymarket.markets.whales.domain import (

@@ -9,7 +9,7 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from void_liquidity.adapters.polymarket.discovery.whales_v2 import (
+from void_liquidity.adapters.polymarket.discovery.whales import (
     models as track_whales_models,
 )
 from void_liquidity.adapters.polymarket.markets.whales import (

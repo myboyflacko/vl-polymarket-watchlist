@@ -14,7 +14,7 @@ from void_liquidity.adapters.polymarket.api.params import (
     LeaderboardParams,
     TradesParams,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     LeaderboardMetrics,
     Whale,
     WhaleIdentity,
@@ -22,19 +22,19 @@ from void_liquidity.adapters.polymarket.discovery.whales_v2.domain import (
     WalletCollectionError,
     Whales,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.helpers import (
+from void_liquidity.adapters.polymarket.discovery.whales.helpers import (
     row_timestamp,
     to_float,
     to_int,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.metrics import (
+from void_liquidity.adapters.polymarket.discovery.whales.metrics import (
     aggregate_current_positions,
     aggregate_trades,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.profiles import (
+from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
-from void_liquidity.adapters.polymarket.discovery.whales_v2.repository import (
+from void_liquidity.adapters.polymarket.discovery.whales.repository import (
     persist_whale_tracker_v2_run,
 )
 
@@ -204,7 +204,9 @@ class WhaleTrackerV2:
         self._collection_errors: list[WalletCollectionError] = []
 
         for batch_start in range(0, len(candidates), self.profile.wallet_batch_size):
-            batch = candidates[batch_start:batch_start + self.profile.wallet_batch_size]
+            batch = candidates[
+                batch_start : batch_start + self.profile.wallet_batch_size
+            ]
             results = await asyncio.gather(
                 *[
                     self._collect_whale_safely(
