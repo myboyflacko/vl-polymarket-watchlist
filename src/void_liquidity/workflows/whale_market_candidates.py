@@ -37,7 +37,7 @@ def build_whale_market_candidates_event(
     )
 
 
-def build_whale_market_candidates_runtime(bus: EventBus | None = None) -> Runtime:
+def build_whale_market_candidates_runtime(bus: EventBus | None = None, min_whale_count: int | None = None) -> Runtime:
     runtime = Runtime(bus=bus)
     runtime.install(PolymarketWhaleMarketsBinding())
     return runtime
@@ -52,17 +52,13 @@ async def run_whale_market_candidates(
     bus = EventBus()
     bus.subscribe(EventBus.WILDCARD, logger.log_domain_event)
 
+    runtime = build_whale_market_candidates_runtime(bus=bus, min_whale_count=min_whale_count)
+    
     if echo_events:
         bus.subscribe(EventBus.WILDCARD, _print_event)
 
     event = build_whale_market_candidates_event()
-    await bus.publish(event)
-    result = await PolymarketWhaleMarketsBinding(
-        min_whale_count=min_whale_count,
-    ).handle(event=event, bus=bus)
-
-    if print_candidates:
-        _print_market_candidates(result.candidates)
+    await runtime.publish(event)
 
 
 def main(argv: Sequence[str] | None = None) -> None:
