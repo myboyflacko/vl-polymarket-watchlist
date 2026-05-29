@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
-from void_liquidity.adapters.polymarket.discovery.whales.models import (
+from void_liquidity.adapters.polymarket.discovery.whales_v2.models import (
     TrackedWhale,
     TrackedWhaleMetricSnapshot,
     WhaleTrackerRun,

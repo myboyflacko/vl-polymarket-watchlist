@@ -21,7 +21,6 @@ dependencies = [
 ]
 
 [project.scripts]
-void-track-whales = "void_liquidity.workflows.track_whales:main"
 void-track-whales-v2 = "void_liquidity.workflows.track_whales_v2:main"
 void-whale-market-candidates = "void_liquidity.workflows.whale_market_candidates:main"
 

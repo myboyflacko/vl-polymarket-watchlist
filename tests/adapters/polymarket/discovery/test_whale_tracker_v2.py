@@ -5,7 +5,7 @@ from typing import Any
 
 from sqlalchemy import select
 
-from void_liquidity.adapters.polymarket.discovery.whales.models import (
+from void_liquidity.adapters.polymarket.discovery.whales_v2.models import (
     TrackedWhale,
     TrackedWhaleMetricSnapshot,
     WhaleTrackerRun,
