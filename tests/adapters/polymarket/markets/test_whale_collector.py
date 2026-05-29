@@ -17,9 +17,20 @@ YES_TOKEN = "111"
 NO_TOKEN = "222"
 
 
-class FakeHTTPClient:
-    async def close(self) -> None:
-        return None
+class FakeDataClient:
+    def __init__(self, get_current_positions) -> None:
+        self._get_current_positions = get_current_positions
+
+    async def get_current_positions(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_current_positions(None, params)
+
+
+def _patch_data_client(monkeypatch, get_current_positions) -> None:
+    monkeypatch.setattr(
+        collector_module,
+        "get_polymarket_data_client",
+        lambda: FakeDataClient(get_current_positions),
+    )
 
 
 def test_build_market_candidates_groups_positions_by_token_id() -> None:
@@ -89,8 +100,7 @@ def test_collect_whale_market_candidates_fetches_and_groups_open_positions(
         "list_tracked_whale_wallets",
         lambda: [WALLET_ONE, WALLET_TWO],
     )
-    monkeypatch.setattr(collector_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(collector_module, "get_current_positions", fake_get_current_positions)
+    _patch_data_client(monkeypatch, fake_get_current_positions)
 
     result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 
@@ -120,8 +130,7 @@ def test_collect_whale_market_candidates_keeps_processing_after_wallet_error(
         "list_tracked_whale_wallets",
         lambda: [WALLET_ONE, WALLET_TWO],
     )
-    monkeypatch.setattr(collector_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(collector_module, "get_current_positions", fake_get_current_positions)
+    _patch_data_client(monkeypatch, fake_get_current_positions)
 
     result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 
@@ -148,9 +157,8 @@ def test_collect_whale_market_candidates_paginates_positions(
         return [_position(asset="3")]
 
     monkeypatch.setattr(collector_module, "list_tracked_whale_wallets", lambda: [WALLET_ONE])
-    monkeypatch.setattr(collector_module, "HTTPClient", FakeHTTPClient)
     monkeypatch.setattr(collector_module, "POSITION_PAGE_LIMIT", 2)
-    monkeypatch.setattr(collector_module, "get_current_positions", fake_get_current_positions)
+    _patch_data_client(monkeypatch, fake_get_current_positions)
 
     result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
 

@@ -30,9 +30,48 @@ MARKET_ONE = "0x" + "1" * 64
 NOW = datetime(2026, 5, 26, tzinfo=UTC)
 
 
-class FakeHTTPClient:
-    async def close(self) -> None:
-        return None
+class FakeDataClient:
+    def __init__(
+        self,
+        *,
+        get_leaderboard=None,
+        get_trades=None,
+        get_current_positions=None,
+    ) -> None:
+        self._get_leaderboard = get_leaderboard or _empty_page
+        self._get_trades = get_trades or _empty_page
+        self._get_current_positions = get_current_positions or _empty_page
+
+    async def get_leaderboard(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_leaderboard(None, params)
+
+    async def get_trades(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_trades(None, params)
+
+    async def get_current_positions(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_current_positions(None, params)
+
+
+async def _empty_page(client: Any, params: Any) -> list[dict[str, Any]]:
+    return []
+
+
+def _patch_data_client(
+    monkeypatch,
+    *,
+    get_leaderboard=None,
+    get_trades=None,
+    get_current_positions=None,
+) -> None:
+    monkeypatch.setattr(
+        tracker_module,
+        "get_polymarket_data_client",
+        lambda: FakeDataClient(
+            get_leaderboard=get_leaderboard,
+            get_trades=get_trades,
+            get_current_positions=get_current_positions,
+        ),
+    )
 
 
 def _profile() -> WhaleTrackerV2Profile:
@@ -101,13 +140,11 @@ def test_whale_tracker_v2_collects_trade_first_metrics(
         assert params.market == [MARKET_ONE]
         return [{"currentValue": 250}]
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
 
     result = asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
@@ -147,13 +184,11 @@ def test_whale_tracker_v2_isolates_trade_errors_per_wallet(monkeypatch) -> None:
     ) -> list[dict[str, Any]]:
         return [{"currentValue": 250}]
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
 
     result = asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
@@ -187,13 +222,11 @@ def test_whale_tracker_v2_isolates_current_position_errors_per_wallet(
 
         return [{"currentValue": 250}]
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
 
     result = asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
@@ -208,8 +241,10 @@ def test_whale_tracker_v2_leaderboard_errors_remain_fatal(monkeypatch) -> None:
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
         raise RuntimeError("leaderboard down")
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+    )
 
     try:
         asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
@@ -249,13 +284,11 @@ def test_whale_tracker_v2_stops_descending_trade_pagination_at_window(
         trade_limit=1,
         max_trade_pages_per_wallet=10,
     )
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
 
     result = asyncio.run(WhaleTrackerV2(profile=profile).run(now=NOW))
@@ -285,13 +318,11 @@ def test_whale_tracker_v2_marks_unsorted_trade_pages_incomplete(monkeypatch) -> 
         trade_limit=2,
         max_trade_pages_per_wallet=1,
     )
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
 
     result = asyncio.run(WhaleTrackerV2(profile=profile).run(now=NOW))
@@ -394,13 +425,11 @@ async def _build_persistable_whales(monkeypatch) -> Any:
     ) -> list[dict[str, Any]]:
         return [{"currentValue": 250}]
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
     return await WhaleTrackerV2(profile=WhaleTrackerV2Profile(wallet_count=1)).run(
         now=NOW
@@ -429,13 +458,11 @@ async def _build_two_persistable_whales(monkeypatch) -> Any:
     ) -> list[dict[str, Any]]:
         return [{"currentValue": 250 if params.user == WALLET_ONE else 10}]
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(tracker_module, "get_trades", fake_get_trades)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
     )
     return await WhaleTrackerV2(profile=WhaleTrackerV2Profile(wallet_count=2)).run(
         now=NOW

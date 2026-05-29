@@ -7,8 +7,10 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from void_liquidity.adapters.polymarket.api import get_current_positions
-from void_liquidity.adapters.polymarket.api.client import HTTPClient
+from void_liquidity.adapters.polymarket.api import (
+    PolymarketDataClient,
+    get_polymarket_data_client,
+)
 from void_liquidity.adapters.polymarket.api.params import CurrentPositionsParams
 from void_liquidity.adapters.polymarket.discovery.whales_v2.repository import (
     list_tracked_whale_wallets,
@@ -40,13 +42,10 @@ async def collect_whale_market_candidates(
     if not wallets:
         return WhaleMarketCandidates()
 
-    client = HTTPClient()
-    try:
-        results = await asyncio.gather(
-            *(_collect_wallet_positions(client=client, proxy_wallet=wallet) for wallet in wallets)
-        )
-    finally:
-        await client.close()
+    client = get_polymarket_data_client()
+    results = await asyncio.gather(
+        *(_collect_wallet_positions(client=client, proxy_wallet=wallet) for wallet in wallets)
+    )
 
     positions = [
         position
@@ -101,7 +100,7 @@ def build_market_candidates(
 
 async def _collect_wallet_positions(
     *,
-    client: HTTPClient,
+    client: PolymarketDataClient,
     proxy_wallet: str,
 ) -> _WalletPositionResult:
     rows: list[dict[str, Any]] = []
@@ -117,7 +116,7 @@ async def _collect_wallet_positions(
                 sortBy="CURRENT",
                 sortDirection="DESC",
             )
-            page = await get_current_positions(client=client, params=params)
+            page = await client.get_current_positions(params)
             if not isinstance(page, list) or not page:
                 break
 

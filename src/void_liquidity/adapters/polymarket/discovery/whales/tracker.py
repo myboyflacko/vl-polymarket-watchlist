@@ -8,12 +8,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 from void_liquidity.adapters.polymarket.api import (
-    get_activity,
-    get_closed_positions,
-    get_current_positions,
-    get_leaderboard,
+    PolymarketDataClient,
+    get_polymarket_data_client,
 )
-from void_liquidity.adapters.polymarket.api.client import HTTPClient
 from void_liquidity.adapters.polymarket.api.endpoints.profile import (
     PolymarketRateLimitError,
 )
@@ -137,50 +134,46 @@ class WhaleTracker:
         run_id: str,
         started_at: datetime,
     ) -> WhaleTrackerResult:
-        client = HTTPClient()
+        client = get_polymarket_data_client()
         now = datetime.now(UTC)
 
-        try:
-            entries = await self._fetch_candidate_entries(client=client)
-            scan = await self._process_candidate_batches(
-                client=client,
-                entries=entries,
-                now=now,
-            )
-            ranked_whales = self._score_whales(
-                scan.whales,
-                criteria=self.scoring_criteria,
-            )
-            self._persist_outputs(
-                whales=ranked_whales,
-                context=PersistContext(
-                    reject_summary=scan.reject_summary,
-                    reject_group_summary=scan.reject_group_summary,
-                    checked_wallet_count=scan.checked_wallet_count,
-                    checked_group_summary=scan.checked_group_summary,
-                    candidate_wallet_count=len(entries.candidates),
-                    candidate_pool_summary=entries.pool_summary,
-                    generated_at=now,
-                    run_id=run_id,
-                    started_at=started_at,
-                ),
-            )
-            return WhaleTrackerResult(
-                whales=ranked_whales,
-                candidate_wallet_count=len(entries.candidates),
+        entries = await self._fetch_candidate_entries(client=client)
+        scan = await self._process_candidate_batches(
+            client=client,
+            entries=entries,
+            now=now,
+        )
+        ranked_whales = self._score_whales(
+            scan.whales,
+            criteria=self.scoring_criteria,
+        )
+        self._persist_outputs(
+            whales=ranked_whales,
+            context=PersistContext(
+                reject_summary=scan.reject_summary,
+                reject_group_summary=scan.reject_group_summary,
                 checked_wallet_count=scan.checked_wallet_count,
-                accepted_wallet_count=len(ranked_whales),
-                scoring_method=self.scoring_method,
-                scoring_criteria=asdict(self.scoring_criteria),
-                request_errors=scan.request_errors,
-            )
-
-        finally:
-            await client.close()
+                checked_group_summary=scan.checked_group_summary,
+                candidate_wallet_count=len(entries.candidates),
+                candidate_pool_summary=entries.pool_summary,
+                generated_at=now,
+                run_id=run_id,
+                started_at=started_at,
+            ),
+        )
+        return WhaleTrackerResult(
+            whales=ranked_whales,
+            candidate_wallet_count=len(entries.candidates),
+            checked_wallet_count=scan.checked_wallet_count,
+            accepted_wallet_count=len(ranked_whales),
+            scoring_method=self.scoring_method,
+            scoring_criteria=asdict(self.scoring_criteria),
+            request_errors=scan.request_errors,
+        )
 
     async def _fetch_candidate_entries(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
     ) -> CandidateEntries:
         pnl_entries, vol_entries = await asyncio.gather(
             self._fetch_leaderboard_top(
@@ -211,7 +204,7 @@ class WhaleTracker:
 
     async def _fetch_leaderboard_top(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         order_by: Literal["PNL", "VOL"],
     ) -> dict[str, dict[str, Any]]:
         entries_by_wallet: dict[str, dict[str, Any]] = {}
@@ -228,7 +221,7 @@ class WhaleTracker:
                 offset=offset,
             )
 
-            page = await get_leaderboard(client=client, params=params)
+            page = await client.get_leaderboard(params)
 
             if not isinstance(page, list) or not page:
                 break
@@ -257,7 +250,7 @@ class WhaleTracker:
 
     async def _process_candidate_batches(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         entries: CandidateEntries,
         now: datetime,
     ) -> CandidateScan:
@@ -322,7 +315,7 @@ class WhaleTracker:
 
     async def _validate_candidate(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         candidate: Candidate,
         pnl_entry: dict[str, Any] | None,
         vol_entry: dict[str, Any] | None,
@@ -463,7 +456,7 @@ class WhaleTracker:
 
     async def _fetch_all_current_positions(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         proxy_wallet: str,
     ) -> PagedRows:
         current_positions: list[dict[str, Any]] = []
@@ -478,7 +471,7 @@ class WhaleTracker:
             )
 
             try:
-                page = await get_current_positions(client=client, params=params)
+                page = await client.get_current_positions(params)
             except PolymarketRateLimitError as exc:
                 error = _request_error(
                     exc=exc,
@@ -526,7 +519,7 @@ class WhaleTracker:
 
     async def _fetch_all_closed_positions(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         proxy_wallet: str,
         cutoff: datetime,
     ) -> PagedRows:
@@ -547,7 +540,7 @@ class WhaleTracker:
             )
 
             try:
-                page = await get_closed_positions(client=client, params=params)
+                page = await client.get_closed_positions(params)
             except PolymarketRateLimitError as exc:
                 error = _request_error(
                     exc=exc,
@@ -647,7 +640,7 @@ class WhaleTracker:
 
     async def _fetch_all_activity(
         self,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         proxy_wallet: str,
         start: datetime,
         end: datetime,
@@ -666,7 +659,7 @@ class WhaleTracker:
             )
 
             try:
-                page = await get_activity(client=client, params=params)
+                page = await client.get_activity(params)
             except PolymarketRateLimitError as exc:
                 error = _request_error(
                     exc=exc,

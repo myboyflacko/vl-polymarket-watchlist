@@ -6,11 +6,9 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from void_liquidity.adapters.polymarket.api import (
-    get_current_positions,
-    get_leaderboard,
-    get_trades,
+    PolymarketDataClient,
+    get_polymarket_data_client,
 )
-from void_liquidity.adapters.polymarket.api.client import HTTPClient
 from void_liquidity.adapters.polymarket.api.params import (
     CurrentPositionsParams,
     LeaderboardParams,
@@ -84,25 +82,22 @@ class WhaleTrackerV2:
 
     async def run(self, *, now: datetime | None = None) -> Whales:
         generated_at = now or datetime.now(UTC)
-        client = HTTPClient()
+        client = get_polymarket_data_client()
 
-        try:
-            candidates = await self._fetch_candidates(client=client)
-            whales = await self._collect_whales(
-                client=client,
-                candidates=candidates,
-                now=generated_at,
-            )
-            return Whales(
-                whales=whales,
-                candidate_wallet_count=len(candidates),
-                checked_wallet_count=len(candidates),
-                generated_at=generated_at,
-                profile_version=self.profile.profile_version,
-                collection_errors=self._collection_errors,
-            )
-        finally:
-            await client.close()
+        candidates = await self._fetch_candidates(client=client)
+        whales = await self._collect_whales(
+            client=client,
+            candidates=candidates,
+            now=generated_at,
+        )
+        return Whales(
+            whales=whales,
+            candidate_wallet_count=len(candidates),
+            checked_wallet_count=len(candidates),
+            generated_at=generated_at,
+            profile_version=self.profile.profile_version,
+            collection_errors=self._collection_errors,
+        )
 
     def persist(
         self,
@@ -123,7 +118,7 @@ class WhaleTrackerV2:
             ranking_result=ranking_result,
         )
 
-    async def _fetch_candidates(self, client: HTTPClient) -> list[_Candidate]:
+    async def _fetch_candidates(self, client: PolymarketDataClient) -> list[_Candidate]:
         pnl_entries, volume_entries = await asyncio.gather(
             self._fetch_leaderboard(client=client, order_by="PNL"),
             self._fetch_leaderboard(client=client, order_by="VOL"),
@@ -151,7 +146,7 @@ class WhaleTrackerV2:
     async def _fetch_leaderboard(
         self,
         *,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         order_by: LeaderboardOrder,
     ) -> dict[str, dict[str, Any]]:
         entries: dict[str, dict[str, Any]] = {}
@@ -166,7 +161,7 @@ class WhaleTrackerV2:
                 limit=self.profile.leaderboard_limit,
                 offset=offset,
             )
-            page = await get_leaderboard(client=client, params=params)
+            page = await client.get_leaderboard(params)
 
             if not isinstance(page, list) or not page:
                 break
@@ -201,7 +196,7 @@ class WhaleTrackerV2:
     async def _collect_whales(
         self,
         *,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         candidates: list[_Candidate],
         now: datetime,
     ) -> list[Whale]:
@@ -232,7 +227,7 @@ class WhaleTrackerV2:
     async def _collect_whale_safely(
         self,
         *,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         candidate: _Candidate,
         now: datetime,
     ) -> _WalletCollectionResult:
@@ -257,7 +252,7 @@ class WhaleTrackerV2:
     async def _collect_whale(
         self,
         *,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         candidate: _Candidate,
         now: datetime,
     ) -> Whale:
@@ -350,7 +345,7 @@ class WhaleTrackerV2:
     async def _fetch_window_trades(
         self,
         *,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         proxy_wallet: str,
         now: datetime,
     ) -> _TradePageRows:
@@ -368,7 +363,7 @@ class WhaleTrackerV2:
                 offset=offset,
                 takerOnly=self.profile.taker_only,
             )
-            page = await get_trades(client=client, params=params)
+            page = await client.get_trades(params)
 
             if not isinstance(page, list) or not page:
                 return _TradePageRows(
@@ -432,7 +427,7 @@ class WhaleTrackerV2:
     async def _fetch_current_positions(
         self,
         *,
-        client: HTTPClient,
+        client: PolymarketDataClient,
         proxy_wallet: str,
         condition_ids: list[str],
     ) -> _CurrentPositionRows:
@@ -451,7 +446,7 @@ class WhaleTrackerV2:
                 sortBy="CURRENT",
                 sortDirection="DESC",
             )
-            page = await get_current_positions(client=client, params=params)
+            page = await client.get_current_positions(params)
 
             if not isinstance(page, list) or not page:
                 return _CurrentPositionRows(rows=rows, complete=True)

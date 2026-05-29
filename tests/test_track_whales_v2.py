@@ -68,9 +68,55 @@ def clear_settings_cache():
     get_settings.cache_clear()
 
 
-class FakeHTTPClient:
-    async def close(self) -> None:
-        return None
+class FakeDataClient:
+    def __init__(
+        self,
+        *,
+        get_leaderboard=None,
+        get_current_positions=None,
+        get_closed_positions=None,
+        get_activity=None,
+    ) -> None:
+        self._get_leaderboard = get_leaderboard or _empty_page
+        self._get_current_positions = get_current_positions or _empty_page
+        self._get_closed_positions = get_closed_positions or _empty_page
+        self._get_activity = get_activity or _empty_page
+
+    async def get_leaderboard(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_leaderboard(None, params)
+
+    async def get_current_positions(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_current_positions(None, params)
+
+    async def get_closed_positions(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_closed_positions(None, params)
+
+    async def get_activity(self, params: Any) -> list[dict[str, Any]]:
+        return await self._get_activity(None, params)
+
+
+async def _empty_page(client: Any, params: Any) -> list[dict[str, Any]]:
+    return []
+
+
+def _patch_data_client(
+    monkeypatch: pytest.MonkeyPatch,
+    *,
+    get_leaderboard=None,
+    get_current_positions=None,
+    get_closed_positions=None,
+    get_activity=None,
+) -> None:
+    monkeypatch.setattr(
+        tracker_module,
+        "get_polymarket_data_client",
+        lambda: FakeDataClient(
+            get_leaderboard=get_leaderboard,
+            get_current_positions=get_current_positions,
+            get_closed_positions=get_closed_positions,
+            get_activity=get_activity,
+        ),
+    )
 
 
 class FrozenDateTime(datetime):
@@ -282,19 +328,13 @@ def test_track_whales_filters_and_writes_v2_output(
         assert params.end is not None
         return _activity(now)
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
-    monkeypatch.setattr(tracker_module, "get_leaderboard", fake_get_leaderboard)
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_current_positions=fake_get_current_positions,
+        get_closed_positions=fake_get_closed_positions,
+        get_activity=fake_get_activity,
     )
-    monkeypatch.setattr(
-        tracker_module,
-        "get_closed_positions",
-        fake_get_closed_positions,
-    )
-    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
     monkeypatch.setattr(tracker_module, "datetime", FrozenDateTime)
 
     result = asyncio.run(
@@ -400,7 +440,7 @@ def test_fetch_candidate_entries_loads_leaderboards_concurrently(
     entries = asyncio.run(
         asyncio.wait_for(
             WhaleTracker(profile=profile)._fetch_candidate_entries(
-                client=FakeHTTPClient(),
+                client=FakeDataClient(),
             ),
             timeout=1,
         )
@@ -436,21 +476,20 @@ def test_validate_candidate_skips_closed_and_activity_when_current_fails(
     async def fail_get_activity(client: Any, params: Any) -> list[Any]:
         pytest.fail("activity should be skipped")
 
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_current_positions=fake_get_current_positions,
+        get_closed_positions=fail_get_closed_positions,
+        get_activity=fail_get_activity,
     )
-    monkeypatch.setattr(
-        tracker_module,
-        "get_closed_positions",
-        fail_get_closed_positions,
-    )
-    monkeypatch.setattr(tracker_module, "get_activity", fail_get_activity)
 
     result = asyncio.run(
         WhaleTracker(profile=profile)._validate_candidate(
-            client=FakeHTTPClient(),
+            client=FakeDataClient(
+                get_current_positions=fake_get_current_positions,
+                get_closed_positions=fail_get_closed_positions,
+                get_activity=fail_get_activity,
+            ),
             candidate=Candidate(
                 proxy_wallet=WALLET_ONE,
                 source="core",
@@ -496,21 +535,20 @@ def test_validate_candidate_skips_activity_when_closed_fails(
     async def fail_get_activity(client: Any, params: Any) -> list[Any]:
         pytest.fail("activity should be skipped")
 
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_current_positions=fake_get_current_positions,
+        get_closed_positions=fake_get_closed_positions,
+        get_activity=fail_get_activity,
     )
-    monkeypatch.setattr(
-        tracker_module,
-        "get_closed_positions",
-        fake_get_closed_positions,
-    )
-    monkeypatch.setattr(tracker_module, "get_activity", fail_get_activity)
 
     result = asyncio.run(
         WhaleTracker(profile=profile)._validate_candidate(
-            client=FakeHTTPClient(),
+            client=FakeDataClient(
+                get_current_positions=fake_get_current_positions,
+                get_closed_positions=fake_get_closed_positions,
+                get_activity=fail_get_activity,
+            ),
             candidate=Candidate(
                 proxy_wallet=WALLET_ONE,
                 source="core",
@@ -558,21 +596,20 @@ def test_validate_candidate_fetches_activity_after_current_and_closed_pass(
         activity_calls += 1
         return _activity(now)
 
-    monkeypatch.setattr(
-        tracker_module,
-        "get_current_positions",
-        fake_get_current_positions,
+    _patch_data_client(
+        monkeypatch,
+        get_current_positions=fake_get_current_positions,
+        get_closed_positions=fake_get_closed_positions,
+        get_activity=fake_get_activity,
     )
-    monkeypatch.setattr(
-        tracker_module,
-        "get_closed_positions",
-        fake_get_closed_positions,
-    )
-    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
 
     result = asyncio.run(
         WhaleTracker(profile=profile)._validate_candidate(
-            client=FakeHTTPClient(),
+            client=FakeDataClient(
+                get_current_positions=fake_get_current_positions,
+                get_closed_positions=fake_get_closed_positions,
+                get_activity=fake_get_activity,
+            ),
             candidate=Candidate(
                 proxy_wallet=WALLET_ONE,
                 source="core",
@@ -642,7 +679,7 @@ def test_track_whales_ranks_before_writing_outputs(
             checked_group_summary=Counter({"core": len(entries.candidates)}),
         )
 
-    monkeypatch.setattr(tracker_module, "HTTPClient", FakeHTTPClient)
+    _patch_data_client(monkeypatch)
     monkeypatch.setattr(tracker_module, "datetime", FrozenDateTime)
     monkeypatch.setattr(
         WhaleTracker,
@@ -823,11 +860,11 @@ def test_fetch_all_activity_marks_max_offset_exhaustion_incomplete(
     ) -> list[dict[str, Any]]:
         return page
 
-    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
+    _patch_data_client(monkeypatch, get_activity=fake_get_activity)
 
     rows, is_complete = asyncio.run(
         WhaleTracker(profile=profile)._fetch_all_activity(
-            client=FakeHTTPClient(),
+            client=FakeDataClient(get_activity=fake_get_activity),
             proxy_wallet=WALLET_ONE,
             start=datetime(2026, 5, 1, tzinfo=UTC),
             end=datetime(2026, 5, 20, tzinfo=UTC),
@@ -852,11 +889,11 @@ def test_fetch_all_activity_returns_fetch_error_context(
     ) -> list[dict[str, Any]]:
         raise RuntimeError("api down")
 
-    monkeypatch.setattr(tracker_module, "get_activity", fake_get_activity)
+    _patch_data_client(monkeypatch, get_activity=fake_get_activity)
 
     result = asyncio.run(
         WhaleTracker(profile=profile)._fetch_all_activity(
-            client=FakeHTTPClient(),
+            client=FakeDataClient(get_activity=fake_get_activity),
             proxy_wallet=WALLET_ONE,
             start=datetime(2026, 5, 1, tzinfo=UTC),
             end=datetime(2026, 5, 20, tzinfo=UTC),

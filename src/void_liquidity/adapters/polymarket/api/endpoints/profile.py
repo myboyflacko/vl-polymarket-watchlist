@@ -2,7 +2,6 @@ from typing import Any
 
 from pydantic import Field
 
-from void_liquidity.adapters.polymarket.api.client import HTTPClient
 from void_liquidity.adapters.polymarket.api.data_client import get_polymarket_data_client
 from void_liquidity.adapters.polymarket.api.errors import (
     PolymarketRateLimitError as PolymarketRateLimitError,
@@ -25,14 +24,14 @@ class ProfileParams(BaseParams):
 
 
 async def get_closed_positions(
-    client: HTTPClient,
+    client: object,
     params: ClosedPositionsParams,
 ) -> dict[str, Any] | list[Any]:
     return await get_polymarket_data_client().get_closed_positions(params)
 
 
 async def get_current_positions(
-    client: HTTPClient,
+    client: object,
     params: CurrentPositionsParams,
 ) -> dict[str, Any] | list[Any]:
     """Fetch current positions for a Polymarket user.
@@ -45,7 +44,7 @@ async def get_current_positions(
 
 
 async def get_activity(
-    client: HTTPClient,
+    client: object,
     params: ActivityParams,
 ) -> dict[str, Any] | list[Any]:
     """Fetch activity rows for a Polymarket user.
@@ -58,7 +57,7 @@ async def get_activity(
 
 
 async def get_trades(
-    client: HTTPClient,
+    client: object,
     params: TradesParams,
 ) -> dict[str, Any] | list[Any]:
     """Fetch trades for a Polymarket user or markets.
