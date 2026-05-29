@@ -5,23 +5,22 @@ from datetime import UTC, datetime
 
 from void_liquidity.adapters.polymarket.markets.whales.collector import (
     DEFAULT_MIN_WHALE_COUNT,
-    collect_whale_market_candidates,
+    WhaleMarketCollector,
 )
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     WhaleMarketCandidates,
 )
 from void_liquidity.adapters.polymarket.markets.whales.events import (
-    POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
-    POLYMARKET_WHALE_MARKETS_FAILED,
     POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
     POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
     POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+)
+from void_liquidity.pipeline.markets.whales import (
+    POLYMARKET_WHALE_MARKETS_COMPLETED,
+    POLYMARKET_WHALE_MARKETS_FAILED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
-)
-from void_liquidity.adapters.polymarket.markets.whales.repository import (
-    persist_market_candidates,
 )
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus
@@ -76,9 +75,8 @@ class PolymarketWhaleMarketsBinding:
                 )
             )
 
-            result = await collect_whale_market_candidates(
-                min_whale_count=self.min_whale_count,
-            )
+            collector = WhaleMarketCollector(min_whale_count=self.min_whale_count)
+            result = await collector.run()
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -111,12 +109,9 @@ class PolymarketWhaleMarketsBinding:
                 )
             )
             try:
-                persist_market_candidates(
-                    result.candidates,
+                collector.persist(
+                    candidates=result,
                     run_id=run_id,
-                    min_whale_count=self.min_whale_count,
-                    position_count=len(result.positions),
-                    error_count=len(result.errors),
                     seen_at=started_at,
                 )
             except Exception as exc:

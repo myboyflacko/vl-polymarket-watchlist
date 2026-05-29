@@ -12,12 +12,14 @@ from void_liquidity.adapters.polymarket.markets.whales.collector import (
     DEFAULT_MIN_WHALE_COUNT,
 )
 from void_liquidity.adapters.polymarket.markets.whales.events import (
-    POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
-    POLYMARKET_WHALE_MARKETS_FAILED,
     POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
     POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
     POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+)
+from void_liquidity.pipeline.markets.whales import (
+    POLYMARKET_WHALE_MARKETS_COMPLETED,
+    POLYMARKET_WHALE_MARKETS_FAILED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
@@ -90,26 +92,25 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
 ) -> None:
     persisted: list[dict] = []
 
-    async def fake_collect_whale_market_candidates(
-        *,
-        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
-    ) -> WhaleMarketCandidates:
-        assert min_whale_count == DEFAULT_MIN_WHALE_COUNT
-        return _result()
+    class FakeCollector:
+        def __init__(
+            self,
+            *,
+            min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+        ) -> None:
+            assert min_whale_count == DEFAULT_MIN_WHALE_COUNT
+            self.min_whale_count = min_whale_count
+
+        async def run(self) -> WhaleMarketCandidates:
+            return _result()
+
+        def persist(self, **kwargs) -> None:
+            persisted.append(kwargs)
 
     monkeypatch.setattr(
         binding_module,
-        "collect_whale_market_candidates",
-        fake_collect_whale_market_candidates,
-    )
-
-    def fake_persist_market_candidates(candidates, **kwargs) -> None:
-        persisted.append({"candidates": candidates, **kwargs})
-
-    monkeypatch.setattr(
-        binding_module,
-        "persist_market_candidates",
-        fake_persist_market_candidates,
+        "WhaleMarketCollector",
+        FakeCollector,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
@@ -127,9 +128,7 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     ]
     assert persisted
     assert persisted[0]["run_id"] == emitted_events[0].payload["run_id"]
-    assert persisted[0]["min_whale_count"] == DEFAULT_MIN_WHALE_COUNT
-    assert persisted[0]["position_count"] == 1
-    assert persisted[0]["error_count"] == 1
+    assert persisted[0]["candidates"] == result
     assert {event.source for event in emitted_events} == {
         "binding.polymarket.markets.whales"
     }
@@ -150,16 +149,21 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
 def test_polymarket_whale_markets_binding_publishes_failed_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def fail_collect_whale_market_candidates(
-        *,
-        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
-    ) -> WhaleMarketCandidates:
-        raise RuntimeError("collector failed")
+    class FailingCollector:
+        def __init__(
+            self,
+            *,
+            min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+        ) -> None:
+            self.min_whale_count = min_whale_count
+
+        async def run(self) -> WhaleMarketCandidates:
+            raise RuntimeError("collector failed")
 
     monkeypatch.setattr(
         binding_module,
-        "collect_whale_market_candidates",
-        fail_collect_whale_market_candidates,
+        "WhaleMarketCollector",
+        FailingCollector,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
@@ -179,24 +183,24 @@ def test_polymarket_whale_markets_binding_publishes_failed_event(
 def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    async def fake_collect_whale_market_candidates(
-        *,
-        min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
-    ) -> WhaleMarketCandidates:
-        return _result()
+    class PersistFailingCollector:
+        def __init__(
+            self,
+            *,
+            min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+        ) -> None:
+            self.min_whale_count = min_whale_count
 
-    def fail_persist_market_candidates(candidates, **kwargs) -> None:
-        raise RuntimeError("db down")
+        async def run(self) -> WhaleMarketCandidates:
+            return _result()
+
+        def persist(self, **kwargs) -> None:
+            raise RuntimeError("db down")
 
     monkeypatch.setattr(
         binding_module,
-        "collect_whale_market_candidates",
-        fake_collect_whale_market_candidates,
-    )
-    monkeypatch.setattr(
-        binding_module,
-        "persist_market_candidates",
-        fail_persist_market_candidates,
+        "WhaleMarketCollector",
+        PersistFailingCollector,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []

@@ -10,7 +10,7 @@ from void_liquidity.adapters.polymarket.markets.whales.domain import (
 from void_liquidity.adapters.polymarket.markets.whales.collector import (
     DEFAULT_MIN_WHALE_COUNT,
 )
-from void_liquidity.adapters.polymarket.markets.whales.events import (
+from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )

@@ -4,10 +4,13 @@ from typing import Any
 
 from void_liquidity.adapters.polymarket.markets.whales import collector as collector_module
 from void_liquidity.adapters.polymarket.markets.whales.collector import (
-    build_market_candidates,
-    collect_whale_market_candidates,
+    WhaleMarketCollector,
 )
-from void_liquidity.adapters.polymarket.markets.whales.domain import WhalePosition
+from void_liquidity.adapters.polymarket.markets.whales.domain import (
+    MarketCandidate,
+    WhaleMarketCandidates,
+    WhalePosition,
+)
 
 
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -33,8 +36,8 @@ def _patch_data_client(monkeypatch, get_current_positions) -> None:
     )
 
 
-def test_build_market_candidates_groups_positions_by_token_id() -> None:
-    candidates = build_market_candidates(
+def test_whale_market_collector_groups_positions_by_token_id() -> None:
+    candidates = WhaleMarketCollector(min_whale_count=1)._build_market_candidates(
         [
             _whale_position(WALLET_ONE, token_id=YES_TOKEN, current_value=100, size=10),
             _whale_position(WALLET_TWO, token_id=YES_TOKEN, current_value=50, size=5),
@@ -46,7 +49,6 @@ def test_build_market_candidates_groups_positions_by_token_id() -> None:
                 size=15,
             ),
         ],
-        min_whale_count=1,
     )
 
     assert [candidate.token_id for candidate in candidates] == [YES_TOKEN, NO_TOKEN]
@@ -60,8 +62,8 @@ def test_build_market_candidates_groups_positions_by_token_id() -> None:
     assert candidates[1].outcome == "No"
 
 
-def test_build_market_candidates_filters_below_min_whale_count() -> None:
-    candidates = build_market_candidates(
+def test_whale_market_collector_filters_below_min_whale_count() -> None:
+    candidates = WhaleMarketCollector()._build_market_candidates(
         [
             _whale_position(WALLET_ONE, token_id=YES_TOKEN),
             _whale_position(WALLET_TWO, token_id=YES_TOKEN),
@@ -71,19 +73,19 @@ def test_build_market_candidates_filters_below_min_whale_count() -> None:
     assert candidates == []
 
 
-def test_collect_whale_market_candidates_returns_empty_result_without_wallets(
+def test_whale_market_collector_returns_empty_result_without_wallets(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(collector_module, "list_tracked_whale_wallets", lambda: [])
 
-    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
+    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
 
     assert result.candidates == []
     assert result.positions == []
     assert result.errors == []
 
 
-def test_collect_whale_market_candidates_fetches_and_groups_open_positions(
+def test_whale_market_collector_fetches_and_groups_open_positions(
     monkeypatch,
 ) -> None:
     calls = []
@@ -102,7 +104,7 @@ def test_collect_whale_market_candidates_fetches_and_groups_open_positions(
     )
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
-    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
+    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
 
     assert [(user, offset) for user, offset, _ in calls] == [
         (WALLET_ONE, 0),
@@ -116,7 +118,7 @@ def test_collect_whale_market_candidates_fetches_and_groups_open_positions(
     assert result.errors == []
 
 
-def test_collect_whale_market_candidates_keeps_processing_after_wallet_error(
+def test_whale_market_collector_keeps_processing_after_wallet_error(
     monkeypatch,
 ) -> None:
     async def fake_get_current_positions(client: Any, params: Any) -> list[dict[str, Any]]:
@@ -132,7 +134,7 @@ def test_collect_whale_market_candidates_keeps_processing_after_wallet_error(
     )
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
-    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
+    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
 
     assert len(result.positions) == 1
     assert len(result.candidates) == 1
@@ -141,7 +143,7 @@ def test_collect_whale_market_candidates_keeps_processing_after_wallet_error(
     assert result.errors[0].message == "boom"
 
 
-def test_collect_whale_market_candidates_paginates_positions(
+def test_whale_market_collector_paginates_positions(
     monkeypatch,
 ) -> None:
     calls = []
@@ -160,11 +162,37 @@ def test_collect_whale_market_candidates_paginates_positions(
     monkeypatch.setattr(collector_module, "POSITION_PAGE_LIMIT", 2)
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
-    result = asyncio.run(collect_whale_market_candidates(min_whale_count=1))
+    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
 
     assert calls == [0, 2]
     assert [position.token_id for position in result.positions] == ["1", "2", "3"]
     assert len(result.candidates) == 3
+
+
+def test_whale_market_collector_persists_candidates(monkeypatch) -> None:
+    persisted: list[dict] = []
+
+    def fake_persist_market_candidates(candidates, **kwargs) -> None:
+        persisted.append({"candidates": candidates, **kwargs})
+
+    monkeypatch.setattr(
+        collector_module,
+        "persist_market_candidates",
+        fake_persist_market_candidates,
+    )
+    result = _collector_result()
+
+    WhaleMarketCollector(min_whale_count=2).persist(
+        candidates=result,
+        run_id="run-1",
+    )
+
+    assert persisted
+    assert persisted[0]["candidates"] == result.candidates
+    assert persisted[0]["run_id"] == "run-1"
+    assert persisted[0]["min_whale_count"] == 2
+    assert persisted[0]["position_count"] == 2
+    assert persisted[0]["error_count"] == 0
 
 
 def _whale_position(
@@ -214,3 +242,27 @@ def _position(
         "endDate": "2026-07-20",
         "negativeRisk": False,
     }
+
+
+def _collector_result() -> WhaleMarketCandidates:
+    return WhaleMarketCandidates(
+        candidates=[
+            MarketCandidate(
+                token_id=YES_TOKEN,
+                condition_id=CONDITION_ID,
+                title="Will this happen?",
+                slug="will-this-happen",
+                outcome="Yes",
+                whale_count=2,
+                wallets=[WALLET_ONE, WALLET_TWO],
+                total_size=20,
+                total_current_value=200,
+                weighted_avg_price=0.4,
+                cur_price=0.5,
+            ),
+        ],
+        positions=[
+            _whale_position(WALLET_ONE, token_id=YES_TOKEN),
+            _whale_position(WALLET_TWO, token_id=YES_TOKEN),
+        ],
+    )
