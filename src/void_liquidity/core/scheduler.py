@@ -22,8 +22,13 @@ class Scheduler:
         self.runtime = runtime
         self.registry: list[ScheduledJob] = []
 
-    def register(self, job: ScheduledJob) -> None:
-        self.registry.append(job)
+    def register(self, *jobs: ScheduledJob) -> None:
+        for job in jobs:
+            if not isinstance(job, ScheduledJob):
+                raise ValueError(f"job must be 'ScheduledJob' object not type {type(job)}")
+
+        for job in jobs:
+            self.registry.append(job)
 
     async def run_once(self) -> None:
         for job in self.registry:

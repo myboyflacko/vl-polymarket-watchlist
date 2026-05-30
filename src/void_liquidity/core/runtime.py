@@ -15,8 +15,13 @@ class Runtime:
         self.registry = registry or BindingRegistry()
         self._connected = False
 
-    def install(self, binding: Binding) -> None:
-        self.registry.register(binding)
+    def install(self, *bindings: Binding) -> None:
+        for binding in bindings:
+            if not isinstance(binding, Binding):
+                raise ValueError(f"Binding must be a Binding instance not type {type(binding)}")
+
+        for binding in bindings:
+            self.registry.register(binding)
         self._connected = False
 
     async def publish(self, event: DomainEvent) -> None:

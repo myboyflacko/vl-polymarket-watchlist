@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from void_liquidity.core.events import DomainEvent, EventBus
 
@@ -15,6 +15,7 @@ class BindingSpec:
     produces: tuple[str, ...] = field(default_factory=tuple)
 
 
+@runtime_checkable
 class Binding(Protocol):
     spec: BindingSpec
 
