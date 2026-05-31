@@ -2,11 +2,11 @@ import asyncio
 
 import pytest
 
-from void_liquidity.adapters.polymarket.discovery.whales.events import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_REQUESTED,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
@@ -35,7 +35,7 @@ def test_build_track_whales_v2_runtime_installs_polymarket_binding() -> None:
     runtime = build_track_whales_v2_runtime()
 
     assert isinstance(
-        runtime.registry.get("polymarket.discovery.whales_v2"),
+        runtime.registry.get("polymarket.markets.whales.discovery"),
         PolymarketWhaleDiscoveryV2Binding,
     )
 

@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from void_liquidity.adapters.polymarket.markets.whales.domain import MarketCandidate
+from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 
 
 MarketSignalProfileName = Literal[
@@ -15,10 +15,13 @@ MarketSignalProfileName = Literal[
 ]
 
 
-class MarketSignalProfile(BaseModel):
+class WhaleSignalProfile(BaseModel):
     name: MarketSignalProfileName
     min_total_current_value: float = Field(default=0.0, ge=0)
     min_value_per_wallet: float = Field(default=0.0, ge=0)
+
+
+MarketSignalProfile = WhaleSignalProfile
 
 
 class MarketSignal(BaseModel):
@@ -31,5 +34,5 @@ class MarketSignal(BaseModel):
 
 
 class MarketSignalResult(BaseModel):
-    profile: MarketSignalProfile
+    profile: WhaleSignalProfile
     signals: list[MarketSignal]

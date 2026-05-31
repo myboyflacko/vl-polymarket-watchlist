@@ -1,6 +1,6 @@
 from datetime import date
 
-from void_liquidity.adapters.polymarket.markets.whales.domain import MarketCandidate
+from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 from void_liquidity.adapters.polymarket.signals.whales import signals as signals_module
 from void_liquidity.adapters.polymarket.signals.whales.domain import MarketSignalProfile
 from void_liquidity.adapters.polymarket.signals.whales.signals import (

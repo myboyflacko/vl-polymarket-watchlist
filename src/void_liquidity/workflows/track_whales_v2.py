@@ -5,10 +5,10 @@ import asyncio
 import json
 from typing import Sequence
 
-from void_liquidity.adapters.polymarket.discovery.whales.events import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.bindings.polymarket.discovery.whales_v2 import (

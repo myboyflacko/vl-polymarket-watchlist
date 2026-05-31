@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.discovery.whales.events import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_DISCOVERED,
     POLYMARKET_WHALES_V2_FAILED,
@@ -12,16 +12,16 @@ from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
     POLYMARKET_WHALES_V2_STARTED,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleTrackerV2Profile,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.tracker import WhaleTrackerV2
+from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import WhaleTrackerV2
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
-EVENT_SOURCE = "binding.polymarket.discovery.whales_v2"
-ADAPTER_NAME = "polymarket.whales_v2"
+EVENT_SOURCE = "binding.polymarket.markets.whales.discovery"
+ADAPTER_NAME = "polymarket.markets.whales.discovery"
 PROVIDER_NAME = "polymarket"
 
 
@@ -40,7 +40,7 @@ def _profile_from_payload(payload: dict) -> WhaleTrackerV2Profile:
 
 class PolymarketWhaleDiscoveryV2Binding:
     spec = BindingSpec(
-        name="polymarket.discovery.whales_v2",
+        name="polymarket.markets.whales.discovery",
         version="1.0.0",
         description="Collects and persists Polymarket whale snapshots.",
         consumes=(POLYMARKET_WHALES_V2_REQUESTED,),

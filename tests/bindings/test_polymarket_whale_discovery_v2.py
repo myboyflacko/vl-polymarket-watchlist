@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from void_liquidity.adapters.polymarket.discovery.whales.domain import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
     CollectionQuality,
     ExposureMetrics,
     LeaderboardMetrics,
@@ -15,7 +15,7 @@ from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     WalletCollectionError,
     Whales,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.events import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALES_V2_COMPLETED,
     POLYMARKET_WHALES_V2_DISCOVERED,
     POLYMARKET_WHALES_V2_FAILED,
@@ -91,7 +91,7 @@ def _partial_whales() -> Whales:
 def test_polymarket_whale_v2_binding_declares_runtime_contract() -> None:
     binding = PolymarketWhaleDiscoveryV2Binding()
 
-    assert binding.spec.name == "polymarket.discovery.whales_v2"
+    assert binding.spec.name == "polymarket.markets.whales.discovery"
     assert binding.spec.consumes == (POLYMARKET_WHALES_V2_REQUESTED,)
     assert POLYMARKET_WHALES_V2_COMPLETED in binding.spec.produces
     assert POLYMARKET_WHALES_V2_PERSIST_COMPLETED in binding.spec.produces
@@ -131,7 +131,7 @@ def test_polymarket_whale_v2_binding_runs_persists_and_publishes(
     assert persisted
     assert "ranking_result" not in persisted[0]
     assert {event.source for event in emitted_events} == {
-        "binding.polymarket.discovery.whales_v2"
+        "binding.polymarket.markets.whales.discovery"
     }
     assert {event.correlation_id for event in emitted_events} == {"correlation-v2"}
     assert emitted_events[-1].payload["collected_wallet_count"] == 1

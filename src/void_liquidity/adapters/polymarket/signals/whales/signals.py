@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from void_liquidity.adapters.polymarket.markets.whales.domain import MarketCandidate
-from void_liquidity.adapters.polymarket.markets.whales.repository import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
+from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
     list_latest_market_candidates,
 )
 from void_liquidity.adapters.polymarket.signals.whales.domain import (
     MarketSignal,
     MarketSignalProfile,
     MarketSignalResult,
+    WhaleSignalProfile,
 )
 
 
@@ -74,3 +75,11 @@ def _market_signal(
         price_delta_pct=price_delta_pct,
         value_per_wallet=value_per_wallet,
     )
+
+
+class WhaleSignalService:
+    def __init__(self, profile: WhaleSignalProfile) -> None:
+        self.profile = profile
+
+    def list(self, *, limit: int | None = None) -> MarketSignalResult:
+        return list_market_signals(self.profile, limit=limit)

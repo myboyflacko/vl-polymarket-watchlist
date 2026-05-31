@@ -2,16 +2,16 @@ import asyncio
 
 import pytest
 
-from void_liquidity.adapters.polymarket.markets.whales.domain import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
     MarketCandidate,
     WhaleMarketCandidates,
     WhalePosition,
     WhalePositionCollectionError,
 )
-from void_liquidity.adapters.polymarket.markets.whales.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
     DEFAULT_MIN_WHALE_COUNT,
 )
-from void_liquidity.adapters.polymarket.markets.whales.events import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.events import (
     POLYMARKET_WHALE_MARKETS_DISCOVERED,
     POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
     POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,

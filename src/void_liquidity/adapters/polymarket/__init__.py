@@ -2,8 +2,7 @@
 
 __all__ = [
     "api",
-    "discovery",
     "markets",
-    "ranking",
+    "signals",
     "services",
 ]

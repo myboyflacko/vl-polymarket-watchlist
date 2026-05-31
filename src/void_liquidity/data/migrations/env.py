@@ -9,10 +9,10 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from void_liquidity.adapters.polymarket.discovery.whales import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery import (
     models as track_whales_models,
 )
-from void_liquidity.adapters.polymarket.markets.whales import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates import (
     models as whale_market_models,
 )
 from void_liquidity.data.base import Base

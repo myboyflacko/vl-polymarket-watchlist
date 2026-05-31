@@ -6,10 +6,10 @@ import json
 from collections.abc import Callable
 from typing import Sequence
 
-from void_liquidity.adapters.polymarket.discovery.whales.events import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
 )
-from void_liquidity.adapters.polymarket.markets.whales.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
     DEFAULT_MIN_WHALE_COUNT,
 )
 from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
