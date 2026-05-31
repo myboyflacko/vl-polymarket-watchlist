@@ -1,8 +1,13 @@
 from __future__ import annotations
 
-from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    TradeFirstRankingProfile,
-)
+from pydantic import BaseModel, Field
 
 
-WhaleSelectionProfile = TradeFirstRankingProfile
+class WhaleSelectionProfile(BaseModel):
+    pnl_weight: float = Field(default=0.30, ge=0)
+    volume_weight: float = Field(default=0.25, ge=0)
+    trade_activity_weight: float = Field(default=0.20, ge=0)
+    recency_weight: float = Field(default=0.15, ge=0)
+    exposure_weight: float = Field(default=0.10, ge=0)
+    concentration_penalty_weight: float = Field(default=0.10, ge=0)
+    bottom_cut_percentile: float = Field(default=0.25, ge=0, le=1)

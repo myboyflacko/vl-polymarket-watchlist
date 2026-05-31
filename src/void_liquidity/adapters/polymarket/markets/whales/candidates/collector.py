@@ -15,7 +15,7 @@ from void_liquidity.adapters.polymarket.api.params.profile.current_positions imp
     CurrentPositionsParams,
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.selection import (
-    list_selected_whale_wallets,
+    WhaleSelectionService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
     MarketCandidate,
@@ -39,12 +39,15 @@ class _WalletPositionResult:
     errors: list[WhalePositionCollectionError]
 
 
-class WhaleMarketCollector:
+class WhaleMarketCandidateService:
     def __init__(self, *, min_whale_count: int = DEFAULT_MIN_WHALE_COUNT) -> None:
         self.min_whale_count = min_whale_count
 
+    async def collect(self) -> WhaleMarketCandidates:
+        return await self.run()
+
     async def run(self) -> WhaleMarketCandidates:
-        wallets = list_selected_whale_wallets()
+        wallets = WhaleSelectionService().wallets()
         if not wallets:
             return WhaleMarketCandidates()
 
@@ -276,8 +279,3 @@ class WhaleMarketCollector:
             return date.fromisoformat(str(value)[:10])
         except ValueError:
             return None
-
-
-class WhaleMarketCandidateService(WhaleMarketCollector):
-    async def collect(self) -> WhaleMarketCandidates:
-        return await self.run()

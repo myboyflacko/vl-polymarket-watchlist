@@ -19,7 +19,7 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
     Whales,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    WhaleTrackerV2Profile,
+    WhaleDiscoveryProfile,
 )
 from void_liquidity.data.engine import database_session
 
@@ -68,9 +68,9 @@ def list_latest_whales() -> Whales:
         )
 
 
-def persist_whale_tracker_v2_run(
+def persist_whale_discovery_run(
     *,
-    profile: WhaleTrackerV2Profile,
+    profile: WhaleDiscoveryProfile,
     run_id: str,
     started_at: datetime,
     finished_at: datetime,

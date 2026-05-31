@@ -6,26 +6,26 @@ import json
 from typing import Sequence
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
-    POLYMARKET_WHALES_V2_REQUESTED,
+    POLYMARKET_WHALE_DISCOVERY_REQUESTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    WhaleTrackerV2Profile,
+    WhaleDiscoveryProfile,
 )
-from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
-    PolymarketWhaleDiscoveryV2Binding,
+from void_liquidity.bindings.polymarket.markets.whales.discovery import (
+    PolymarketWhaleDiscoveryBinding,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
 from void_liquidity.logging.log import VoidLogger
 
 
-logger = VoidLogger("void_liquidity.workflows.track_whales_v2")
+logger = VoidLogger("void_liquidity.workflows.whale_discovery")
 
 
-def build_track_whales_v2_event(
+def build_whale_discovery_event(
     *,
-    profile: WhaleTrackerV2Profile | None = None,
-    source: str = "workflow.track_whales_v2",
+    profile: WhaleDiscoveryProfile | None = None,
+    source: str = "workflow.whale_discovery",
 ) -> DomainEvent:
     payload = {}
 
@@ -33,22 +33,22 @@ def build_track_whales_v2_event(
         payload["profile"] = profile.model_dump(mode="json")
 
     return DomainEvent.create(
-        event_type=POLYMARKET_WHALES_V2_REQUESTED,
+        event_type=POLYMARKET_WHALE_DISCOVERY_REQUESTED,
         source=source,
         payload=payload,
-        metadata={"workflow": "track_whales_v2"},
+        metadata={"workflow": "whale_discovery"},
     )
 
 
-def build_track_whales_v2_runtime(bus: EventBus | None = None) -> Runtime:
+def build_whale_discovery_runtime(bus: EventBus | None = None) -> Runtime:
     runtime = Runtime(bus=bus)
-    runtime.install(PolymarketWhaleDiscoveryV2Binding())
+    runtime.install(PolymarketWhaleDiscoveryBinding())
     return runtime
 
 
-async def run_track_whales_v2(
+async def run_whale_discovery(
     *,
-    profile: WhaleTrackerV2Profile | None = None,
+    profile: WhaleDiscoveryProfile | None = None,
     echo_events: bool = False,
 ) -> None:
     bus = EventBus()
@@ -57,13 +57,13 @@ async def run_track_whales_v2(
     if echo_events:
         bus.subscribe(EventBus.WILDCARD, _print_event)
 
-    runtime = build_track_whales_v2_runtime(bus=bus)
-    await runtime.publish(build_track_whales_v2_event(profile=profile))
+    runtime = build_whale_discovery_runtime(bus=bus)
+    await runtime.publish(build_whale_discovery_event(profile=profile))
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(
-        description="Run Polymarket whale discovery V2.",
+        description="Run Polymarket whale discovery.",
     )
     parser.add_argument(
         "--wallet-count",
@@ -91,10 +91,10 @@ def main(argv: Sequence[str] | None = None) -> None:
     args = parser.parse_args(argv)
 
     profile = _build_profile_from_args(args)
-    asyncio.run(run_track_whales_v2(profile=profile, echo_events=args.echo_events))
+    asyncio.run(run_whale_discovery(profile=profile, echo_events=args.echo_events))
 
 
-def _build_profile_from_args(args: argparse.Namespace) -> WhaleTrackerV2Profile | None:
+def _build_profile_from_args(args: argparse.Namespace) -> WhaleDiscoveryProfile | None:
     profile_overrides = {
         "wallet_count": args.wallet_count,
         "trade_window_days": args.trade_window_days,
@@ -107,7 +107,7 @@ def _build_profile_from_args(args: argparse.Namespace) -> WhaleTrackerV2Profile 
     if not profile_payload:
         return None
 
-    return WhaleTrackerV2Profile(**profile_payload)
+    return WhaleDiscoveryProfile(**profile_payload)
 
 
 def _print_event(event: DomainEvent) -> None:

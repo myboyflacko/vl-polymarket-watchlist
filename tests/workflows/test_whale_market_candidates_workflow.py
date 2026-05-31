@@ -3,13 +3,13 @@ import asyncio
 import pytest
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
-    POLYMARKET_WHALES_V2_REQUESTED,
+    POLYMARKET_WHALE_DISCOVERY_REQUESTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
     DEFAULT_MIN_WHALE_COUNT,
 )
-from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
-    PolymarketWhaleDiscoveryV2Binding,
+from void_liquidity.bindings.polymarket.markets.whales.discovery import (
+    PolymarketWhaleDiscoveryBinding,
 )
 from void_liquidity.bindings.polymarket.markets.whales import (
     PolymarketWhaleMarketsBinding,
@@ -40,7 +40,7 @@ def test_build_whale_market_candidates_runtime_installs_polymarket_binding() -> 
 
     assert isinstance(
         runtime.registry.get("polymarket.markets.whales.discovery"),
-        PolymarketWhaleDiscoveryV2Binding,
+        PolymarketWhaleDiscoveryBinding,
     )
     assert isinstance(
         runtime.registry.get("polymarket.markets.whales"),
@@ -91,7 +91,7 @@ def test_run_whale_market_candidates_registers_domain_event_logger(
     asyncio.run(workflow.run_whale_market_candidates())
 
     assert [event.event_type for event in logged_events] == [
-        POLYMARKET_WHALES_V2_REQUESTED,
+        POLYMARKET_WHALE_DISCOVERY_REQUESTED,
         POLYMARKET_WHALE_MARKETS_REQUESTED,
         POLYMARKET_WHALE_MARKETS_COMPLETED,
     ]

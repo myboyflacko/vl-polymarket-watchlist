@@ -3,19 +3,21 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
-    POLYMARKET_WHALES_V2_COMPLETED,
-    POLYMARKET_WHALES_V2_DISCOVERED,
-    POLYMARKET_WHALES_V2_FAILED,
-    POLYMARKET_WHALES_V2_PERSIST_COMPLETED,
-    POLYMARKET_WHALES_V2_PERSIST_FAILED,
-    POLYMARKET_WHALES_V2_PERSIST_STARTED,
-    POLYMARKET_WHALES_V2_REQUESTED,
-    POLYMARKET_WHALES_V2_STARTED,
+    POLYMARKET_WHALE_DISCOVERY_COMPLETED,
+    POLYMARKET_WHALE_DISCOVERY_DISCOVERED,
+    POLYMARKET_WHALE_DISCOVERY_FAILED,
+    POLYMARKET_WHALE_DISCOVERY_PERSIST_COMPLETED,
+    POLYMARKET_WHALE_DISCOVERY_PERSIST_FAILED,
+    POLYMARKET_WHALE_DISCOVERY_PERSIST_STARTED,
+    POLYMARKET_WHALE_DISCOVERY_REQUESTED,
+    POLYMARKET_WHALE_DISCOVERY_STARTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    WhaleTrackerV2Profile,
+    WhaleDiscoveryProfile,
 )
-from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import WhaleTrackerV2
+from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import (
+    WhaleDiscoveryService,
+)
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus
 
@@ -29,29 +31,29 @@ def _build_run_id(generated_at: datetime) -> str:
     return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
 
 
-def _profile_from_payload(payload: dict) -> WhaleTrackerV2Profile:
+def _profile_from_payload(payload: dict) -> WhaleDiscoveryProfile:
     profile_payload = payload.get("profile")
 
     if isinstance(profile_payload, dict):
-        return WhaleTrackerV2Profile.model_validate(profile_payload)
+        return WhaleDiscoveryProfile.model_validate(profile_payload)
 
-    return WhaleTrackerV2Profile()
+    return WhaleDiscoveryProfile()
 
 
-class PolymarketWhaleDiscoveryV2Binding:
+class PolymarketWhaleDiscoveryBinding:
     spec = BindingSpec(
         name="polymarket.markets.whales.discovery",
         version="1.0.0",
         description="Collects and persists Polymarket whale snapshots.",
-        consumes=(POLYMARKET_WHALES_V2_REQUESTED,),
+        consumes=(POLYMARKET_WHALE_DISCOVERY_REQUESTED,),
         produces=(
-            POLYMARKET_WHALES_V2_STARTED,
-            POLYMARKET_WHALES_V2_COMPLETED,
-            POLYMARKET_WHALES_V2_FAILED,
-            POLYMARKET_WHALES_V2_DISCOVERED,
-            POLYMARKET_WHALES_V2_PERSIST_STARTED,
-            POLYMARKET_WHALES_V2_PERSIST_COMPLETED,
-            POLYMARKET_WHALES_V2_PERSIST_FAILED,
+            POLYMARKET_WHALE_DISCOVERY_STARTED,
+            POLYMARKET_WHALE_DISCOVERY_COMPLETED,
+            POLYMARKET_WHALE_DISCOVERY_FAILED,
+            POLYMARKET_WHALE_DISCOVERY_DISCOVERED,
+            POLYMARKET_WHALE_DISCOVERY_PERSIST_STARTED,
+            POLYMARKET_WHALE_DISCOVERY_PERSIST_COMPLETED,
+            POLYMARKET_WHALE_DISCOVERY_PERSIST_FAILED,
         ),
     )
 
@@ -66,10 +68,10 @@ class PolymarketWhaleDiscoveryV2Binding:
 
         try:
             profile = _profile_from_payload(event.payload)
-            tracker = WhaleTrackerV2(profile=profile)
+            tracker = WhaleDiscoveryService(profile=profile)
             await bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_STARTED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_STARTED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
                     payload={
@@ -84,7 +86,7 @@ class PolymarketWhaleDiscoveryV2Binding:
             whales = await tracker.run(now=started_at)
             await bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_DISCOVERED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_DISCOVERED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
                     payload={
@@ -103,7 +105,7 @@ class PolymarketWhaleDiscoveryV2Binding:
             )
             await bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_PERSIST_STARTED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_PERSIST_STARTED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
                     payload={
@@ -123,7 +125,7 @@ class PolymarketWhaleDiscoveryV2Binding:
             except Exception as exc:
                 await bus.publish(
                     DomainEvent.create(
-                        event_type=POLYMARKET_WHALES_V2_PERSIST_FAILED,
+                        event_type=POLYMARKET_WHALE_DISCOVERY_PERSIST_FAILED,
                         source=EVENT_SOURCE,
                         correlation_id=event.correlation_id,
                         payload={
@@ -138,7 +140,7 @@ class PolymarketWhaleDiscoveryV2Binding:
 
             await bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_PERSIST_COMPLETED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_PERSIST_COMPLETED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
                     payload={
@@ -150,7 +152,7 @@ class PolymarketWhaleDiscoveryV2Binding:
             )
             await bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_COMPLETED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_COMPLETED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
                     payload={
@@ -169,7 +171,7 @@ class PolymarketWhaleDiscoveryV2Binding:
         except Exception as exc:
             await bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_FAILED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_FAILED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
                     payload={

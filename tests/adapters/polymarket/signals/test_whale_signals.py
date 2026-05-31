@@ -2,7 +2,7 @@ from datetime import date
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 from void_liquidity.adapters.polymarket.signals.whales import signals as signals_module
-from void_liquidity.adapters.polymarket.signals.whales.domain import MarketSignalProfile
+from void_liquidity.adapters.polymarket.signals.whales.domain import WhaleSignalProfile
 from void_liquidity.adapters.polymarket.signals.whales.signals import (
     list_market_signals,
 )
@@ -18,7 +18,7 @@ def test_list_market_signals_filters_confirmed_candidates(monkeypatch) -> None:
         ],
     )
 
-    result = list_market_signals(MarketSignalProfile(name="confirmed"))
+    result = list_market_signals(WhaleSignalProfile(name="confirmed"))
 
     assert [signal.candidate.token_id for signal in result.signals] == ["confirmed"]
     assert result.signals[0].price_delta == 0.09999999999999998
@@ -35,7 +35,7 @@ def test_list_market_signals_filters_pain_candidates(monkeypatch) -> None:
         ],
     )
 
-    result = list_market_signals(MarketSignalProfile(name="pain"))
+    result = list_market_signals(WhaleSignalProfile(name="pain"))
 
     assert [signal.candidate.token_id for signal in result.signals] == ["pain"]
     assert result.signals[0].score == 0.9999999999999998
@@ -52,7 +52,7 @@ def test_list_market_signals_ranks_high_value_candidates(monkeypatch) -> None:
     )
 
     result = list_market_signals(
-        MarketSignalProfile(name="high_value", min_total_current_value=20),
+        WhaleSignalProfile(name="high_value", min_total_current_value=20),
     )
 
     assert [signal.candidate.token_id for signal in result.signals] == ["large"]
@@ -72,7 +72,7 @@ def test_list_market_signals_ranks_value_per_wallet_and_applies_limit(
     )
 
     result = list_market_signals(
-        MarketSignalProfile(name="value_per_wallet"),
+        WhaleSignalProfile(name="value_per_wallet"),
         limit=1,
     )
 

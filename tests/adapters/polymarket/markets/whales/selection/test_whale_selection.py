@@ -18,26 +18,25 @@ from void_liquidity.adapters.polymarket.markets.whales.selection import (
     selection as selection_module,
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.selection import (
-    list_selected_whale_wallets,
-    select_trade_first_whales,
+    WhaleSelectionService,
 )
 
 
 NOW = datetime(2026, 5, 31, tzinfo=UTC)
 
 
-def test_select_trade_first_whales_returns_empty_ranking_without_db_whales(
+def test_whale_selection_service_returns_empty_ranking_without_db_whales(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(selection_module, "list_latest_whales", lambda: _whales([]))
 
-    result = select_trade_first_whales()
+    result = WhaleSelectionService().select()
 
     assert result.ranked_whales == []
     assert result.removed_whales == []
 
 
-def test_select_trade_first_whales_ranks_latest_db_whales(
+def test_whale_selection_service_ranks_latest_db_whales(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
@@ -51,9 +50,9 @@ def test_select_trade_first_whales_ranks_latest_db_whales(
         ),
     )
 
-    result = select_trade_first_whales(
+    result = WhaleSelectionService(
         profile=WhaleSelectionProfile(bottom_cut_percentile=0),
-    )
+    ).select()
 
     assert [ranked.whale.proxy_wallet for ranked in result.ranked_whales] == [
         "wallet-high",
@@ -62,7 +61,7 @@ def test_select_trade_first_whales_ranks_latest_db_whales(
     assert result.removed_whales == []
 
 
-def test_list_selected_whale_wallets_returns_ranked_wallets(
+def test_whale_selection_service_returns_ranked_wallets(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
@@ -76,9 +75,9 @@ def test_list_selected_whale_wallets_returns_ranked_wallets(
         ),
     )
 
-    wallets = list_selected_whale_wallets(
+    wallets = WhaleSelectionService(
         profile=WhaleSelectionProfile(bottom_cut_percentile=0),
-    )
+    ).wallets()
 
     assert wallets == ["wallet-high", "wallet-low"]
 

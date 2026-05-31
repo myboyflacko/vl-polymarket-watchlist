@@ -7,13 +7,13 @@ from collections.abc import Callable
 from typing import Sequence
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
-    POLYMARKET_WHALES_V2_REQUESTED,
+    POLYMARKET_WHALE_DISCOVERY_REQUESTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
     DEFAULT_MIN_WHALE_COUNT,
 )
-from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
-    PolymarketWhaleDiscoveryV2Binding,
+from void_liquidity.bindings.polymarket.markets.whales.discovery import (
+    PolymarketWhaleDiscoveryBinding,
 )
 from void_liquidity.bindings.polymarket.markets.whales import (
     PolymarketWhaleMarketsBinding,
@@ -59,7 +59,7 @@ def build_whale_market_candidates_runtime(
 ) -> Runtime:
     runtime = Runtime(bus=bus)
     runtime.install(
-        PolymarketWhaleDiscoveryV2Binding(),
+        PolymarketWhaleDiscoveryBinding(),
         PolymarketWhaleMarketsBinding(min_whale_count=min_whale_count),
     )
     return runtime
@@ -83,7 +83,7 @@ async def run_whale_market_candidates(
         ScheduledJob(
             name="whales.discover",
             interval_seconds=3600,
-            event_factory=_event_factory(POLYMARKET_WHALES_V2_REQUESTED),
+            event_factory=_event_factory(POLYMARKET_WHALE_DISCOVERY_REQUESTED),
         ),
         ScheduledJob(
             name="whales.markets",

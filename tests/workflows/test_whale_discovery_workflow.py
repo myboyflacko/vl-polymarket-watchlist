@@ -3,44 +3,44 @@ import asyncio
 import pytest
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
-    POLYMARKET_WHALES_V2_COMPLETED,
-    POLYMARKET_WHALES_V2_REQUESTED,
+    POLYMARKET_WHALE_DISCOVERY_COMPLETED,
+    POLYMARKET_WHALE_DISCOVERY_REQUESTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    WhaleTrackerV2Profile,
+    WhaleDiscoveryProfile,
 )
-from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
-    PolymarketWhaleDiscoveryV2Binding,
+from void_liquidity.bindings.polymarket.markets.whales.discovery import (
+    PolymarketWhaleDiscoveryBinding,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
-from void_liquidity.workflows import track_whales_v2 as workflow
-from void_liquidity.workflows.track_whales_v2 import (
-    build_track_whales_v2_event,
-    build_track_whales_v2_runtime,
+from void_liquidity.workflows import whale_discovery as workflow
+from void_liquidity.workflows.whale_discovery import (
+    build_whale_discovery_event,
+    build_whale_discovery_runtime,
 )
 
 
-def test_build_track_whales_v2_event_uses_pipeline_contract() -> None:
-    profile = WhaleTrackerV2Profile(wallet_count=3)
+def test_build_whale_discovery_event_uses_pipeline_contract() -> None:
+    profile = WhaleDiscoveryProfile(wallet_count=3)
 
-    event = build_track_whales_v2_event(profile=profile)
+    event = build_whale_discovery_event(profile=profile)
 
-    assert event.event_type == POLYMARKET_WHALES_V2_REQUESTED
-    assert event.source == "workflow.track_whales_v2"
+    assert event.event_type == POLYMARKET_WHALE_DISCOVERY_REQUESTED
+    assert event.source == "workflow.whale_discovery"
     assert event.payload["profile"]["wallet_count"] == 3
-    assert event.metadata == {"workflow": "track_whales_v2"}
+    assert event.metadata == {"workflow": "whale_discovery"}
 
 
-def test_build_track_whales_v2_runtime_installs_polymarket_binding() -> None:
-    runtime = build_track_whales_v2_runtime()
+def test_build_whale_discovery_runtime_installs_polymarket_binding() -> None:
+    runtime = build_whale_discovery_runtime()
 
     assert isinstance(
         runtime.registry.get("polymarket.markets.whales.discovery"),
-        PolymarketWhaleDiscoveryV2Binding,
+        PolymarketWhaleDiscoveryBinding,
     )
 
 
-def test_run_track_whales_v2_registers_domain_event_logger(
+def test_run_whale_discovery_registers_domain_event_logger(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     logged_events: list[DomainEvent] = []
@@ -57,13 +57,13 @@ def test_run_track_whales_v2_registers_domain_event_logger(
             await self.bus.publish(event)
             await self.bus.publish(
                 DomainEvent.create(
-                    event_type=POLYMARKET_WHALES_V2_COMPLETED,
+                    event_type=POLYMARKET_WHALE_DISCOVERY_COMPLETED,
                     source="fake.runtime",
                     correlation_id=event.correlation_id,
                 )
             )
 
-    def fake_build_track_whales_v2_runtime(
+    def fake_build_whale_discovery_runtime(
         bus: EventBus | None = None,
     ) -> FakeRuntime:
         assert bus is not None
@@ -72,35 +72,35 @@ def test_run_track_whales_v2_registers_domain_event_logger(
     monkeypatch.setattr(workflow, "logger", FakeLogger())
     monkeypatch.setattr(
         workflow,
-        "build_track_whales_v2_runtime",
-        fake_build_track_whales_v2_runtime,
+        "build_whale_discovery_runtime",
+        fake_build_whale_discovery_runtime,
     )
 
     asyncio.run(
-        workflow.run_track_whales_v2(profile=WhaleTrackerV2Profile(wallet_count=3))
+        workflow.run_whale_discovery(profile=WhaleDiscoveryProfile(wallet_count=3))
     )
 
     assert [event.event_type for event in logged_events] == [
-        POLYMARKET_WHALES_V2_REQUESTED,
-        POLYMARKET_WHALES_V2_COMPLETED,
+        POLYMARKET_WHALE_DISCOVERY_REQUESTED,
+        POLYMARKET_WHALE_DISCOVERY_COMPLETED,
     ]
     assert logged_events[0].payload["profile"]["wallet_count"] == 3
 
 
-def test_track_whales_v2_main_builds_profile_from_cli_args(
+def test_whale_discovery_main_builds_profile_from_cli_args(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    captured_profiles: list[WhaleTrackerV2Profile | None] = []
+    captured_profiles: list[WhaleDiscoveryProfile | None] = []
 
-    async def fake_run_track_whales_v2(
+    async def fake_run_whale_discovery(
         *,
-        profile: WhaleTrackerV2Profile | None = None,
+        profile: WhaleDiscoveryProfile | None = None,
         echo_events: bool = False,
     ) -> None:
         captured_profiles.append(profile)
         assert echo_events is True
 
-    monkeypatch.setattr(workflow, "run_track_whales_v2", fake_run_track_whales_v2)
+    monkeypatch.setattr(workflow, "run_whale_discovery", fake_run_whale_discovery)
 
     workflow.main(
         [

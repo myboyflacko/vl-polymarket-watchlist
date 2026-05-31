@@ -6,7 +6,7 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates import (
     collector as collector_module,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
-    WhaleMarketCollector,
+    WhaleMarketCandidateService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
     MarketCandidate,
@@ -38,8 +38,16 @@ def _patch_data_client(monkeypatch, get_current_positions) -> None:
     )
 
 
+def _patch_selected_wallets(monkeypatch, wallets: list[str]) -> None:
+    class FakeSelectionService:
+        def wallets(self) -> list[str]:
+            return wallets
+
+    monkeypatch.setattr(collector_module, "WhaleSelectionService", FakeSelectionService)
+
+
 def test_whale_market_collector_groups_positions_by_token_id() -> None:
-    candidates = WhaleMarketCollector(min_whale_count=1)._build_market_candidates(
+    candidates = WhaleMarketCandidateService(min_whale_count=1)._build_market_candidates(
         [
             _whale_position(WALLET_ONE, token_id=YES_TOKEN, current_value=100, size=10),
             _whale_position(WALLET_TWO, token_id=YES_TOKEN, current_value=50, size=5),
@@ -65,7 +73,7 @@ def test_whale_market_collector_groups_positions_by_token_id() -> None:
 
 
 def test_whale_market_collector_filters_below_min_whale_count() -> None:
-    candidates = WhaleMarketCollector()._build_market_candidates(
+    candidates = WhaleMarketCandidateService()._build_market_candidates(
         [
             _whale_position(WALLET_ONE, token_id=YES_TOKEN),
             _whale_position(WALLET_TWO, token_id=YES_TOKEN),
@@ -78,9 +86,9 @@ def test_whale_market_collector_filters_below_min_whale_count() -> None:
 def test_whale_market_collector_returns_empty_result_without_wallets(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(collector_module, "list_selected_whale_wallets", lambda: [])
+    _patch_selected_wallets(monkeypatch, [])
 
-    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
+    result = asyncio.run(WhaleMarketCandidateService(min_whale_count=1).run())
 
     assert result.candidates == []
     assert result.positions == []
@@ -99,14 +107,10 @@ def test_whale_market_collector_fetches_and_groups_open_positions(
 
         return [_position(asset=YES_TOKEN, current_value=50, size=5)]
 
-    monkeypatch.setattr(
-        collector_module,
-        "list_selected_whale_wallets",
-        lambda: [WALLET_ONE, WALLET_TWO],
-    )
+    _patch_selected_wallets(monkeypatch, [WALLET_ONE, WALLET_TWO])
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
-    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
+    result = asyncio.run(WhaleMarketCandidateService(min_whale_count=1).run())
 
     assert [(user, offset) for user, offset, _ in calls] == [
         (WALLET_ONE, 0),
@@ -129,14 +133,10 @@ def test_whale_market_collector_keeps_processing_after_wallet_error(
 
         return [_position(asset=YES_TOKEN, current_value=50)]
 
-    monkeypatch.setattr(
-        collector_module,
-        "list_selected_whale_wallets",
-        lambda: [WALLET_ONE, WALLET_TWO],
-    )
+    _patch_selected_wallets(monkeypatch, [WALLET_ONE, WALLET_TWO])
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
-    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
+    result = asyncio.run(WhaleMarketCandidateService(min_whale_count=1).run())
 
     assert len(result.positions) == 1
     assert len(result.candidates) == 1
@@ -160,11 +160,11 @@ def test_whale_market_collector_paginates_positions(
 
         return [_position(asset="3")]
 
-    monkeypatch.setattr(collector_module, "list_selected_whale_wallets", lambda: [WALLET_ONE])
+    _patch_selected_wallets(monkeypatch, [WALLET_ONE])
     monkeypatch.setattr(collector_module, "POSITION_PAGE_LIMIT", 2)
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
-    result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
+    result = asyncio.run(WhaleMarketCandidateService(min_whale_count=1).run())
 
     assert calls == [0, 2]
     assert [position.token_id for position in result.positions] == ["1", "2", "3"]
@@ -184,7 +184,7 @@ def test_whale_market_collector_persists_candidates(monkeypatch) -> None:
     )
     result = _collector_result()
 
-    WhaleMarketCollector(min_whale_count=2).persist(
+    WhaleMarketCandidateService(min_whale_count=2).persist(
         candidates=result,
         run_id="run-1",
     )

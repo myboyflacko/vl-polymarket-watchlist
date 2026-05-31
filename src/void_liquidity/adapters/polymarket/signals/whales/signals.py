@@ -6,14 +6,13 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.repository imp
 )
 from void_liquidity.adapters.polymarket.signals.whales.domain import (
     MarketSignal,
-    MarketSignalProfile,
     MarketSignalResult,
     WhaleSignalProfile,
 )
 
 
 def list_market_signals(
-    profile: MarketSignalProfile,
+    profile: WhaleSignalProfile,
     *,
     limit: int | None = None,
 ) -> MarketSignalResult:
@@ -33,7 +32,7 @@ def list_market_signals(
 def _market_signal(
     *,
     candidate: MarketCandidate,
-    profile: MarketSignalProfile,
+    profile: WhaleSignalProfile,
 ) -> MarketSignal | None:
     price_delta = candidate.cur_price - candidate.weighted_avg_price
     value_per_wallet = (

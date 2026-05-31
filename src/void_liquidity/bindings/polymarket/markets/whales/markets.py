@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
     DEFAULT_MIN_WHALE_COUNT,
-    WhaleMarketCollector,
+    WhaleMarketCandidateService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
     WhaleMarketCandidates,
@@ -75,8 +75,8 @@ class PolymarketWhaleMarketsBinding:
                 )
             )
 
-            collector = WhaleMarketCollector(min_whale_count=self.min_whale_count)
-            result = await collector.run()
+            service = WhaleMarketCandidateService(min_whale_count=self.min_whale_count)
+            result = await service.collect()
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_DISCOVERED,
@@ -109,7 +109,7 @@ class PolymarketWhaleMarketsBinding:
                 )
             )
             try:
-                collector.persist(
+                service.persist(
                     candidates=result,
                     run_id=run_id,
                     seen_at=started_at,

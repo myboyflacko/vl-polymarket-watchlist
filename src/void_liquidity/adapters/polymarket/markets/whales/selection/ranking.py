@@ -44,7 +44,7 @@ class RankedWhale(BaseModel):
     score: float
 
 
-class WhaleRankingResult(BaseModel):
+class WhaleSelectionRankingResult(BaseModel):
     method: str
     ranked_whales: list[RankedWhale]
     removed_whales: list[RankedWhale]
@@ -61,11 +61,11 @@ class WhaleRankingResult(BaseModel):
 def rank_trade_first_whales(
     whales: Whales,
     weights: TradeFirstRankingWeights | None = None,
-) -> WhaleRankingResult:
+) -> WhaleSelectionRankingResult:
     weights = weights or TradeFirstRankingWeights()
 
     if not whales.whales:
-        return WhaleRankingResult(
+        return WhaleSelectionRankingResult(
             method=DEFAULT_TRADE_FIRST_RANKING_METHOD,
             ranked_whales=[],
             removed_whales=[],
@@ -84,7 +84,7 @@ def rank_trade_first_whales(
     kept = ranked[:keep_count]
     removed = ranked[keep_count:]
 
-    return WhaleRankingResult(
+    return WhaleSelectionRankingResult(
         method=DEFAULT_TRADE_FIRST_RANKING_METHOD,
         ranked_whales=kept,
         removed_whales=removed,

@@ -8,7 +8,7 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
 from void_liquidity.adapters.polymarket.markets.whales.discovery.repository import (
     list_latest_whales,
     list_tracked_whale_wallets,
-    persist_whale_tracker_v2_run,
+    persist_whale_discovery_run,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
     CollectionQuality,
@@ -22,7 +22,7 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
     Whales,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    WhaleTrackerV2Profile,
+    WhaleDiscoveryProfile,
 )
 from void_liquidity.data.base import Base
 from void_liquidity.data.engine import create_database_engine, database_session
@@ -120,9 +120,9 @@ def test_list_latest_whales_reconstructs_latest_run_from_snapshots(
         generated_at=LATER,
         profile_version="test",
     )
-    profile = WhaleTrackerV2Profile(wallet_count=2)
+    profile = WhaleDiscoveryProfile(wallet_count=2)
 
-    persist_whale_tracker_v2_run(
+    persist_whale_discovery_run(
         profile=profile,
         run_id="run-1",
         started_at=NOW,
@@ -130,7 +130,7 @@ def test_list_latest_whales_reconstructs_latest_run_from_snapshots(
         generated_at=NOW,
         whales=earlier_whales,
     )
-    persist_whale_tracker_v2_run(
+    persist_whale_discovery_run(
         profile=profile,
         run_id="run-2",
         started_at=LATER,

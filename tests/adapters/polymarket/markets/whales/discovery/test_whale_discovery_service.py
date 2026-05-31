@@ -11,10 +11,10 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
     WhaleTrackerRun,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
-    WhaleTrackerV2Profile,
+    WhaleDiscoveryProfile,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import (
-    WhaleTrackerV2,
+    WhaleDiscoveryService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery import (
     tracker as tracker_module,
@@ -74,8 +74,8 @@ def _patch_data_client(
     )
 
 
-def _profile() -> WhaleTrackerV2Profile:
-    return WhaleTrackerV2Profile(
+def _profile() -> WhaleDiscoveryProfile:
+    return WhaleDiscoveryProfile(
         wallet_count=2,
         wallet_batch_size=2,
         leaderboard_limit=2,
@@ -101,7 +101,7 @@ def _trade(
     }
 
 
-def test_whale_tracker_v2_collects_trade_first_metrics(
+def test_whale_discovery_service_collects_trade_first_metrics(
     monkeypatch,
 ) -> None:
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
@@ -147,7 +147,7 @@ def test_whale_tracker_v2_collects_trade_first_metrics(
         get_current_positions=fake_get_current_positions,
     )
 
-    result = asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
+    result = asyncio.run(WhaleDiscoveryService(profile=_profile()).run(now=NOW))
     whale = result.whales[0]
 
     assert result.candidate_wallet_count == 2
@@ -165,7 +165,7 @@ def test_whale_tracker_v2_collects_trade_first_metrics(
     assert whale.metrics.exposure.current_position_value == 250
 
 
-def test_whale_tracker_v2_isolates_trade_errors_per_wallet(monkeypatch) -> None:
+def test_whale_discovery_service_isolates_trade_errors_per_wallet(monkeypatch) -> None:
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
         return [
             {"proxyWallet": WALLET_ONE, "rank": 1, "pnl": 100, "vol": 10_000},
@@ -191,7 +191,7 @@ def test_whale_tracker_v2_isolates_trade_errors_per_wallet(monkeypatch) -> None:
         get_current_positions=fake_get_current_positions,
     )
 
-    result = asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
+    result = asyncio.run(WhaleDiscoveryService(profile=_profile()).run(now=NOW))
 
     assert result.successful_wallet_count == 1
     assert result.failed_wallet_count == 1
@@ -201,7 +201,7 @@ def test_whale_tracker_v2_isolates_trade_errors_per_wallet(monkeypatch) -> None:
     assert result.collection_errors[0].error == "wallet trade api down"
 
 
-def test_whale_tracker_v2_isolates_current_position_errors_per_wallet(
+def test_whale_discovery_service_isolates_current_position_errors_per_wallet(
     monkeypatch,
 ) -> None:
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
@@ -229,7 +229,7 @@ def test_whale_tracker_v2_isolates_current_position_errors_per_wallet(
         get_current_positions=fake_get_current_positions,
     )
 
-    result = asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
+    result = asyncio.run(WhaleDiscoveryService(profile=_profile()).run(now=NOW))
 
     assert result.successful_wallet_count == 1
     assert result.failed_wallet_count == 1
@@ -237,7 +237,7 @@ def test_whale_tracker_v2_isolates_current_position_errors_per_wallet(
     assert result.collection_errors[0].stage == "current_positions"
 
 
-def test_whale_tracker_v2_leaderboard_errors_remain_fatal(monkeypatch) -> None:
+def test_whale_discovery_service_leaderboard_errors_remain_fatal(monkeypatch) -> None:
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
         raise RuntimeError("leaderboard down")
 
@@ -247,14 +247,14 @@ def test_whale_tracker_v2_leaderboard_errors_remain_fatal(monkeypatch) -> None:
     )
 
     try:
-        asyncio.run(WhaleTrackerV2(profile=_profile()).run(now=NOW))
+        asyncio.run(WhaleDiscoveryService(profile=_profile()).run(now=NOW))
     except RuntimeError as exc:
         assert str(exc) == "leaderboard down"
     else:
         raise AssertionError("expected leaderboard error")
 
 
-def test_whale_tracker_v2_stops_descending_trade_pagination_at_window(
+def test_whale_discovery_service_stops_descending_trade_pagination_at_window(
     monkeypatch,
 ) -> None:
     trade_offsets: list[int] = []
@@ -279,7 +279,7 @@ def test_whale_tracker_v2_stops_descending_trade_pagination_at_window(
     ) -> list[dict[str, Any]]:
         return []
 
-    profile = WhaleTrackerV2Profile(
+    profile = WhaleDiscoveryProfile(
         wallet_count=1,
         trade_limit=1,
         max_trade_pages_per_wallet=10,
@@ -291,13 +291,13 @@ def test_whale_tracker_v2_stops_descending_trade_pagination_at_window(
         get_current_positions=fake_get_current_positions,
     )
 
-    result = asyncio.run(WhaleTrackerV2(profile=profile).run(now=NOW))
+    result = asyncio.run(WhaleDiscoveryService(profile=profile).run(now=NOW))
 
     assert trade_offsets == [0, 1]
     assert result.whales[0].metrics.collection_quality.trades_complete is True
 
 
-def test_whale_tracker_v2_marks_unsorted_trade_pages_incomplete(monkeypatch) -> None:
+def test_whale_discovery_service_marks_unsorted_trade_pages_incomplete(monkeypatch) -> None:
     async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
         return [{"proxyWallet": WALLET_ONE, "rank": 1, "pnl": 100, "vol": 100}]
 
@@ -313,7 +313,7 @@ def test_whale_tracker_v2_marks_unsorted_trade_pages_incomplete(monkeypatch) -> 
     ) -> list[dict[str, Any]]:
         return []
 
-    profile = WhaleTrackerV2Profile(
+    profile = WhaleDiscoveryProfile(
         wallet_count=1,
         trade_limit=2,
         max_trade_pages_per_wallet=1,
@@ -325,14 +325,14 @@ def test_whale_tracker_v2_marks_unsorted_trade_pages_incomplete(monkeypatch) -> 
         get_current_positions=fake_get_current_positions,
     )
 
-    result = asyncio.run(WhaleTrackerV2(profile=profile).run(now=NOW))
+    result = asyncio.run(WhaleDiscoveryService(profile=profile).run(now=NOW))
     quality = result.whales[0].metrics.collection_quality
 
     assert quality.trades_sort_order == "unknown"
     assert quality.trades_complete is False
 
 
-def test_whale_tracker_v2_persists_metric_snapshots(
+def test_whale_discovery_service_persists_metric_snapshots(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -343,9 +343,9 @@ def test_whale_tracker_v2_persists_metric_snapshots(
     Base.metadata.create_all(engine)
     whales = asyncio.run(_build_persistable_whales(monkeypatch))
 
-    WhaleTrackerV2(profile=_profile()).persist(
+    WhaleDiscoveryService(profile=_profile()).persist(
         whales=whales,
-        run_id="run-v2",
+        run_id="run-discovery",
         started_at=NOW,
         finished_at=NOW,
     )
@@ -356,7 +356,7 @@ def test_whale_tracker_v2_persists_metric_snapshots(
         snapshot = session.scalar(select(TrackedWhaleMetricSnapshot))
 
     assert run is not None
-    assert run.run_id == "run-v2"
+    assert run.run_id == "run-discovery"
     assert tracked_whale is not None
     assert tracked_whale.proxy_wallet == WALLET_ONE
     assert snapshot is not None
@@ -365,7 +365,7 @@ def test_whale_tracker_v2_persists_metric_snapshots(
     assert "ranking" not in snapshot.metrics
 
 
-def test_whale_tracker_v2_persists_all_discovered_whales_as_tracked_whales(
+def test_whale_discovery_service_persists_all_discovered_whales_as_tracked_whales(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -376,9 +376,9 @@ def test_whale_tracker_v2_persists_all_discovered_whales_as_tracked_whales(
     Base.metadata.create_all(engine)
     whales = asyncio.run(_build_two_persistable_whales(monkeypatch))
 
-    WhaleTrackerV2(profile=_profile()).persist(
+    WhaleDiscoveryService(profile=_profile()).persist(
         whales=whales,
-        run_id="run-v2-kept",
+        run_id="run-discovery-kept",
         started_at=NOW,
         finished_at=NOW,
     )
@@ -423,7 +423,7 @@ async def _build_persistable_whales(monkeypatch) -> Any:
         get_trades=fake_get_trades,
         get_current_positions=fake_get_current_positions,
     )
-    return await WhaleTrackerV2(profile=WhaleTrackerV2Profile(wallet_count=1)).run(
+    return await WhaleDiscoveryService(profile=WhaleDiscoveryProfile(wallet_count=1)).run(
         now=NOW
     )
 
@@ -456,6 +456,6 @@ async def _build_two_persistable_whales(monkeypatch) -> Any:
         get_trades=fake_get_trades,
         get_current_positions=fake_get_current_positions,
     )
-    return await WhaleTrackerV2(profile=WhaleTrackerV2Profile(wallet_count=2)).run(
+    return await WhaleDiscoveryService(profile=WhaleDiscoveryProfile(wallet_count=2)).run(
         now=NOW
     )

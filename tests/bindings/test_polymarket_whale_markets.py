@@ -23,10 +23,10 @@ from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
-from void_liquidity.bindings.polymarket.markets import whales as binding_module
 from void_liquidity.bindings.polymarket.markets.whales import (
     PolymarketWhaleMarketsBinding,
 )
+from void_liquidity.bindings.polymarket.markets.whales import markets as binding_module
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
@@ -101,7 +101,7 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
             assert min_whale_count == DEFAULT_MIN_WHALE_COUNT
             self.min_whale_count = min_whale_count
 
-        async def run(self) -> WhaleMarketCandidates:
+        async def collect(self) -> WhaleMarketCandidates:
             return _result()
 
         def persist(self, **kwargs) -> None:
@@ -109,7 +109,7 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
 
     monkeypatch.setattr(
         binding_module,
-        "WhaleMarketCollector",
+        "WhaleMarketCandidateService",
         FakeCollector,
     )
     bus = EventBus()
@@ -157,12 +157,12 @@ def test_polymarket_whale_markets_binding_publishes_failed_event(
         ) -> None:
             self.min_whale_count = min_whale_count
 
-        async def run(self) -> WhaleMarketCandidates:
+        async def collect(self) -> WhaleMarketCandidates:
             raise RuntimeError("collector failed")
 
     monkeypatch.setattr(
         binding_module,
-        "WhaleMarketCollector",
+        "WhaleMarketCandidateService",
         FailingCollector,
     )
     bus = EventBus()
@@ -191,7 +191,7 @@ def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
         ) -> None:
             self.min_whale_count = min_whale_count
 
-        async def run(self) -> WhaleMarketCandidates:
+        async def collect(self) -> WhaleMarketCandidates:
             return _result()
 
         def persist(self, **kwargs) -> None:
@@ -199,7 +199,7 @@ def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
 
     monkeypatch.setattr(
         binding_module,
-        "WhaleMarketCollector",
+        "WhaleMarketCandidateService",
         PersistFailingCollector,
     )
     bus = EventBus()

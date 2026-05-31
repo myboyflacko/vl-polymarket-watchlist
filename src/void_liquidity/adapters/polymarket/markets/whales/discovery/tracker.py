@@ -37,7 +37,7 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import
     WhaleDiscoveryProfile,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.repository import (
-    persist_whale_tracker_v2_run,
+    persist_whale_discovery_run,
 )
 
 
@@ -78,7 +78,7 @@ class _WalletCollectionResult:
     error: WalletCollectionError | None = None
 
 
-class WhaleTrackerV2:
+class WhaleDiscoveryService:
     def __init__(self, profile: WhaleDiscoveryProfile | None = None) -> None:
         self.profile = profile or WhaleDiscoveryProfile()
 
@@ -109,7 +109,7 @@ class WhaleTrackerV2:
         started_at: datetime,
         finished_at: datetime | None = None,
     ) -> None:
-        persist_whale_tracker_v2_run(
+        persist_whale_discovery_run(
             profile=self.profile,
             run_id=run_id,
             started_at=started_at,
@@ -471,6 +471,3 @@ class _WalletStageError(RuntimeError):
     def __init__(self, stage: str) -> None:
         super().__init__(stage)
         self.stage = stage
-
-
-WhaleDiscoveryService = WhaleTrackerV2
