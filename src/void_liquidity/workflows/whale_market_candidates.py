@@ -15,8 +15,8 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.collector impo
 from void_liquidity.bindings.polymarket.markets.whales.discovery import (
     PolymarketWhaleDiscoveryBinding,
 )
-from void_liquidity.bindings.polymarket.markets.whales import (
-    PolymarketWhaleMarketsBinding,
+from void_liquidity.bindings.polymarket.markets.whales.candidates import (
+    PolymarketWhaleMarketCandidatesBinding,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
@@ -61,7 +61,7 @@ def build_whale_market_candidates_runtime(
     runtime = Runtime(bus=bus)
     runtime.install(
         PolymarketWhaleDiscoveryBinding(),
-        PolymarketWhaleMarketsBinding(min_whale_count=min_whale_count),
+        PolymarketWhaleMarketCandidatesBinding(min_whale_count=min_whale_count),
     )
     return runtime
 

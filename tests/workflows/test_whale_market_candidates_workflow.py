@@ -11,8 +11,8 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.collector impo
 from void_liquidity.bindings.polymarket.markets.whales.discovery import (
     PolymarketWhaleDiscoveryBinding,
 )
-from void_liquidity.bindings.polymarket.markets.whales import (
-    PolymarketWhaleMarketsBinding,
+from void_liquidity.bindings.polymarket.markets.whales.candidates import (
+    PolymarketWhaleMarketCandidatesBinding,
 )
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
@@ -43,8 +43,8 @@ def test_build_whale_market_candidates_runtime_installs_polymarket_binding() -> 
         PolymarketWhaleDiscoveryBinding,
     )
     assert isinstance(
-        runtime.registry.get("polymarket.markets.whales"),
-        PolymarketWhaleMarketsBinding,
+        runtime.registry.get("polymarket.markets.whales.candidates"),
+        PolymarketWhaleMarketCandidatesBinding,
     )
 
 

@@ -23,10 +23,10 @@ from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
-from void_liquidity.bindings.polymarket.markets.whales import (
-    PolymarketWhaleMarketsBinding,
+from void_liquidity.bindings.polymarket.markets.whales.candidates import (
+    PolymarketWhaleMarketCandidatesBinding,
 )
-from void_liquidity.bindings.polymarket.markets.whales import markets as binding_module
+from void_liquidity.bindings.polymarket.markets.whales import candidates as binding_module
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
@@ -78,9 +78,9 @@ def _result() -> WhaleMarketCandidates:
 
 
 def test_polymarket_whale_markets_binding_declares_runtime_contract() -> None:
-    binding = PolymarketWhaleMarketsBinding()
+    binding = PolymarketWhaleMarketCandidatesBinding()
 
-    assert binding.spec.name == "polymarket.markets.whales"
+    assert binding.spec.name == "polymarket.markets.whales.candidates"
     assert binding.spec.consumes == (POLYMARKET_WHALE_MARKETS_REQUESTED,)
     assert POLYMARKET_WHALE_MARKETS_COMPLETED in binding.spec.produces
     assert POLYMARKET_WHALE_MARKETS_DISCOVERED in binding.spec.produces
@@ -116,7 +116,9 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     emitted_events: list[DomainEvent] = []
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
 
-    result = asyncio.run(PolymarketWhaleMarketsBinding().handle(event=_request(), bus=bus))
+    result = asyncio.run(
+        PolymarketWhaleMarketCandidatesBinding().handle(event=_request(), bus=bus)
+    )
 
     assert result == _result()
     assert [event.event_type for event in emitted_events] == [
@@ -130,7 +132,7 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert persisted[0]["run_id"] == emitted_events[0].payload["run_id"]
     assert persisted[0]["candidates"] == result
     assert {event.source for event in emitted_events} == {
-        "binding.polymarket.markets.whales"
+        "binding.polymarket.markets.whales.candidates"
     }
     assert {event.correlation_id for event in emitted_events} == {
         "correlation-markets"
@@ -170,7 +172,9 @@ def test_polymarket_whale_markets_binding_publishes_failed_event(
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
 
     with pytest.raises(RuntimeError, match="collector failed"):
-        asyncio.run(PolymarketWhaleMarketsBinding().handle(event=_request(), bus=bus))
+        asyncio.run(
+            PolymarketWhaleMarketCandidatesBinding().handle(event=_request(), bus=bus)
+        )
 
     assert [event.event_type for event in emitted_events] == [
         POLYMARKET_WHALE_MARKETS_STARTED,
@@ -207,7 +211,9 @@ def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
 
     with pytest.raises(RuntimeError, match="db down"):
-        asyncio.run(PolymarketWhaleMarketsBinding().handle(event=_request(), bus=bus))
+        asyncio.run(
+            PolymarketWhaleMarketCandidatesBinding().handle(event=_request(), bus=bus)
+        )
 
     assert [event.event_type for event in emitted_events] == [
         POLYMARKET_WHALE_MARKETS_STARTED,
