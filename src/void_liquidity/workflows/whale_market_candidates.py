@@ -6,9 +6,6 @@ import json
 from typing import Sequence, Callable
 
 
-from void_liquidity.adapters.polymarket.markets.whales.domain import (
-    MarketCandidate,
-)
 from void_liquidity.bindings.polymarket.markets.whales import (
     PolymarketWhaleMarketsBinding,
 )
@@ -19,7 +16,7 @@ from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
 
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
-from void_liquidity.logging.log import VoidLogger
+from void_liquidity.core.logging.log import VoidLogger
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )

@@ -16,7 +16,7 @@ from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
-from void_liquidity.logging.log import VoidLogger
+from void_liquidity.core.logging.log import VoidLogger
 
 
 logger = VoidLogger("void_liquidity.workflows.track_whales_v2")
