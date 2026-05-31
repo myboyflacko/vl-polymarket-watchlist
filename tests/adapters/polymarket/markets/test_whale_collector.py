@@ -76,7 +76,7 @@ def test_whale_market_collector_filters_below_min_whale_count() -> None:
 def test_whale_market_collector_returns_empty_result_without_wallets(
     monkeypatch,
 ) -> None:
-    monkeypatch.setattr(collector_module, "list_tracked_whale_wallets", lambda: [])
+    monkeypatch.setattr(collector_module, "list_selected_whale_wallets", lambda: [])
 
     result = asyncio.run(WhaleMarketCollector(min_whale_count=1).run())
 
@@ -99,7 +99,7 @@ def test_whale_market_collector_fetches_and_groups_open_positions(
 
     monkeypatch.setattr(
         collector_module,
-        "list_tracked_whale_wallets",
+        "list_selected_whale_wallets",
         lambda: [WALLET_ONE, WALLET_TWO],
     )
     _patch_data_client(monkeypatch, fake_get_current_positions)
@@ -129,7 +129,7 @@ def test_whale_market_collector_keeps_processing_after_wallet_error(
 
     monkeypatch.setattr(
         collector_module,
-        "list_tracked_whale_wallets",
+        "list_selected_whale_wallets",
         lambda: [WALLET_ONE, WALLET_TWO],
     )
     _patch_data_client(monkeypatch, fake_get_current_positions)
@@ -158,7 +158,7 @@ def test_whale_market_collector_paginates_positions(
 
         return [_position(asset="3")]
 
-    monkeypatch.setattr(collector_module, "list_tracked_whale_wallets", lambda: [WALLET_ONE])
+    monkeypatch.setattr(collector_module, "list_selected_whale_wallets", lambda: [WALLET_ONE])
     monkeypatch.setattr(collector_module, "POSITION_PAGE_LIMIT", 2)
     _patch_data_client(monkeypatch, fake_get_current_positions)
 

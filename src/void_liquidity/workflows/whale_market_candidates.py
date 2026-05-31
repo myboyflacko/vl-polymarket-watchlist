@@ -3,32 +3,28 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from typing import Sequence, Callable
-
-
-from void_liquidity.adapters.polymarket.markets.whales.domain import (
-    MarketCandidate,
-)
-from void_liquidity.bindings.polymarket.markets.whales import (
-    PolymarketWhaleMarketsBinding,
-)
-
-from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
-    PolymarketWhaleDiscoveryV2Binding
-)
-
-from void_liquidity.core.events import DomainEvent, EventBus
-from void_liquidity.core.runtime import Runtime
-from void_liquidity.logging.log import VoidLogger
-from void_liquidity.pipeline.markets.whales import (
-    POLYMARKET_WHALE_MARKETS_REQUESTED,
-)
+from collections.abc import Callable
+from typing import Sequence
 
 from void_liquidity.adapters.polymarket.discovery.whales.events import (
     POLYMARKET_WHALES_V2_REQUESTED,
 )
-
-from void_liquidity.core.scheduler import Scheduler, ScheduledJob
+from void_liquidity.adapters.polymarket.markets.whales.collector import (
+    DEFAULT_MIN_WHALE_COUNT,
+)
+from void_liquidity.bindings.polymarket.discovery.whales_v2 import (
+    PolymarketWhaleDiscoveryV2Binding,
+)
+from void_liquidity.bindings.polymarket.markets.whales import (
+    PolymarketWhaleMarketsBinding,
+)
+from void_liquidity.core.events import DomainEvent, EventBus
+from void_liquidity.core.runtime import Runtime
+from void_liquidity.core.scheduler import ScheduledJob, Scheduler
+from void_liquidity.logging.log import VoidLogger
+from void_liquidity.pipeline.markets.whales import (
+    POLYMARKET_WHALE_MARKETS_REQUESTED,
+)
 
 
 logger = VoidLogger("void_liquidity.workflows.whale_market_candidates")
@@ -36,63 +32,69 @@ logger = VoidLogger("void_liquidity.workflows.whale_market_candidates")
 
 def build_whale_market_candidates_event(
     *,
-    event_type: str,
+    event_type: str = POLYMARKET_WHALE_MARKETS_REQUESTED,
     source: str = "workflow.whale_market_candidates",
-) -> Callable:
+) -> DomainEvent:
+    return DomainEvent.create(
+        event_type=event_type,
+        source=source,
+        payload={},
+        metadata={"workflow": "whale_market_candidates"},
+    )
+
+
+def _event_factory(event_type: str) -> Callable[[], DomainEvent]:
     def create_event() -> DomainEvent:
-        return DomainEvent.create(
+        return build_whale_market_candidates_event(
             event_type=event_type,
-            source=source,
-            payload={},
-            metadata={"workflow": "whale_market_candidates"},
         )
+
     return create_event
 
 
-
-def build_whale_market_candidates_runtime(bus: EventBus | None = None) -> Runtime:
-    
+def build_whale_market_candidates_runtime(
+    *,
+    bus: EventBus | None = None,
+    min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+) -> Runtime:
     runtime = Runtime(bus=bus)
     runtime.install(
-        PolymarketWhaleMarketsBinding(),
-        PolymarketWhaleDiscoveryV2Binding()
-    )   
+        PolymarketWhaleDiscoveryV2Binding(),
+        PolymarketWhaleMarketsBinding(min_whale_count=min_whale_count),
+    )
     return runtime
 
 
 async def run_whale_market_candidates(
     *,
-    echo_events: bool = False
+    echo_events: bool = False,
+    min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
 ) -> None:
-    
     bus = EventBus()
     bus.subscribe(EventBus.WILDCARD, logger.log_domain_event)
 
-    runtime = build_whale_market_candidates_runtime(bus=bus)
-    
+    runtime = build_whale_market_candidates_runtime(
+        bus=bus,
+        min_whale_count=min_whale_count,
+    )
     scheduler = Scheduler(runtime=runtime)
-    
+
     scheduler.register(
         ScheduledJob(
             name="whales.discover",
             interval_seconds=3600,
-            event_factory=build_whale_market_candidates_event(
-                event_type=POLYMARKET_WHALES_V2_REQUESTED,   
-            ),
+            event_factory=_event_factory(POLYMARKET_WHALES_V2_REQUESTED),
         ),
         ScheduledJob(
             name="whales.markets",
             interval_seconds=900,
-            event_factory=build_whale_market_candidates_event(
-                event_type=POLYMARKET_WHALE_MARKETS_REQUESTED
-            )
-        )
+            event_factory=_event_factory(POLYMARKET_WHALE_MARKETS_REQUESTED),
+        ),
     )
-        
+
     if echo_events:
         bus.subscribe(EventBus.WILDCARD, _print_event)
 
-    
     await scheduler.run_once()
 
 
@@ -105,11 +107,18 @@ def main(argv: Sequence[str] | None = None) -> None:
         action="store_true",
         help="Print emitted runtime events as JSON lines.",
     )
+    parser.add_argument(
+        "--min-whale-count",
+        type=int,
+        default=DEFAULT_MIN_WHALE_COUNT,
+        help="Minimum matching whale count for market candidates.",
+    )
     args = parser.parse_args(argv)
 
     asyncio.run(
         run_whale_market_candidates(
             echo_events=args.echo_events,
+            min_whale_count=args.min_whale_count,
         )
     )
 

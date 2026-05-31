@@ -97,7 +97,7 @@ def test_polymarket_whale_v2_binding_declares_runtime_contract() -> None:
     assert POLYMARKET_WHALES_V2_PERSIST_COMPLETED in binding.spec.produces
 
 
-def test_polymarket_whale_v2_binding_runs_scores_persists_and_publishes(
+def test_polymarket_whale_v2_binding_runs_persists_and_publishes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persisted: list[dict] = []
@@ -129,22 +129,20 @@ def test_polymarket_whale_v2_binding_runs_scores_persists_and_publishes(
         POLYMARKET_WHALES_V2_COMPLETED,
     ]
     assert persisted
-    assert persisted[0]["ranking_result"].method == "trade_first_percentile_v1"
-    assert emitted_events[-1].payload["ranking_method"] == "trade_first_percentile_v1"
-    assert emitted_events[-1].payload["ranked_wallets"] == [
-        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-    ]
+    assert "ranking_result" not in persisted[0]
     assert {event.source for event in emitted_events} == {
         "binding.polymarket.discovery.whales_v2"
     }
     assert {event.correlation_id for event in emitted_events} == {"correlation-v2"}
     assert emitted_events[-1].payload["collected_wallet_count"] == 1
-    assert emitted_events[-1].payload["ranked_wallet_count"] == 1
+    assert "ranked_wallet_count" not in emitted_events[-1].payload
+    assert "ranking_method" not in emitted_events[-1].payload
+    assert "ranked_wallets" not in emitted_events[-1].payload
     assert emitted_events[-1].payload["failed_wallet_count"] == 0
     assert emitted_events[-1].payload["partial"] is False
 
 
-def test_polymarket_whale_v2_binding_uses_profile_ranking_weights(
+def test_polymarket_whale_v2_binding_does_not_rank_before_persisting(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     persisted: list[dict] = []
@@ -159,33 +157,13 @@ def test_polymarket_whale_v2_binding_uses_profile_ranking_weights(
         def persist(self, **kwargs) -> None:
             persisted.append(kwargs)
 
-    request = DomainEvent.create(
-        event_type=POLYMARKET_WHALES_V2_REQUESTED,
-        source="workflow.track_whales_v2",
-        correlation_id="correlation-v2",
-        metadata={"workflow": "track_whales_v2"},
-        payload={
-            "profile": {
-                "wallet_count": 1,
-                "ranking": {
-                    "pnl_weight": 1,
-                    "volume_weight": 0,
-                    "trade_activity_weight": 0,
-                    "recency_weight": 0,
-                    "exposure_weight": 0,
-                    "concentration_penalty_weight": 0,
-                    "bottom_cut_percentile": 0,
-                },
-            }
-        },
-    )
     monkeypatch.setattr(binding_module, "WhaleTrackerV2", FakeTracker)
     bus = EventBus()
 
-    asyncio.run(PolymarketWhaleDiscoveryV2Binding().handle(event=request, bus=bus))
+    asyncio.run(PolymarketWhaleDiscoveryV2Binding().handle(event=_request(), bus=bus))
 
-    ranking_result = persisted[0]["ranking_result"]
-    assert len(ranking_result.ranked_whales) == 1
+    assert persisted
+    assert "ranking_result" not in persisted[0]
 
 
 def test_polymarket_whale_v2_binding_publishes_partial_counts(

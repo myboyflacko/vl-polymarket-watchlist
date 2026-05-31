@@ -14,8 +14,8 @@ from void_liquidity.adapters.polymarket.api.client import (
 from void_liquidity.adapters.polymarket.api.params.profile.current_positions import (
     CurrentPositionsParams,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.repository import (
-    list_tracked_whale_wallets,
+from void_liquidity.adapters.polymarket.discovery.whales.selection import (
+    list_selected_whale_wallets,
 )
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
     MarketCandidate,
@@ -44,7 +44,7 @@ class WhaleMarketCollector:
         self.min_whale_count = min_whale_count
 
     async def run(self) -> WhaleMarketCandidates:
-        wallets = list_tracked_whale_wallets()
+        wallets = list_selected_whale_wallets()
         if not wallets:
             return WhaleMarketCandidates()
 

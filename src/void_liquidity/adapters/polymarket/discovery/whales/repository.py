@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
@@ -12,33 +12,59 @@ from void_liquidity.adapters.polymarket.discovery.whales.models import (
     TrackedWhaleMetricSnapshot,
     WhaleTrackerRun,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.domain import Whale, Whales
+from void_liquidity.adapters.polymarket.discovery.whales.domain import (
+    Whale,
+    WhaleIdentity,
+    WhaleMetrics,
+    Whales,
+)
 from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
-from void_liquidity.adapters.polymarket.ranking.trade_first import WhaleRankingResult
 from void_liquidity.data.engine import database_session
 
 
 def list_tracked_whale_wallets() -> list[str]:
     with database_session() as session:
-        latest_run_id = session.scalar(
-            select(WhaleTrackerRun.run_id)
-            .order_by(
-                WhaleTrackerRun.generated_at.desc(),
-                WhaleTrackerRun.run_id.desc(),
-            )
-            .limit(1)
-        )
-        if latest_run_id is None:
+        latest_run = session.scalar(_latest_completed_run_statement())
+        if latest_run is None:
             return []
 
         return list(
             session.scalars(
                 select(TrackedWhale.proxy_wallet)
-                .where(TrackedWhale.run_id == latest_run_id)
+                .where(TrackedWhale.run_id == latest_run.run_id)
                 .order_by(TrackedWhale.id)
             )
+        )
+
+
+def list_latest_whales() -> Whales:
+    with database_session() as session:
+        latest_run = session.scalar(_latest_completed_run_statement())
+        if latest_run is None:
+            return Whales(
+                whales=[],
+                candidate_wallet_count=0,
+                checked_wallet_count=0,
+                generated_at=datetime.min.replace(tzinfo=UTC),
+                profile_version="unknown",
+            )
+
+        snapshots = list(
+            session.scalars(
+                select(TrackedWhaleMetricSnapshot)
+                .where(TrackedWhaleMetricSnapshot.run_id == latest_run.run_id)
+                .order_by(TrackedWhaleMetricSnapshot.id)
+            )
+        )
+
+        return Whales(
+            whales=[_whale_from_snapshot(snapshot) for snapshot in snapshots],
+            candidate_wallet_count=latest_run.candidate_wallet_count,
+            checked_wallet_count=latest_run.checked_wallet_count,
+            generated_at=latest_run.generated_at,
+            profile_version=latest_run.profile_version,
         )
 
 
@@ -50,12 +76,7 @@ def persist_whale_tracker_v2_run(
     finished_at: datetime,
     generated_at: datetime,
     whales: Whales,
-    ranking_result: WhaleRankingResult | None = None,
 ) -> None:
-    selected_whales = (
-        ranking_result.whales if ranking_result is not None else whales.whales
-    )
-
     with database_session() as session:
         session.add(
             WhaleTrackerRun(
@@ -67,7 +88,7 @@ def persist_whale_tracker_v2_run(
                 generated_at=generated_at,
                 candidate_wallet_count=whales.candidate_wallet_count,
                 checked_wallet_count=whales.checked_wallet_count,
-                accepted_wallet_count=len(selected_whales),
+                accepted_wallet_count=len(whales.whales),
                 profile=profile.model_dump(mode="json"),
                 report_path=None,
             )
@@ -77,14 +98,13 @@ def persist_whale_tracker_v2_run(
             session=session,
             run_id=run_id,
             seen_at=generated_at,
-            whales=selected_whales,
+            whales=whales.whales,
         )
         _insert_metric_snapshots(
             session=session,
             run_id=run_id,
             generated_at=generated_at,
             whales=whales.whales,
-            ranking_result=ranking_result,
         )
         session.commit()
 
@@ -127,17 +147,12 @@ def _insert_metric_snapshots(
     run_id: str,
     generated_at: datetime,
     whales: Iterable[Whale],
-    ranking_result: WhaleRankingResult | None,
 ) -> None:
-    ranking_by_wallet = _ranking_by_wallet(ranking_result)
     rows = [
         {
             "run_id": run_id,
             "proxy_wallet": whale.proxy_wallet,
-            "metrics": {
-                **whale.metrics.model_dump(mode="json"),
-                "ranking": ranking_by_wallet.get(whale.proxy_wallet),
-            },
+            "metrics": whale.metrics.model_dump(mode="json"),
             "collection_quality": whale.metrics.collection_quality.model_dump(
                 mode="json"
             ),
@@ -150,28 +165,22 @@ def _insert_metric_snapshots(
         session.add_all(TrackedWhaleMetricSnapshot(**row) for row in rows)
 
 
-def _ranking_by_wallet(
-    ranking_result: WhaleRankingResult | None,
-) -> dict[str, dict[str, float | int | str | bool]]:
-    if ranking_result is None:
-        return {}
+def _latest_completed_run_statement():
+    return (
+        select(WhaleTrackerRun)
+        .where(WhaleTrackerRun.status == "completed")
+        .order_by(
+            WhaleTrackerRun.generated_at.desc(),
+            WhaleTrackerRun.run_id.desc(),
+        )
+        .limit(1)
+    )
 
-    ranked = {
-        ranked_whale.whale.proxy_wallet: {
-            "method": ranking_result.method,
-            "score": ranked_whale.score,
-            "rank": index,
-            "removed": False,
-        }
-        for index, ranked_whale in enumerate(ranking_result.ranked_whales, start=1)
-    }
 
-    for ranked_whale in ranking_result.removed_whales:
-        ranked[ranked_whale.whale.proxy_wallet] = {
-            "method": ranking_result.method,
-            "score": ranked_whale.score,
-            "rank": 0,
-            "removed": True,
-        }
-
-    return ranked
+def _whale_from_snapshot(snapshot: TrackedWhaleMetricSnapshot) -> Whale:
+    metrics = dict(snapshot.metrics)
+    metrics.pop("ranking", None)
+    return Whale(
+        identity=WhaleIdentity(proxy_wallet=snapshot.proxy_wallet),
+        metrics=WhaleMetrics.model_validate(metrics),
+    )

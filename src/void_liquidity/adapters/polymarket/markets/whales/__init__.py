@@ -4,4 +4,5 @@ __all__ = [
     "events",
     "models",
     "repository",
+    "signals",
 ]

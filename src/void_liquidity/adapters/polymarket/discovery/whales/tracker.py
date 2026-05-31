@@ -108,7 +108,6 @@ class WhaleTrackerV2:
         run_id: str,
         started_at: datetime,
         finished_at: datetime | None = None,
-        ranking_result: Any | None = None,
     ) -> None:
         persist_whale_tracker_v2_run(
             profile=self.profile,
@@ -117,7 +116,6 @@ class WhaleTrackerV2:
             finished_at=finished_at or datetime.now(UTC),
             generated_at=whales.generated_at,
             whales=whales,
-            ranking_result=ranking_result,
         )
 
     async def _fetch_candidates(self, client: PolymarketDataClient) -> list[_Candidate]:

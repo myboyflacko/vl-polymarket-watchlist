@@ -6,5 +6,6 @@ __all__ = [
     "models",
     "profiles",
     "repository",
+    "selection",
     "tracker",
 ]

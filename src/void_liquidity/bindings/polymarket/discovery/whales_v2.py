@@ -16,10 +16,6 @@ from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     WhaleTrackerV2Profile,
 )
 from void_liquidity.adapters.polymarket.discovery.whales.tracker import WhaleTrackerV2
-from void_liquidity.adapters.polymarket.ranking.trade_first import (
-    TradeFirstRankingWeights,
-    rank_trade_first_whales,
-)
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus
 
@@ -46,7 +42,7 @@ class PolymarketWhaleDiscoveryV2Binding:
     spec = BindingSpec(
         name="polymarket.discovery.whales_v2",
         version="1.0.0",
-        description="Collects, scores, and persists Polymarket whale snapshots.",
+        description="Collects and persists Polymarket whale snapshots.",
         consumes=(POLYMARKET_WHALES_V2_REQUESTED,),
         produces=(
             POLYMARKET_WHALES_V2_STARTED,
@@ -86,10 +82,6 @@ class PolymarketWhaleDiscoveryV2Binding:
             )
 
             whales = await tracker.run(now=started_at)
-            ranking = rank_trade_first_whales(
-                whales,
-                weights=TradeFirstRankingWeights.from_profile(profile.ranking),
-            )
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALES_V2_DISCOVERED,
@@ -117,7 +109,6 @@ class PolymarketWhaleDiscoveryV2Binding:
                     payload={
                         "run_id": run_id,
                         "collected_wallet_count": whales.wallet_count,
-                        "ranked_wallet_count": len(ranking.ranked_whales),
                     },
                     metadata=metadata,
                 )
@@ -128,7 +119,6 @@ class PolymarketWhaleDiscoveryV2Binding:
                     run_id=run_id,
                     started_at=started_at,
                     finished_at=datetime.now(UTC),
-                    ranking_result=ranking,
                 )
             except Exception as exc:
                 await bus.publish(
@@ -154,7 +144,6 @@ class PolymarketWhaleDiscoveryV2Binding:
                     payload={
                         "run_id": run_id,
                         "collected_wallet_count": whales.wallet_count,
-                        "ranked_wallet_count": len(ranking.ranked_whales),
                     },
                     metadata=metadata,
                 )
@@ -169,17 +158,10 @@ class PolymarketWhaleDiscoveryV2Binding:
                         "candidate_wallet_count": whales.candidate_wallet_count,
                         "checked_wallet_count": whales.checked_wallet_count,
                         "collected_wallet_count": whales.wallet_count,
-                        "ranked_wallet_count": len(ranking.ranked_whales),
                         "successful_wallet_count": whales.successful_wallet_count,
                         "failed_wallet_count": whales.failed_wallet_count,
                         "partial": whales.partial,
                         "collection_error_count": len(whales.collection_errors),
-                        "ranking_method": ranking.method,
-                        "ranked_wallets": [
-                            ranked.whale.proxy_wallet
-                            for ranked in ranking.ranked_whales
-                        ],
-                        "removed_wallets": ranking.removed_wallets,
                     },
                     metadata=metadata,
                 )

@@ -19,7 +19,6 @@ from void_liquidity.adapters.polymarket.discovery.whales.tracker import (
 from void_liquidity.adapters.polymarket.discovery.whales import (
     tracker as tracker_module,
 )
-from void_liquidity.adapters.polymarket.ranking.trade_first import rank_trade_first_whales
 from void_liquidity.data.base import Base
 from void_liquidity.data.engine import create_database_engine, database_session
 from void_liquidity.settings import get_settings
@@ -349,7 +348,6 @@ def test_whale_tracker_v2_persists_metric_snapshots(
         run_id="run-v2",
         started_at=NOW,
         finished_at=NOW,
-        ranking_result=rank_trade_first_whales(whales),
     )
 
     with database_session(database_path) as session:
@@ -364,11 +362,10 @@ def test_whale_tracker_v2_persists_metric_snapshots(
     assert snapshot is not None
     assert snapshot.proxy_wallet == WALLET_ONE
     assert snapshot.metrics["trades"]["net_flow_30d"] == 38
-    assert snapshot.metrics["ranking"]["method"] == "trade_first_percentile_v1"
-    assert snapshot.metrics["ranking"]["rank"] == 1
+    assert "ranking" not in snapshot.metrics
 
 
-def test_whale_tracker_v2_persists_only_ranked_whales_as_tracked_whales(
+def test_whale_tracker_v2_persists_all_discovered_whales_as_tracked_whales(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -378,14 +375,12 @@ def test_whale_tracker_v2_persists_only_ranked_whales_as_tracked_whales(
     engine = create_database_engine(database_path)
     Base.metadata.create_all(engine)
     whales = asyncio.run(_build_two_persistable_whales(monkeypatch))
-    ranking = rank_trade_first_whales(whales)
 
     WhaleTrackerV2(profile=_profile()).persist(
         whales=whales,
         run_id="run-v2-kept",
         started_at=NOW,
         finished_at=NOW,
-        ranking_result=ranking,
     )
 
     with database_session(database_path) as session:
@@ -394,17 +389,13 @@ def test_whale_tracker_v2_persists_only_ranked_whales_as_tracked_whales(
         run = session.scalar(select(WhaleTrackerRun))
 
     assert run is not None
-    assert run.accepted_wallet_count == len(ranking.ranked_whales)
+    assert run.accepted_wallet_count == 2
     assert [whale.proxy_wallet for whale in tracked_whales] == [
-        ranking.ranked_whales[0].whale.proxy_wallet
+        WALLET_ONE,
+        WALLET_TWO,
     ]
     assert len(snapshots) == 2
-    removed_snapshot = next(
-        snapshot
-        for snapshot in snapshots
-        if snapshot.proxy_wallet == ranking.removed_wallets[0]
-    )
-    assert removed_snapshot.metrics["ranking"]["removed"] is True
+    assert all("ranking" not in snapshot.metrics for snapshot in snapshots)
 
 
 async def _build_persistable_whales(monkeypatch) -> Any:
