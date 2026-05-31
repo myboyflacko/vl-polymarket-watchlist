@@ -20,7 +20,7 @@ from void_liquidity.bindings.polymarket.markets.whales import (
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
-from void_liquidity.core.logging.log import VoidLogger
+from void_liquidity.core.logging import VoidLogger
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )

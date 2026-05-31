@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from void_liquidity.core.events import DomainEvent
-from void_liquidity.core.logging.log import (
+from void_liquidity.core.logging import (
     DEFAULT_LOG_FILE_NAME,
     LOG_DIR_ENV,
     VoidLogger,
