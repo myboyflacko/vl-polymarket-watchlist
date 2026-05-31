@@ -8,23 +8,25 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleDiscoveryProfile,
 )
-from void_liquidity.adapters.polymarket.signals.whales.domain import WhaleSignalProfile
+from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
+    WhaleQualifiedMarketProfile,
+)
 from void_liquidity.bindings.polymarket.markets.whales.candidates import (
     PolymarketWhaleMarketCandidatesBinding,
 )
 from void_liquidity.bindings.polymarket.markets.whales.discovery import (
     PolymarketWhaleDiscoveryBinding,
 )
-from void_liquidity.bindings.polymarket.signals.whales import (
-    PolymarketWhaleSignalsBinding,
+from void_liquidity.bindings.polymarket.markets.whales.qualified import (
+    PolymarketWhaleQualifiedMarketsBinding,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )
-from void_liquidity.pipeline.signals.whales import (
-    POLYMARKET_WHALE_SIGNALS_REQUESTED,
+from void_liquidity.pipeline.markets.qualified import (
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
 )
 from void_liquidity.workflows import whale_market_procurement as workflow
 
@@ -41,8 +43,8 @@ def test_build_whale_market_procurement_runtime_installs_bindings() -> None:
         PolymarketWhaleMarketCandidatesBinding,
     )
     assert isinstance(
-        runtime.registry.get("polymarket.signals.whales"),
-        PolymarketWhaleSignalsBinding,
+        runtime.registry.get("polymarket.markets.whales.qualified"),
+        PolymarketWhaleQualifiedMarketsBinding,
     )
 
 
@@ -51,21 +53,21 @@ def test_build_whale_market_procurement_scheduler_registers_process_order() -> N
     scheduler = workflow.build_whale_market_procurement_scheduler(
         runtime=runtime,
         discovery_profile=WhaleDiscoveryProfile(wallet_count=3),
-        signal_profiles=(WhaleSignalProfile(name="confirmed"),),
-        signal_limit=2,
+        qualified_profiles=(WhaleQualifiedMarketProfile(name="confirmed"),),
+        qualified_limit=2,
     )
 
     assert [job.name for job in scheduler.registry] == [
         "whales.discover",
         "whales.market_candidates",
-        "whales.signals.confirmed",
+        "whales.qualified.confirmed",
     ]
 
     events = [job.event_factory() for job in scheduler.registry]
     assert [event.event_type for event in events] == [
         POLYMARKET_WHALE_DISCOVERY_REQUESTED,
         POLYMARKET_WHALE_MARKETS_REQUESTED,
-        POLYMARKET_WHALE_SIGNALS_REQUESTED,
+        POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
     ]
     assert events[0].payload["profile"]["wallet_count"] == 3
     assert events[2].payload["profile"]["name"] == "confirmed"
@@ -103,15 +105,15 @@ def test_run_whale_market_procurement_uses_scheduler_once(
     asyncio.run(
         workflow.run_whale_market_procurement(
             min_whale_count=4,
-            signal_profiles=(WhaleSignalProfile(name="pain"),),
-            signal_limit=1,
+            qualified_profiles=(WhaleQualifiedMarketProfile(name="pain"),),
+            qualified_limit=1,
         )
     )
 
     assert [event.event_type for event in published_events] == [
         POLYMARKET_WHALE_DISCOVERY_REQUESTED,
         POLYMARKET_WHALE_MARKETS_REQUESTED,
-        POLYMARKET_WHALE_SIGNALS_REQUESTED,
+        POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
     ]
     assert published_events[-1].payload["profile"]["name"] == "pain"
     assert published_events[-1].payload["limit"] == 1
@@ -137,9 +139,9 @@ def test_whale_market_procurement_main_builds_cli_options(
             "3",
             "--min-whale-count",
             "4",
-            "--signal-profile",
+            "--qualified-profile",
             "confirmed",
-            "--signal-limit",
+            "--qualified-limit",
             "2",
             "--echo-events",
         ]
@@ -147,8 +149,8 @@ def test_whale_market_procurement_main_builds_cli_options(
 
     assert captured[0]["discovery_profile"] == WhaleDiscoveryProfile(wallet_count=3)
     assert captured[0]["min_whale_count"] == 4
-    assert captured[0]["signal_profiles"] == (
-        WhaleSignalProfile(name="confirmed"),
+    assert captured[0]["qualified_profiles"] == (
+        WhaleQualifiedMarketProfile(name="confirmed"),
     )
-    assert captured[0]["signal_limit"] == 2
+    assert captured[0]["qualified_limit"] == 2
     assert captured[0]["echo_events"] is True

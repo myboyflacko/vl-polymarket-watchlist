@@ -1,16 +1,20 @@
 from datetime import date
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
-from void_liquidity.adapters.polymarket.signals.whales import signals as signals_module
-from void_liquidity.adapters.polymarket.signals.whales.domain import WhaleSignalProfile
-from void_liquidity.adapters.polymarket.signals.whales.signals import (
-    list_market_signals,
+from void_liquidity.adapters.polymarket.markets.whales.qualified import (
+    qualified as qualified_module,
+)
+from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
+    WhaleQualifiedMarketProfile,
+)
+from void_liquidity.adapters.polymarket.markets.whales.qualified.qualified import (
+    list_qualified_markets,
 )
 
 
-def test_list_market_signals_filters_confirmed_candidates(monkeypatch) -> None:
+def test_list_qualified_markets_filters_confirmed_candidates(monkeypatch) -> None:
     monkeypatch.setattr(
-        signals_module,
+        qualified_module,
         "list_latest_market_candidates",
         lambda: [
             _candidate(token_id="confirmed", weighted_avg_price=0.4, cur_price=0.5),
@@ -18,16 +22,18 @@ def test_list_market_signals_filters_confirmed_candidates(monkeypatch) -> None:
         ],
     )
 
-    result = list_market_signals(WhaleSignalProfile(name="confirmed"))
+    result = list_qualified_markets(WhaleQualifiedMarketProfile(name="confirmed"))
 
-    assert [signal.candidate.token_id for signal in result.signals] == ["confirmed"]
-    assert result.signals[0].price_delta == 0.09999999999999998
-    assert result.signals[0].value_per_wallet == 10
+    assert [market.candidate.token_id for market in result.qualified_markets] == [
+        "confirmed"
+    ]
+    assert result.qualified_markets[0].price_delta == 0.09999999999999998
+    assert result.qualified_markets[0].value_per_wallet == 10
 
 
-def test_list_market_signals_filters_pain_candidates(monkeypatch) -> None:
+def test_list_qualified_markets_filters_pain_candidates(monkeypatch) -> None:
     monkeypatch.setattr(
-        signals_module,
+        qualified_module,
         "list_latest_market_candidates",
         lambda: [
             _candidate(token_id="confirmed", weighted_avg_price=0.4, cur_price=0.5),
@@ -35,15 +41,17 @@ def test_list_market_signals_filters_pain_candidates(monkeypatch) -> None:
         ],
     )
 
-    result = list_market_signals(WhaleSignalProfile(name="pain"))
+    result = list_qualified_markets(WhaleQualifiedMarketProfile(name="pain"))
 
-    assert [signal.candidate.token_id for signal in result.signals] == ["pain"]
-    assert result.signals[0].score == 0.9999999999999998
+    assert [market.candidate.token_id for market in result.qualified_markets] == [
+        "pain"
+    ]
+    assert result.qualified_markets[0].score == 0.9999999999999998
 
 
-def test_list_market_signals_ranks_high_value_candidates(monkeypatch) -> None:
+def test_list_qualified_markets_ranks_high_value_candidates(monkeypatch) -> None:
     monkeypatch.setattr(
-        signals_module,
+        qualified_module,
         "list_latest_market_candidates",
         lambda: [
             _candidate(token_id="small", total_current_value=15),
@@ -51,19 +59,21 @@ def test_list_market_signals_ranks_high_value_candidates(monkeypatch) -> None:
         ],
     )
 
-    result = list_market_signals(
-        WhaleSignalProfile(name="high_value", min_total_current_value=20),
+    result = list_qualified_markets(
+        WhaleQualifiedMarketProfile(name="high_value", min_total_current_value=20),
     )
 
-    assert [signal.candidate.token_id for signal in result.signals] == ["large"]
-    assert result.signals[0].score == 90
+    assert [market.candidate.token_id for market in result.qualified_markets] == [
+        "large"
+    ]
+    assert result.qualified_markets[0].score == 90
 
 
-def test_list_market_signals_ranks_value_per_wallet_and_applies_limit(
+def test_list_qualified_markets_ranks_value_per_wallet_and_applies_limit(
     monkeypatch,
 ) -> None:
     monkeypatch.setattr(
-        signals_module,
+        qualified_module,
         "list_latest_market_candidates",
         lambda: [
             _candidate(token_id="dense", whale_count=3, total_current_value=90),
@@ -71,13 +81,15 @@ def test_list_market_signals_ranks_value_per_wallet_and_applies_limit(
         ],
     )
 
-    result = list_market_signals(
-        WhaleSignalProfile(name="value_per_wallet"),
+    result = list_qualified_markets(
+        WhaleQualifiedMarketProfile(name="value_per_wallet"),
         limit=1,
     )
 
-    assert [signal.candidate.token_id for signal in result.signals] == ["dense"]
-    assert result.signals[0].score == 30
+    assert [market.candidate.token_id for market in result.qualified_markets] == [
+        "dense"
+    ]
+    assert result.qualified_markets[0].score == 30
 
 
 def _candidate(

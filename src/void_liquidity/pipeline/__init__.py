@@ -1,3 +1,3 @@
 """Provider-neutral pipeline stage contracts."""
 
-__all__ = ["markets", "signals"]
+__all__ = ["markets"]

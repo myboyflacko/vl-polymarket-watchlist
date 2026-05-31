@@ -3,6 +3,5 @@
 __all__ = [
     "api",
     "markets",
-    "signals",
     "services",
 ]

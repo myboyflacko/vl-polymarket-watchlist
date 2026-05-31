@@ -4,36 +4,46 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
     list_latest_market_candidates,
 )
-from void_liquidity.adapters.polymarket.signals.whales.domain import (
-    MarketSignal,
-    MarketSignalResult,
-    WhaleSignalProfile,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
+    QualifiedMarket,
+    QualifiedMarketResult,
+    WhaleQualifiedMarketProfile,
 )
 
 
-def list_market_signals(
-    profile: WhaleSignalProfile,
+def list_qualified_markets(
+    profile: WhaleQualifiedMarketProfile,
     *,
     limit: int | None = None,
-) -> MarketSignalResult:
+) -> QualifiedMarketResult:
     candidates = list_latest_market_candidates()
-    signals = [
-        signal
+    qualified_markets = [
+        qualified_market
         for candidate in candidates
-        if (signal := _market_signal(candidate=candidate, profile=profile)) is not None
+        if (
+            qualified_market := _qualified_market(
+                candidate=candidate,
+                profile=profile,
+            )
+        )
+        is not None
     ]
-    sorted_signals = sorted(signals, key=lambda signal: signal.score, reverse=True)
+    sorted_markets = sorted(
+        qualified_markets,
+        key=lambda qualified_market: qualified_market.score,
+        reverse=True,
+    )
     if limit is not None:
-        sorted_signals = sorted_signals[:limit]
+        sorted_markets = sorted_markets[:limit]
 
-    return MarketSignalResult(profile=profile, signals=sorted_signals)
+    return QualifiedMarketResult(profile=profile, qualified_markets=sorted_markets)
 
 
-def _market_signal(
+def _qualified_market(
     *,
     candidate: MarketCandidate,
-    profile: WhaleSignalProfile,
-) -> MarketSignal | None:
+    profile: WhaleQualifiedMarketProfile,
+) -> QualifiedMarket | None:
     price_delta = candidate.cur_price - candidate.weighted_avg_price
     value_per_wallet = (
         candidate.total_current_value / candidate.whale_count
@@ -66,7 +76,7 @@ def _market_signal(
         case "value_per_wallet":
             score = value_per_wallet
 
-    return MarketSignal(
+    return QualifiedMarket(
         profile=profile.name,
         candidate=candidate,
         score=score,
@@ -76,9 +86,9 @@ def _market_signal(
     )
 
 
-class WhaleSignalService:
-    def __init__(self, profile: WhaleSignalProfile) -> None:
+class WhaleQualifiedMarketService:
+    def __init__(self, profile: WhaleQualifiedMarketProfile) -> None:
         self.profile = profile
 
-    def list(self, *, limit: int | None = None) -> MarketSignalResult:
-        return list_market_signals(self.profile, limit=limit)
+    def list(self, *, limit: int | None = None) -> QualifiedMarketResult:
+        return list_qualified_markets(self.profile, limit=limit)

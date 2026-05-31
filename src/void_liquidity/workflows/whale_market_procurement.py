@@ -14,9 +14,9 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleDiscoveryProfile,
 )
-from void_liquidity.adapters.polymarket.signals.whales.domain import (
-    WhaleSignalProfile,
-    WhaleSignalProfileName,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
+    WhaleQualifiedMarketProfile,
+    WhaleQualifiedMarketProfileName,
 )
 from void_liquidity.bindings.polymarket.markets.whales.candidates import (
     PolymarketWhaleMarketCandidatesBinding,
@@ -24,8 +24,8 @@ from void_liquidity.bindings.polymarket.markets.whales.candidates import (
 from void_liquidity.bindings.polymarket.markets.whales.discovery import (
     PolymarketWhaleDiscoveryBinding,
 )
-from void_liquidity.bindings.polymarket.signals.whales import (
-    PolymarketWhaleSignalsBinding,
+from void_liquidity.bindings.polymarket.markets.whales.qualified import (
+    PolymarketWhaleQualifiedMarketsBinding,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.logging import VoidLogger
@@ -34,12 +34,12 @@ from void_liquidity.core.scheduler import ScheduledJob, Scheduler
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )
-from void_liquidity.pipeline.signals.whales import (
-    POLYMARKET_WHALE_SIGNALS_REQUESTED,
+from void_liquidity.pipeline.markets.qualified import (
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
 )
 
 
-DEFAULT_SIGNAL_PROFILE_NAMES: tuple[WhaleSignalProfileName, ...] = (
+DEFAULT_QUALIFIED_PROFILE_NAMES: tuple[WhaleQualifiedMarketProfileName, ...] = (
     "confirmed",
     "pain",
     "high_value",
@@ -58,7 +58,7 @@ def build_whale_market_procurement_runtime(
     runtime.install(
         PolymarketWhaleDiscoveryBinding(),
         PolymarketWhaleMarketCandidatesBinding(min_whale_count=min_whale_count),
-        PolymarketWhaleSignalsBinding(),
+        PolymarketWhaleQualifiedMarketsBinding(),
     )
     return runtime
 
@@ -67,11 +67,11 @@ def build_whale_market_procurement_scheduler(
     *,
     runtime: Runtime,
     discovery_profile: WhaleDiscoveryProfile | None = None,
-    signal_profiles: Sequence[WhaleSignalProfile] | None = None,
-    signal_limit: int | None = None,
+    qualified_profiles: Sequence[WhaleQualifiedMarketProfile] | None = None,
+    qualified_limit: int | None = None,
 ) -> Scheduler:
     scheduler = Scheduler(runtime=runtime)
-    selected_signal_profiles = signal_profiles or _default_signal_profiles()
+    selected_qualified_profiles = qualified_profiles or _default_qualified_profiles()
 
     scheduler.register(
         ScheduledJob(
@@ -89,15 +89,15 @@ def build_whale_market_procurement_scheduler(
         ),
         *[
             ScheduledJob(
-                name=f"whales.signals.{profile.name}",
+                name=f"whales.qualified.{profile.name}",
                 interval_seconds=900,
                 event_factory=_event_factory(
-                    build_whale_signals_event,
+                    build_whale_qualified_markets_event,
                     profile=profile,
-                    limit=signal_limit,
+                    limit=qualified_limit,
                 ),
             )
-            for profile in selected_signal_profiles
+            for profile in selected_qualified_profiles
         ],
     )
     return scheduler
@@ -132,9 +132,9 @@ def build_whale_market_candidates_event(
     )
 
 
-def build_whale_signals_event(
+def build_whale_qualified_markets_event(
     *,
-    profile: WhaleSignalProfile,
+    profile: WhaleQualifiedMarketProfile,
     limit: int | None = None,
     source: str = "workflow.whale_market_procurement",
 ) -> DomainEvent:
@@ -143,7 +143,7 @@ def build_whale_signals_event(
         payload["limit"] = limit
 
     return DomainEvent.create(
-        event_type=POLYMARKET_WHALE_SIGNALS_REQUESTED,
+        event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
         source=source,
         payload=payload,
         metadata={"workflow": "whale_market_procurement"},
@@ -155,8 +155,8 @@ async def run_whale_market_procurement(
     discovery_profile: WhaleDiscoveryProfile | None = None,
     echo_events: bool = False,
     min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
-    signal_profiles: Sequence[WhaleSignalProfile] | None = None,
-    signal_limit: int | None = None,
+    qualified_profiles: Sequence[WhaleQualifiedMarketProfile] | None = None,
+    qualified_limit: int | None = None,
 ) -> None:
     bus = EventBus()
     bus.subscribe(EventBus.WILDCARD, logger.log_domain_event)
@@ -171,8 +171,8 @@ async def run_whale_market_procurement(
     scheduler = build_whale_market_procurement_scheduler(
         runtime=runtime,
         discovery_profile=discovery_profile,
-        signal_profiles=signal_profiles,
-        signal_limit=signal_limit,
+        qualified_profiles=qualified_profiles,
+        qualified_limit=qualified_limit,
     )
     await scheduler.run_once()
 
@@ -199,16 +199,16 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="Number of PnL and volume leaderboard wallets to collect.",
     )
     parser.add_argument(
-        "--signal-profile",
-        choices=DEFAULT_SIGNAL_PROFILE_NAMES,
+        "--qualified-profile",
+        choices=DEFAULT_QUALIFIED_PROFILE_NAMES,
         action="append",
-        help="Signal profile to derive. Repeat to select multiple profiles.",
+        help="Qualified market profile to apply. Repeat to select multiple profiles.",
     )
     parser.add_argument(
-        "--signal-limit",
+        "--qualified-limit",
         type=int,
         default=None,
-        help="Maximum signals per selected profile.",
+        help="Maximum qualified markets per selected profile.",
     )
     args = parser.parse_args(argv)
 
@@ -217,8 +217,8 @@ def main(argv: Sequence[str] | None = None) -> None:
             discovery_profile=_discovery_profile_from_args(args),
             echo_events=args.echo_events,
             min_whale_count=args.min_whale_count,
-            signal_profiles=_signal_profiles_from_args(args),
-            signal_limit=args.signal_limit,
+            qualified_profiles=_qualified_profiles_from_args(args),
+            qualified_limit=args.qualified_limit,
         )
     )
 
@@ -230,10 +230,10 @@ def _event_factory(factory: Callable[..., DomainEvent], **kwargs):
     return create_event
 
 
-def _default_signal_profiles() -> tuple[WhaleSignalProfile, ...]:
+def _default_qualified_profiles() -> tuple[WhaleQualifiedMarketProfile, ...]:
     return tuple(
-        WhaleSignalProfile(name=name)
-        for name in DEFAULT_SIGNAL_PROFILE_NAMES
+        WhaleQualifiedMarketProfile(name=name)
+        for name in DEFAULT_QUALIFIED_PROFILE_NAMES
     )
 
 
@@ -246,15 +246,15 @@ def _discovery_profile_from_args(
     return WhaleDiscoveryProfile(wallet_count=args.wallet_count)
 
 
-def _signal_profiles_from_args(
+def _qualified_profiles_from_args(
     args: argparse.Namespace,
-) -> tuple[WhaleSignalProfile, ...] | None:
-    if not args.signal_profile:
+) -> tuple[WhaleQualifiedMarketProfile, ...] | None:
+    if not args.qualified_profile:
         return None
 
     return tuple(
-        WhaleSignalProfile(name=name)
-        for name in args.signal_profile
+        WhaleQualifiedMarketProfile(name=name)
+        for name in args.qualified_profile
     )
 
 

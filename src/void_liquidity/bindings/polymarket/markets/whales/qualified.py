@@ -2,50 +2,50 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.signals.whales.domain import (
-    MarketSignalResult,
-    WhaleSignalProfile,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
+    QualifiedMarketResult,
+    WhaleQualifiedMarketProfile,
 )
-from void_liquidity.adapters.polymarket.signals.whales.events import (
-    POLYMARKET_WHALE_SIGNALS_COMPLETED as POLYMARKET_WHALE_SIGNALS_DERIVATION_COMPLETED,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_COMPLETED as POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_COMPLETED,
 )
-from void_liquidity.adapters.polymarket.signals.whales.events import (
-    POLYMARKET_WHALE_SIGNALS_DERIVED,
-    POLYMARKET_WHALE_SIGNALS_FAILED as POLYMARKET_WHALE_SIGNALS_DERIVATION_FAILED,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVED,
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_FAILED as POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_FAILED,
 )
-from void_liquidity.adapters.polymarket.signals.whales.events import (
-    POLYMARKET_WHALE_SIGNALS_STARTED as POLYMARKET_WHALE_SIGNALS_DERIVATION_STARTED,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED as POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_STARTED,
 )
-from void_liquidity.adapters.polymarket.signals.whales.signals import (
-    WhaleSignalService,
+from void_liquidity.adapters.polymarket.markets.whales.qualified.qualified import (
+    WhaleQualifiedMarketService,
 )
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.events import DomainEvent, EventBus
-from void_liquidity.pipeline.signals.whales import (
-    POLYMARKET_WHALE_SIGNALS_COMPLETED,
-    POLYMARKET_WHALE_SIGNALS_FAILED,
-    POLYMARKET_WHALE_SIGNALS_REQUESTED,
-    POLYMARKET_WHALE_SIGNALS_STARTED,
+from void_liquidity.pipeline.markets.qualified import (
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_COMPLETED,
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_FAILED,
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED,
 )
 
 
-EVENT_SOURCE = "binding.polymarket.signals.whales"
-ADAPTER_NAME = "polymarket.signals.whales"
+EVENT_SOURCE = "binding.polymarket.markets.whales.qualified"
+ADAPTER_NAME = "polymarket.markets.whales.qualified"
 PROVIDER_NAME = "polymarket"
-DEFAULT_SIGNAL_PROFILE = WhaleSignalProfile(name="high_value")
+DEFAULT_QUALIFIED_MARKET_PROFILE = WhaleQualifiedMarketProfile(name="high_value")
 
 
 def _build_run_id(generated_at: datetime) -> str:
     return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
 
 
-def _profile_from_payload(payload: dict) -> WhaleSignalProfile:
+def _profile_from_payload(payload: dict) -> WhaleQualifiedMarketProfile:
     profile_payload = payload.get("profile")
 
     if isinstance(profile_payload, dict):
-        return WhaleSignalProfile.model_validate(profile_payload)
+        return WhaleQualifiedMarketProfile.model_validate(profile_payload)
 
-    return DEFAULT_SIGNAL_PROFILE
+    return DEFAULT_QUALIFIED_MARKET_PROFILE
 
 
 def _limit_from_payload(payload: dict) -> int | None:
@@ -57,24 +57,24 @@ def _limit_from_payload(payload: dict) -> int | None:
     return None
 
 
-class PolymarketWhaleSignalsBinding:
+class PolymarketWhaleQualifiedMarketsBinding:
     spec = BindingSpec(
-        name="polymarket.signals.whales",
+        name="polymarket.markets.whales.qualified",
         version="1.0.0",
-        description="Derives Polymarket whale market signals from latest market candidates.",
-        consumes=(POLYMARKET_WHALE_SIGNALS_REQUESTED,),
+        description="Qualifies Polymarket whale market candidates for strategy input.",
+        consumes=(POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,),
         produces=(
-            POLYMARKET_WHALE_SIGNALS_STARTED,
-            POLYMARKET_WHALE_SIGNALS_COMPLETED,
-            POLYMARKET_WHALE_SIGNALS_FAILED,
-            POLYMARKET_WHALE_SIGNALS_DERIVATION_STARTED,
-            POLYMARKET_WHALE_SIGNALS_DERIVED,
-            POLYMARKET_WHALE_SIGNALS_DERIVATION_COMPLETED,
-            POLYMARKET_WHALE_SIGNALS_DERIVATION_FAILED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_COMPLETED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_FAILED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_STARTED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_COMPLETED,
+            POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_FAILED,
         ),
     )
 
-    async def handle(self, event: DomainEvent, bus: EventBus) -> MarketSignalResult:
+    async def handle(self, event: DomainEvent, bus: EventBus) -> QualifiedMarketResult:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
         profile = _profile_from_payload(event.payload)
@@ -88,7 +88,7 @@ class PolymarketWhaleSignalsBinding:
         try:
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_STARTED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload={"profile": profile.name, "limit": limit},
@@ -96,37 +96,38 @@ class PolymarketWhaleSignalsBinding:
             )
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_DERIVATION_STARTED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_STARTED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload={"profile": profile.name, "limit": limit},
                 metadata=metadata,
             )
 
-            result = WhaleSignalService(profile=profile).list(limit=limit)
+            result = WhaleQualifiedMarketService(profile=profile).list(limit=limit)
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_DERIVED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload={
                     "profile": profile.name,
-                    "signal_count": len(result.signals),
+                    "qualified_market_count": len(result.qualified_markets),
                     "limit": limit,
                     "token_ids": [
-                        signal.candidate.token_id for signal in result.signals
+                        market.candidate.token_id
+                        for market in result.qualified_markets
                     ],
                 },
                 metadata=metadata,
             )
             completed_payload = {
                 "profile": profile.name,
-                "signal_count": len(result.signals),
+                "qualified_market_count": len(result.qualified_markets),
                 "limit": limit,
             }
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_DERIVATION_COMPLETED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_COMPLETED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload=completed_payload,
@@ -134,7 +135,7 @@ class PolymarketWhaleSignalsBinding:
             )
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_COMPLETED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_COMPLETED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload=completed_payload,
@@ -150,7 +151,7 @@ class PolymarketWhaleSignalsBinding:
             }
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_DERIVATION_FAILED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_FAILED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload=failed_payload,
@@ -158,7 +159,7 @@ class PolymarketWhaleSignalsBinding:
             )
             await _publish(
                 bus=bus,
-                event_type=POLYMARKET_WHALE_SIGNALS_FAILED,
+                event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_FAILED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
                 payload=failed_payload,

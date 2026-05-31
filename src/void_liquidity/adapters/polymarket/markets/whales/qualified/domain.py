@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 
 
-WhaleSignalProfileName = Literal[
+WhaleQualifiedMarketProfileName = Literal[
     "confirmed",
     "pain",
     "high_value",
@@ -15,14 +15,14 @@ WhaleSignalProfileName = Literal[
 ]
 
 
-class WhaleSignalProfile(BaseModel):
-    name: WhaleSignalProfileName
+class WhaleQualifiedMarketProfile(BaseModel):
+    name: WhaleQualifiedMarketProfileName
     min_total_current_value: float = Field(default=0.0, ge=0)
     min_value_per_wallet: float = Field(default=0.0, ge=0)
 
 
-class MarketSignal(BaseModel):
-    profile: WhaleSignalProfileName
+class QualifiedMarket(BaseModel):
+    profile: WhaleQualifiedMarketProfileName
     candidate: MarketCandidate
     score: float
     price_delta: float
@@ -30,6 +30,6 @@ class MarketSignal(BaseModel):
     value_per_wallet: float
 
 
-class MarketSignalResult(BaseModel):
-    profile: WhaleSignalProfile
-    signals: list[MarketSignal]
+class QualifiedMarketResult(BaseModel):
+    profile: WhaleQualifiedMarketProfile
+    qualified_markets: list[QualifiedMarket]
