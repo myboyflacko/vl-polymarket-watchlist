@@ -1,6 +1,5 @@
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.discovery.whales import selection as selection_module
 from void_liquidity.adapters.polymarket.discovery.whales.domain import (
     CollectionQuality,
     ExposureMetrics,
@@ -15,7 +14,10 @@ from void_liquidity.adapters.polymarket.discovery.whales.domain import (
 from void_liquidity.adapters.polymarket.discovery.whales.profiles import (
     TradeFirstRankingProfile,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.selection import (
+from void_liquidity.adapters.polymarket.selection.whales import (
+    selection as selection_module,
+)
+from void_liquidity.adapters.polymarket.selection.whales.selection import (
     list_selected_whale_wallets,
     select_trade_first_whales,
 )

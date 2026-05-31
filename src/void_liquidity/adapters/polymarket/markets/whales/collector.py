@@ -14,7 +14,7 @@ from void_liquidity.adapters.polymarket.api.client import (
 from void_liquidity.adapters.polymarket.api.params.profile.current_positions import (
     CurrentPositionsParams,
 )
-from void_liquidity.adapters.polymarket.discovery.whales.selection import (
+from void_liquidity.adapters.polymarket.selection.whales.selection import (
     list_selected_whale_wallets,
 )
 from void_liquidity.adapters.polymarket.markets.whales.domain import (
