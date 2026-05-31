@@ -3,4 +3,5 @@
 __all__ = [
     "whale_discovery",
     "whale_market_candidates",
+    "whale_market_procurement",
 ]
