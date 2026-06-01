@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from collections import Counter
 from datetime import UTC, datetime
 
+from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
+    WalletCollectionError,
+)
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALE_DISCOVERY_COMPLETED,
     POLYMARKET_WHALE_DISCOVERY_DISCOVERED,
@@ -90,6 +94,7 @@ class PolymarketWhaleDiscoveryBinding:
             )
 
             whales = await tracker.run(now=started_at)
+            error_summary = _error_summary(whales.collection_errors)
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_DISCOVERY_DISCOVERED,
@@ -105,6 +110,7 @@ class PolymarketWhaleDiscoveryBinding:
                         "failed_wallet_count": whales.failed_wallet_count,
                         "partial": whales.partial,
                         "collection_error_count": len(whales.collection_errors),
+                        "error_summary": error_summary,
                     },
                     metadata=metadata,
                 )
@@ -170,6 +176,7 @@ class PolymarketWhaleDiscoveryBinding:
                         "failed_wallet_count": whales.failed_wallet_count,
                         "partial": whales.partial,
                         "collection_error_count": len(whales.collection_errors),
+                        "error_summary": error_summary,
                     },
                     metadata=metadata,
                 )
@@ -189,3 +196,19 @@ class PolymarketWhaleDiscoveryBinding:
                 )
             )
             raise
+
+
+def _error_summary(errors: list[WalletCollectionError]) -> list[dict[str, int | str]]:
+    grouped = Counter(
+        (error.stage, error.error_type, error.error)
+        for error in errors
+    )
+    return [
+        {
+            "stage": stage,
+            "error_type": error_type,
+            "error": error,
+            "count": count,
+        }
+        for (stage, error_type, error), count in grouped.most_common()
+    ]

@@ -27,6 +27,7 @@ from void_liquidity.bindings.polymarket.markets.whales.discovery import (
 from void_liquidity.bindings.polymarket.markets.whales.qualified import (
     PolymarketWhaleQualifiedMarketsBinding,
 )
+from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.logging import VoidLogger
 from void_liquidity.core.runtime import Runtime
@@ -37,8 +38,6 @@ from void_liquidity.pipeline.markets.whales import (
 from void_liquidity.pipeline.markets.qualified import (
     POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
 )
-
-from void_liquidity.core.cache import WorkflowCache
 
 
 DEFAULT_QUALIFIED_PROFILE_NAMES: tuple[WhaleQualifiedMarketProfileName, ...] = (
@@ -57,7 +56,6 @@ def build_whale_market_procurement_runtime(
     cache: WorkflowCache | None = None,
     min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
 ) -> Runtime:
-    
     runtime = Runtime(bus=bus, cache=cache)
     runtime.install(
         PolymarketWhaleDiscoveryBinding(),
@@ -168,11 +166,8 @@ async def run_whale_market_procurement(
     if echo_events:
         bus.subscribe(EventBus.WILDCARD, _print_event)
 
-    cache = WorkflowCache()
-    
     runtime = build_whale_market_procurement_runtime(
         bus=bus,
-        cache=cache,
         min_whale_count=min_whale_count,
     )
     scheduler = build_whale_market_procurement_scheduler(

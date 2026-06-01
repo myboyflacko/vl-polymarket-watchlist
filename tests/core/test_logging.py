@@ -123,3 +123,51 @@ def test_log_domain_event_uses_error_level_for_failed_events(
     [payload] = _read_log_lines(log_dir)
     assert payload["levelname"] == "ERROR"
     assert payload["event"] == "pipeline.discovery.whales.failed"
+
+
+def test_log_domain_event_sanitizes_wallet_and_token_identifiers(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    log_dir = tmp_path / "logs"
+    monkeypatch.setenv(LOG_DIR_ENV, str(log_dir))
+    logger = VoidLogger("void_liquidity.test")
+    event = DomainEvent.create(
+        event_type="pipeline.markets.qualified.derived",
+        source="binding",
+        payload={
+            "run_id": "run-1",
+            "wallets": ["wallet-1"],
+            "ranked_wallets": ["wallet-2"],
+            "removed_wallets": ["wallet-3"],
+            "token_id": "token-1",
+            "token_ids": ["token-2"],
+            "qualified_market_count": 2,
+            "collection_errors": [
+                {
+                    "proxy_wallet": "wallet-4",
+                    "stage": "trades",
+                    "error_type": "RuntimeError",
+                    "error": "api down",
+                }
+            ],
+        },
+    )
+
+    logger.log_domain_event(event)
+
+    [payload] = _read_log_lines(log_dir)
+    logged_payload = payload["context"]["payload"]
+    assert logged_payload == {
+        "run_id": "run-1",
+        "qualified_market_count": 2,
+        "collection_errors": [
+            {
+                "stage": "trades",
+                "error_type": "RuntimeError",
+                "error": "api down",
+            }
+        ],
+    }
+    assert event.payload["wallets"] == ["wallet-1"]
+    assert event.payload["collection_errors"][0]["proxy_wallet"] == "wallet-4"

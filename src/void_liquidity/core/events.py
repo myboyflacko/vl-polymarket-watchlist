@@ -51,8 +51,8 @@ class EventBus:
 
     async def publish(self, event: DomainEvent) -> None:
         handlers = [
-            *self._handlers.get(event.event_type, []),
             *self._handlers.get(self.WILDCARD, []),
+            *self._handlers.get(event.event_type, []),
         ]
 
         for handler in handlers:

@@ -24,7 +24,7 @@ def test_event_bus_routes_specific_and_wildcard_handlers() -> None:
         )
     )
 
-    assert seen == ["wallets.changed", "*:test"]
+    assert seen == ["*:test", "wallets.changed"]
 
 
 def test_runtime_connects_registered_bindings_once() -> None:

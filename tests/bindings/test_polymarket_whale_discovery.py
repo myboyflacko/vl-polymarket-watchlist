@@ -82,6 +82,12 @@ def _partial_whales() -> Whales:
                     stage="trades",
                     error_type="RuntimeError",
                     error="api down",
+                ),
+                WalletCollectionError(
+                    proxy_wallet="0xcccccccccccccccccccccccccccccccccccccccc",
+                    stage="trades",
+                    error_type="RuntimeError",
+                    error="api down",
                 )
             ]
         }
@@ -188,8 +194,16 @@ def test_polymarket_whale_discovery_binding_publishes_partial_counts(
 
     completed = emitted_events[-1]
     assert completed.payload["partial"] is True
-    assert completed.payload["failed_wallet_count"] == 1
-    assert completed.payload["collection_error_count"] == 1
+    assert completed.payload["failed_wallet_count"] == 2
+    assert completed.payload["collection_error_count"] == 2
+    assert completed.payload["error_summary"] == [
+        {
+            "stage": "trades",
+            "error_type": "RuntimeError",
+            "error": "api down",
+            "count": 2,
+        }
+    ]
 
 
 def test_polymarket_whale_discovery_binding_publishes_failed_event_and_reraises(

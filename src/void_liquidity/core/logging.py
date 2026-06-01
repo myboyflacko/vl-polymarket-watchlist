@@ -21,6 +21,15 @@ _LEVEL_MAP = {
     "CRITICAL": logging.CRITICAL,
 }
 
+_SENSITIVE_PAYLOAD_KEYS = {
+    "proxy_wallet",
+    "ranked_wallets",
+    "removed_wallets",
+    "token_id",
+    "token_ids",
+    "wallets",
+}
+
 
 class _DomainEventLike(Protocol):
     event_type: str
@@ -107,7 +116,7 @@ class VoidLogger:
             source=event.source,
             occurred_at=event.occurred_at.isoformat(),
             correlation_id=event.correlation_id,
-            payload=event.payload,
+            payload=_sanitize_log_payload(event.payload),
             metadata=event.metadata,
         )
 
@@ -138,3 +147,17 @@ class VoidLogger:
             },
             stacklevel=2,
         )
+
+
+def _sanitize_log_payload(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _sanitize_log_payload(item)
+            for key, item in value.items()
+            if key not in _SENSITIVE_PAYLOAD_KEYS
+        }
+
+    if isinstance(value, list):
+        return [_sanitize_log_payload(item) for item in value]
+
+    return value
