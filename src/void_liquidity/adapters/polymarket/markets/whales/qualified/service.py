@@ -62,15 +62,35 @@ def list_qualified_markets_for_profiles(
     candidate_run_id: str | None = None,
     limit: int | None = None,
 ) -> QualifiedMarketResult:
-    markets: list[QualifiedMarket] = []
+    markets_by_token: dict[str, QualifiedMarket] = {}
     for profile in profiles:
-        markets.extend(
-            list_qualified_markets(
-                profile,
-                candidate_run_id=candidate_run_id,
-                limit=limit,
-            ).qualified_markets
-        )
+        for market in list_qualified_markets(
+            profile,
+            candidate_run_id=candidate_run_id,
+            limit=None,
+        ).qualified_markets:
+            current = markets_by_token.get(market.candidate.token_id)
+            if current is None:
+                markets_by_token[market.candidate.token_id] = market
+                continue
+
+            categories = [*current.categories, *market.categories]
+            category_scores = {**current.category_scores, **market.category_scores}
+            markets_by_token[market.candidate.token_id] = current.model_copy(
+                update={
+                    "categories": categories,
+                    "category_scores": category_scores,
+                    "score": max(category_scores.values()),
+                }
+            )
+
+    markets = sorted(
+        markets_by_token.values(),
+        key=lambda market: market.score,
+        reverse=True,
+    )
+    if limit is not None:
+        markets = markets[:limit]
 
     return QualifiedMarketResult(profiles=list(profiles), qualified_markets=markets)
 
@@ -113,7 +133,8 @@ def _qualified_market(
             score = value_per_wallet
 
     return QualifiedMarket(
-        profile=profile.name,
+        categories=[profile.name],
+        category_scores={profile.name: score},
         candidate=candidate,
         score=score,
         price_delta=price_delta,

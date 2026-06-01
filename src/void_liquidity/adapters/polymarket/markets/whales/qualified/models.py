@@ -16,11 +16,11 @@ _ = _candidate_models
 
 
 class QualifiedMarketRun(Base):
-    __tablename__ = "polymarket_qualified_market_runs"
+    __tablename__ = "polymarket_whale_qualified_runs"
 
     run_id: Mapped[str] = mapped_column(String, primary_key=True)
     candidate_run_id: Mapped[str] = mapped_column(
-        ForeignKey("polymarket_whale_market_candidate_runs.run_id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_candidate_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
     status: Mapped[str] = mapped_column(String, nullable=False, default="completed")
@@ -39,11 +39,11 @@ class QualifiedMarketRun(Base):
 
 
 class QualifiedMarketIdentity(Base):
-    __tablename__ = "polymarket_qualified_market_identities"
+    __tablename__ = "polymarket_whale_qualified_identities"
     __table_args__ = (
-        Index("ux_qualified_market_identities_token_id", "token_id", unique=True),
-        Index("ix_qualified_market_identities_condition_id", "condition_id"),
-        Index("ix_qualified_market_identities_end_date", "end_date"),
+        Index("ux_whale_qualified_identities_token_id", "token_id", unique=True),
+        Index("ix_whale_qualified_identities_condition_id", "condition_id"),
+        Index("ix_whale_qualified_identities_end_date", "end_date"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -66,28 +66,28 @@ class QualifiedMarketIdentity(Base):
 
 
 class QualifiedMarketMetricSnapshot(Base):
-    __tablename__ = "polymarket_qualified_market_metric_snapshots"
+    __tablename__ = "polymarket_whale_qualified_metric_snapshots"
     __table_args__ = (
         Index(
-            "ux_qualified_market_metric_snapshots_run_token_profile",
+            "ux_whale_qualified_metric_snapshots_run_identity",
             "run_id",
             "identity_id",
-            "profile_name",
             unique=True,
         ),
-        Index("ix_qualified_market_metric_snapshots_identity_id", "identity_id"),
+        Index("ix_whale_qualified_metric_snapshots_identity_id", "identity_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(
-        ForeignKey("polymarket_qualified_market_runs.run_id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_qualified_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
     identity_id: Mapped[int] = mapped_column(
-        ForeignKey("polymarket_qualified_market_identities.id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_qualified_identities.id", ondelete="CASCADE"),
         nullable=False,
     )
-    profile_name: Mapped[str] = mapped_column(String, nullable=False)
+    categories: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    category_scores: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     price_delta: Mapped[float] = mapped_column(Float, nullable=False)
@@ -104,3 +104,7 @@ class QualifiedMarketMetricSnapshot(Base):
     @property
     def token_id(self) -> str:
         return self.market.token_id
+
+    @property
+    def profile_name(self) -> str:
+        return self.categories[0]

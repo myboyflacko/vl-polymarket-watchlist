@@ -158,7 +158,8 @@ def list_qualified_markets(run_id: str) -> QualifiedMarketResult:
         profiles=profiles,
         qualified_markets=[
             QualifiedMarket(
-                profile=snapshot.profile_name,
+                categories=snapshot.categories,
+                category_scores=snapshot.category_scores,
                 candidate=_candidate_from_snapshot(market=market, snapshot=snapshot),
                 score=snapshot.score,
                 price_delta=snapshot.price_delta,
@@ -242,14 +243,13 @@ def _upsert_metric_snapshots(
     update_columns = {
         column: getattr(statement.excluded, column)
         for column in rows[0]
-        if column not in {"run_id", "identity_id", "profile_name"}
+        if column not in {"run_id", "identity_id"}
     }
     session.execute(
         statement.on_conflict_do_update(
             index_elements=[
                 QualifiedMarketMetricSnapshot.run_id,
                 QualifiedMarketMetricSnapshot.identity_id,
-                QualifiedMarketMetricSnapshot.profile_name,
             ],
             set_=update_columns,
         )
@@ -287,7 +287,8 @@ def _metric_snapshot_row(
     return {
         "run_id": run_id,
         "identity_id": identity_id,
-        "profile_name": market.profile,
+        "categories": market.categories,
+        "category_scores": market.category_scores,
         "rank": rank,
         "score": market.score,
         "price_delta": market.price_delta,

@@ -40,10 +40,10 @@ class WhaleSelectionRun(Base):
 
 
 class SelectedWhale(Base):
-    __tablename__ = "polymarket_selected_whale_identities"
+    __tablename__ = "polymarket_whale_selection_identities"
     __table_args__ = (
         Index(
-            "ux_selected_whale_identities_proxy_wallet",
+            "ux_whale_selection_identities_proxy_wallet",
             "proxy_wallet",
             unique=True,
         ),
@@ -61,10 +61,10 @@ class SelectedWhale(Base):
 
 
 class SelectedWhaleMetric(Base):
-    __tablename__ = "polymarket_selected_whale_metrics"
+    __tablename__ = "polymarket_whale_selection_metric_snapshots"
     __table_args__ = (
         Index(
-            "ux_selected_whale_metrics_run_wallet",
+            "ux_whale_selection_metric_snapshots_run_identity",
             "run_id",
             "identity_id",
             unique=True,
@@ -77,7 +77,7 @@ class SelectedWhaleMetric(Base):
         nullable=False,
     )
     identity_id: Mapped[int] = mapped_column(
-        ForeignKey("polymarket_selected_whale_identities.id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_selection_identities.id", ondelete="CASCADE"),
         nullable=False,
     )
     rank: Mapped[int] = mapped_column(Integer, nullable=False)

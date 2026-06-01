@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 
@@ -22,12 +22,29 @@ class WhaleQualifiedMarketProfile(BaseModel):
 
 
 class QualifiedMarket(BaseModel):
-    profile: WhaleQualifiedMarketProfileName
+    categories: list[WhaleQualifiedMarketProfileName]
+    category_scores: dict[WhaleQualifiedMarketProfileName, float] = Field(
+        default_factory=dict
+    )
     candidate: MarketCandidate
     score: float
     price_delta: float
     price_delta_pct: float | None
     value_per_wallet: float
+
+    @model_validator(mode="before")
+    @classmethod
+    def _profile_to_categories(cls, data):
+        if isinstance(data, dict) and "profile" in data and "categories" not in data:
+            profile = data["profile"]
+            data = dict(data)
+            data["categories"] = [profile]
+            data.setdefault("category_scores", {profile: data.get("score", 0.0)})
+        return data
+
+    @property
+    def profile(self) -> WhaleQualifiedMarketProfileName:
+        return self.categories[0]
 
 
 class QualifiedMarketResult(BaseModel):

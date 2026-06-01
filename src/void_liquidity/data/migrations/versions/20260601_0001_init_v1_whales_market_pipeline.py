@@ -25,52 +25,52 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_table("polymarket_qualified_market_metric_snapshots")
+    op.drop_table("polymarket_whale_qualified_metric_snapshots")
     op.drop_index(
-        "ix_qualified_market_identities_end_date",
-        table_name="polymarket_qualified_market_identities",
+        "ix_whale_qualified_identities_end_date",
+        table_name="polymarket_whale_qualified_identities",
     )
     op.drop_index(
-        "ix_qualified_market_identities_condition_id",
-        table_name="polymarket_qualified_market_identities",
+        "ix_whale_qualified_identities_condition_id",
+        table_name="polymarket_whale_qualified_identities",
     )
     op.drop_index(
-        "ux_qualified_market_identities_token_id",
-        table_name="polymarket_qualified_market_identities",
+        "ux_whale_qualified_identities_token_id",
+        table_name="polymarket_whale_qualified_identities",
     )
-    op.drop_table("polymarket_qualified_market_identities")
-    op.drop_table("polymarket_qualified_market_runs")
+    op.drop_table("polymarket_whale_qualified_identities")
+    op.drop_table("polymarket_whale_qualified_runs")
 
-    op.drop_table("polymarket_whale_market_metric_snapshots")
+    op.drop_table("polymarket_whale_candidate_metric_snapshots")
     op.drop_index(
-        "ix_whale_market_identities_end_date",
-        table_name="polymarket_whale_market_identities",
+        "ix_whale_candidate_identities_end_date",
+        table_name="polymarket_whale_candidate_identities",
     )
     op.drop_index(
-        "ix_whale_market_identities_condition_id",
-        table_name="polymarket_whale_market_identities",
+        "ix_whale_candidate_identities_condition_id",
+        table_name="polymarket_whale_candidate_identities",
     )
     op.drop_index(
-        "ux_whale_market_identities_token_id",
-        table_name="polymarket_whale_market_identities",
+        "ux_whale_candidate_identities_token_id",
+        table_name="polymarket_whale_candidate_identities",
     )
-    op.drop_table("polymarket_whale_market_identities")
-    op.drop_table("polymarket_whale_market_candidate_runs")
+    op.drop_table("polymarket_whale_candidate_identities")
+    op.drop_table("polymarket_whale_candidate_runs")
 
-    op.drop_table("polymarket_selected_whale_metrics")
+    op.drop_table("polymarket_whale_selection_metric_snapshots")
     op.drop_index(
-        "ux_selected_whale_identities_proxy_wallet",
-        table_name="polymarket_selected_whale_identities",
+        "ux_whale_selection_identities_proxy_wallet",
+        table_name="polymarket_whale_selection_identities",
     )
-    op.drop_table("polymarket_selected_whale_identities")
+    op.drop_table("polymarket_whale_selection_identities")
     op.drop_table("polymarket_whale_selection_runs")
 
-    op.drop_table("polymarket_discovered_whale_metrics")
+    op.drop_table("polymarket_whale_discovery_metric_snapshots")
     op.drop_index(
-        "ux_discovered_whale_identities_proxy_wallet",
-        table_name="polymarket_discovered_whale_identities",
+        "ux_whale_discovery_identities_proxy_wallet",
+        table_name="polymarket_whale_discovery_identities",
     )
-    op.drop_table("polymarket_discovered_whale_identities")
+    op.drop_table("polymarket_whale_discovery_identities")
     op.drop_table("polymarket_whale_discovery_runs")
 
 
@@ -110,7 +110,7 @@ def _create_discovery_tables() -> None:
         sa.PrimaryKeyConstraint("run_id"),
     )
     op.create_table(
-        "polymarket_discovered_whale_identities",
+        "polymarket_whale_discovery_identities",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("proxy_wallet", sa.String(), nullable=False),
         sa.Column("identity", sa.JSON(), nullable=False),
@@ -119,13 +119,13 @@ def _create_discovery_tables() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_discovered_whale_identities_proxy_wallet",
-        "polymarket_discovered_whale_identities",
+        "ux_whale_discovery_identities_proxy_wallet",
+        "polymarket_whale_discovery_identities",
         ["proxy_wallet"],
         unique=True,
     )
     op.create_table(
-        "polymarket_discovered_whale_metrics",
+        "polymarket_whale_discovery_metric_snapshots",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(), nullable=False),
         sa.Column("identity_id", sa.Integer(), nullable=False),
@@ -139,14 +139,14 @@ def _create_discovery_tables() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["identity_id"],
-            ["polymarket_discovered_whale_identities.id"],
+            ["polymarket_whale_discovery_identities.id"],
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_discovered_whale_metrics_run_wallet",
-        "polymarket_discovered_whale_metrics",
+        "ux_whale_discovery_metric_snapshots_run_identity",
+        "polymarket_whale_discovery_metric_snapshots",
         ["run_id", "identity_id"],
         unique=True,
     )
@@ -170,7 +170,7 @@ def _create_selection_tables() -> None:
         sa.PrimaryKeyConstraint("run_id"),
     )
     op.create_table(
-        "polymarket_selected_whale_identities",
+        "polymarket_whale_selection_identities",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("proxy_wallet", sa.String(), nullable=False),
         sa.Column("first_seen_at", sa.DateTime(timezone=True), nullable=False),
@@ -178,13 +178,13 @@ def _create_selection_tables() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_selected_whale_identities_proxy_wallet",
-        "polymarket_selected_whale_identities",
+        "ux_whale_selection_identities_proxy_wallet",
+        "polymarket_whale_selection_identities",
         ["proxy_wallet"],
         unique=True,
     )
     op.create_table(
-        "polymarket_selected_whale_metrics",
+        "polymarket_whale_selection_metric_snapshots",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(), nullable=False),
         sa.Column("identity_id", sa.Integer(), nullable=False),
@@ -200,14 +200,14 @@ def _create_selection_tables() -> None:
         ),
         sa.ForeignKeyConstraint(
             ["identity_id"],
-            ["polymarket_selected_whale_identities.id"],
+            ["polymarket_whale_selection_identities.id"],
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_selected_whale_metrics_run_wallet",
-        "polymarket_selected_whale_metrics",
+        "ux_whale_selection_metric_snapshots_run_identity",
+        "polymarket_whale_selection_metric_snapshots",
         ["run_id", "identity_id"],
         unique=True,
     )
@@ -215,7 +215,7 @@ def _create_selection_tables() -> None:
 
 def _create_candidate_tables() -> None:
     op.create_table(
-        "polymarket_whale_market_candidate_runs",
+        "polymarket_whale_candidate_runs",
         *_run_columns(
             parent_column=sa.Column("selection_run_id", sa.String(), nullable=False)
         ),
@@ -230,9 +230,9 @@ def _create_candidate_tables() -> None:
         ),
         sa.PrimaryKeyConstraint("run_id"),
     )
-    _create_market_identity_table("polymarket_whale_market_identities", "whale_market")
+    _create_market_identity_table("polymarket_whale_candidate_identities", "whale_candidate")
     op.create_table(
-        "polymarket_whale_market_metric_snapshots",
+        "polymarket_whale_candidate_metric_snapshots",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(), nullable=False),
         sa.Column("identity_id", sa.Integer(), nullable=False),
@@ -245,25 +245,25 @@ def _create_candidate_tables() -> None:
         sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["run_id"],
-            ["polymarket_whale_market_candidate_runs.run_id"],
+            ["polymarket_whale_candidate_runs.run_id"],
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["identity_id"],
-            ["polymarket_whale_market_identities.id"],
+            ["polymarket_whale_candidate_identities.id"],
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_whale_market_metric_snapshots_run_token",
-        "polymarket_whale_market_metric_snapshots",
+        "ux_whale_candidate_metric_snapshots_run_identity",
+        "polymarket_whale_candidate_metric_snapshots",
         ["run_id", "identity_id"],
         unique=True,
     )
     op.create_index(
-        "ix_whale_market_metric_snapshots_identity_id",
-        "polymarket_whale_market_metric_snapshots",
+        "ix_whale_candidate_metric_snapshots_identity_id",
+        "polymarket_whale_candidate_metric_snapshots",
         ["identity_id"],
         unique=False,
     )
@@ -271,7 +271,7 @@ def _create_candidate_tables() -> None:
 
 def _create_qualified_tables() -> None:
     op.create_table(
-        "polymarket_qualified_market_runs",
+        "polymarket_whale_qualified_runs",
         *_run_columns(
             parent_column=sa.Column("candidate_run_id", sa.String(), nullable=False)
         ),
@@ -280,21 +280,22 @@ def _create_qualified_tables() -> None:
         sa.Column("limit", sa.Integer(), nullable=True),
         sa.ForeignKeyConstraint(
             ["candidate_run_id"],
-            ["polymarket_whale_market_candidate_runs.run_id"],
+            ["polymarket_whale_candidate_runs.run_id"],
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("run_id"),
     )
     _create_market_identity_table(
-        "polymarket_qualified_market_identities",
-        "qualified_market",
+        "polymarket_whale_qualified_identities",
+        "whale_qualified",
     )
     op.create_table(
-        "polymarket_qualified_market_metric_snapshots",
+        "polymarket_whale_qualified_metric_snapshots",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(), nullable=False),
         sa.Column("identity_id", sa.Integer(), nullable=False),
-        sa.Column("profile_name", sa.String(), nullable=False),
+        sa.Column("categories", sa.JSON(), nullable=False),
+        sa.Column("category_scores", sa.JSON(), nullable=False),
         sa.Column("rank", sa.Integer(), nullable=False),
         sa.Column("score", sa.Float(), nullable=False),
         sa.Column("price_delta", sa.Float(), nullable=False),
@@ -304,25 +305,25 @@ def _create_qualified_tables() -> None:
         sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(
             ["run_id"],
-            ["polymarket_qualified_market_runs.run_id"],
+            ["polymarket_whale_qualified_runs.run_id"],
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
             ["identity_id"],
-            ["polymarket_qualified_market_identities.id"],
+            ["polymarket_whale_qualified_identities.id"],
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_qualified_market_metric_snapshots_run_token_profile",
-        "polymarket_qualified_market_metric_snapshots",
-        ["run_id", "identity_id", "profile_name"],
+        "ux_whale_qualified_metric_snapshots_run_identity",
+        "polymarket_whale_qualified_metric_snapshots",
+        ["run_id", "identity_id"],
         unique=True,
     )
     op.create_index(
-        "ix_qualified_market_metric_snapshots_identity_id",
-        "polymarket_qualified_market_metric_snapshots",
+        "ix_whale_qualified_metric_snapshots_identity_id",
+        "polymarket_whale_qualified_metric_snapshots",
         ["identity_id"],
         unique=False,
     )

@@ -110,15 +110,6 @@ def persist_whale_selection_run(
         )
         for index, ranked in enumerate(ranking.ranked_whales, start=1)
     ]
-    removed_rows = [
-        _selected_row(
-            run_id=run_id,
-            ranked_whale=ranked,
-            rank=0,
-            removed=1,
-        )
-        for ranked in ranking.removed_whales
-    ]
     ranked_metric_rows = [
         _metric_row(
             run_id=run_id,
@@ -129,17 +120,6 @@ def persist_whale_selection_run(
         )
         for index, ranked in enumerate(ranking.ranked_whales, start=1)
     ]
-    removed_metric_rows = [
-        _metric_row(
-            run_id=run_id,
-            ranked_whale=ranked,
-            rank=0,
-            removed=1,
-            generated_at=generated_at,
-        )
-        for ranked in ranking.removed_whales
-    ]
-
     with database_session() as session:
         session.add(
             WhaleSelectionRun(
@@ -156,12 +136,12 @@ def persist_whale_selection_run(
         )
         identity_ids = _upsert_selected_whales(
             session=session,
-            rows=[*ranked_rows, *removed_rows],
+            rows=ranked_rows,
             seen_at=generated_at,
         )
         _upsert_metric_snapshots(
             session=session,
-            rows=[*ranked_metric_rows, *removed_metric_rows],
+            rows=ranked_metric_rows,
             identity_ids=identity_ids,
         )
         session.commit()

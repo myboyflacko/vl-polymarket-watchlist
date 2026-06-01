@@ -15,7 +15,7 @@ _ = _selection_models
 
 
 class WhaleMarketCandidateRun(Base):
-    __tablename__ = "polymarket_whale_market_candidate_runs"
+    __tablename__ = "polymarket_whale_candidate_runs"
 
     run_id: Mapped[str] = mapped_column(String, primary_key=True)
     selection_run_id: Mapped[str] = mapped_column(
@@ -39,11 +39,11 @@ class WhaleMarketCandidateRun(Base):
 
 
 class WhaleMarket(Base):
-    __tablename__ = "polymarket_whale_market_identities"
+    __tablename__ = "polymarket_whale_candidate_identities"
     __table_args__ = (
-        Index("ux_whale_market_identities_token_id", "token_id", unique=True),
-        Index("ix_whale_market_identities_condition_id", "condition_id"),
-        Index("ix_whale_market_identities_end_date", "end_date"),
+        Index("ux_whale_candidate_identities_token_id", "token_id", unique=True),
+        Index("ix_whale_candidate_identities_condition_id", "condition_id"),
+        Index("ix_whale_candidate_identities_end_date", "end_date"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -74,24 +74,24 @@ class WhaleMarket(Base):
 
 
 class WhaleMarketMetricSnapshot(Base):
-    __tablename__ = "polymarket_whale_market_metric_snapshots"
+    __tablename__ = "polymarket_whale_candidate_metric_snapshots"
     __table_args__ = (
         Index(
-            "ux_whale_market_metric_snapshots_run_token",
+            "ux_whale_candidate_metric_snapshots_run_identity",
             "run_id",
             "identity_id",
             unique=True,
         ),
-        Index("ix_whale_market_metric_snapshots_identity_id", "identity_id"),
+        Index("ix_whale_candidate_metric_snapshots_identity_id", "identity_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     run_id: Mapped[str] = mapped_column(
-        ForeignKey("polymarket_whale_market_candidate_runs.run_id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_candidate_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
     identity_id: Mapped[int] = mapped_column(
-        ForeignKey("polymarket_whale_market_identities.id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_candidate_identities.id", ondelete="CASCADE"),
         nullable=False,
     )
     whale_count: Mapped[int] = mapped_column(Integer, nullable=False)

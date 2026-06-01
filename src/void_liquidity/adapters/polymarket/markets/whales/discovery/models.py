@@ -32,9 +32,9 @@ class WhaleDiscoveryRun(Base):
 
 
 class DiscoveredWhaleIdentity(Base):
-    __tablename__ = "polymarket_discovered_whale_identities"
+    __tablename__ = "polymarket_whale_discovery_identities"
     __table_args__ = (
-        Index("ux_discovered_whale_identities_proxy_wallet", "proxy_wallet", unique=True),
+        Index("ux_whale_discovery_identities_proxy_wallet", "proxy_wallet", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -53,10 +53,10 @@ DiscoveredWhale = DiscoveredWhaleIdentity
 
 
 class DiscoveredWhaleMetric(Base):
-    __tablename__ = "polymarket_discovered_whale_metrics"
+    __tablename__ = "polymarket_whale_discovery_metric_snapshots"
     __table_args__ = (
         Index(
-            "ux_discovered_whale_metrics_run_wallet",
+            "ux_whale_discovery_metric_snapshots_run_identity",
             "run_id",
             "identity_id",
             unique=True,
@@ -69,7 +69,7 @@ class DiscoveredWhaleMetric(Base):
         nullable=False,
     )
     identity_id: Mapped[int] = mapped_column(
-        ForeignKey("polymarket_discovered_whale_identities.id", ondelete="CASCADE"),
+        ForeignKey("polymarket_whale_discovery_identities.id", ondelete="CASCADE"),
         nullable=False,
     )
     metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)

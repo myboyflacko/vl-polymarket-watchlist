@@ -226,6 +226,49 @@ def test_whale_qualified_market_persist_dedupes_market_and_appends_snapshots(
     assert [snapshot.score for snapshot in snapshots] == [90, 120]
 
 
+def test_whale_qualified_market_persists_one_snapshot_per_market_with_categories(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_path = _prepare_database(monkeypatch, tmp_path)
+    _insert_parent_runs(database_path)
+    persist_market_candidates(
+        [_candidate(token_id="token-1", total_current_value=90)],
+        run_id="candidate-run-1",
+        selection_run_id="selection-run-1",
+        min_whale_count=3,
+        position_count=3,
+        error_count=0,
+        seen_at=NOW,
+    )
+    service = WhaleQualifiedMarketService(
+        profiles=(
+            WhaleQualifiedMarketProfile(name="confirmed"),
+            WhaleQualifiedMarketProfile(name="high_value"),
+            WhaleQualifiedMarketProfile(name="value_per_wallet"),
+        ),
+    )
+
+    result = service.run(candidate_run_id="candidate-run-1")
+    service.persist(
+        result=result,
+        run_id="qualified-run-1",
+        candidate_run_id="candidate-run-1",
+        generated_at=NOW,
+    )
+
+    with database_session(database_path) as session:
+        snapshots = session.scalars(select(QualifiedMarketMetricSnapshot)).all()
+
+    assert len(result.qualified_markets) == 1
+    assert len(snapshots) == 1
+    assert snapshots[0].categories == [
+        "confirmed",
+        "high_value",
+        "value_per_wallet",
+    ]
+
+
 def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
     database_path = tmp_path / "whales.sqlite3"
     monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))

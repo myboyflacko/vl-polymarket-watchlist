@@ -180,6 +180,51 @@ def test_whale_selection_service_persists_run_linked_to_discovery(
     ]
 
 
+def test_whale_selection_persists_only_selected_whales(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_path = _prepare_database(monkeypatch, tmp_path)
+    persist_whale_discovery_run(
+        profile=WhaleDiscoveryProfile(wallet_count=3),
+        run_id="discovery-run-1",
+        started_at=NOW,
+        finished_at=NOW,
+        generated_at=NOW,
+        whales=_whales(
+            [
+                _whale("wallet-low", pnl=1, volume=1, exposure=1),
+                _whale("wallet-mid", pnl=50, volume=50, exposure=50),
+                _whale("wallet-high", pnl=100, volume=100, exposure=100),
+            ]
+        ),
+    )
+    service = WhaleSelectionService()
+
+    ranking = service.run(discovery_run_id="discovery-run-1")
+    service.persist(
+        ranking=ranking,
+        run_id="selection-run-1",
+        discovery_run_id="discovery-run-1",
+        generated_at=NOW,
+    )
+
+    with database_session(database_path) as session:
+        selected_identities = session.scalars(select(SelectedWhale)).all()
+        metric_snapshots = session.scalars(select(SelectedWhaleMetric)).all()
+
+    assert len(ranking.ranked_whales) == 2
+    assert len(ranking.removed_whales) == 1
+    assert {identity.proxy_wallet for identity in selected_identities} == {
+        "wallet-high",
+        "wallet-mid",
+    }
+    assert {snapshot.proxy_wallet for snapshot in metric_snapshots} == {
+        "wallet-high",
+        "wallet-mid",
+    }
+
+
 def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
     database_path = tmp_path / "whales.sqlite3"
     monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
