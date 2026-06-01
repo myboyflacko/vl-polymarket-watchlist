@@ -305,17 +305,16 @@ persists accepted whales.
 Run the provider implementation directly:
 
 ```bash
-python -m void_liquidity.adapters.polymarket.discovery.whales.tracker
+python -m void_liquidity.workflows.whale_discovery
 ```
 
 The script loads the default workflow profile, performs fresh discovery, writes
-the report JSON, and persists accepted wallets to SQLite.
+the run-chain records, and persists accepted wallets to SQLite.
 
 Run the quality profile:
 
 ```bash
-python -m void_liquidity.workflows.track_whales \
-  --profile src/void_liquidity/adapters/polymarket/discovery/whales/profiles/whale_tracking_profile_quality.json
+python -m void_liquidity.workflows.whale_discovery
 ```
 
 ## Tests
@@ -323,5 +322,5 @@ python -m void_liquidity.workflows.track_whales \
 Relevant tests:
 
 ```bash
-.venv/bin/pytest tests/adapters/polymarket/api/params/profile/test_activity.py tests/test_track_whales_v2.py
+.venv/bin/pytest tests/adapters/polymarket/markets/whales tests/bindings/test_polymarket_whale_discovery.py
 ```

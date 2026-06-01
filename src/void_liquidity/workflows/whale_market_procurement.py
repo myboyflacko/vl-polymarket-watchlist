@@ -5,7 +5,7 @@ import asyncio
 import json
 from collections.abc import Callable, Sequence
 
-from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.service import (
     DEFAULT_MIN_WHALE_COUNT,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
@@ -18,6 +18,9 @@ from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
     WhaleQualifiedMarketProfile,
     WhaleQualifiedMarketProfileName,
 )
+from void_liquidity.adapters.polymarket.markets.whales.selection.events import (
+    POLYMARKET_WHALE_SELECTION_REQUESTED,
+)
 from void_liquidity.bindings.polymarket.markets.whales.candidates import (
     PolymarketWhaleMarketCandidatesBinding,
 )
@@ -26,6 +29,9 @@ from void_liquidity.bindings.polymarket.markets.whales.discovery import (
 )
 from void_liquidity.bindings.polymarket.markets.whales.qualified import (
     PolymarketWhaleQualifiedMarketsBinding,
+)
+from void_liquidity.bindings.polymarket.markets.whales.selection import (
+    PolymarketWhaleSelectionBinding,
 )
 from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
@@ -59,6 +65,7 @@ def build_whale_market_procurement_runtime(
     runtime = Runtime(bus=bus, cache=cache)
     runtime.install(
         PolymarketWhaleDiscoveryBinding(),
+        PolymarketWhaleSelectionBinding(),
         PolymarketWhaleMarketCandidatesBinding(min_whale_count=min_whale_count),
         PolymarketWhaleQualifiedMarketsBinding(),
     )
@@ -83,6 +90,11 @@ def build_whale_market_procurement_scheduler(
                 build_whale_discovery_event,
                 profile=discovery_profile,
             ),
+        ),
+        ScheduledJob(
+            name="whales.select",
+            interval_seconds=3600,
+            event_factory=_event_factory(build_whale_selection_event),
         ),
         ScheduledJob(
             name="whales.market_candidates",
@@ -128,6 +140,18 @@ def build_whale_market_candidates_event(
 ) -> DomainEvent:
     return DomainEvent.create(
         event_type=POLYMARKET_WHALE_MARKETS_REQUESTED,
+        source=source,
+        payload={},
+        metadata={"workflow": "whale_market_procurement"},
+    )
+
+
+def build_whale_selection_event(
+    *,
+    source: str = "workflow.whale_market_procurement",
+) -> DomainEvent:
+    return DomainEvent.create(
+        event_type=POLYMARKET_WHALE_SELECTION_REQUESTED,
         source=source,
         payload={},
         metadata={"workflow": "whale_market_procurement"},

@@ -10,16 +10,27 @@ from sqlalchemy import engine_from_config, pool
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery import (
-    models as track_whales_models,
+    models as whale_discovery_models,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates import (
     models as whale_market_models,
+)
+from void_liquidity.adapters.polymarket.markets.whales.selection import (
+    models as whale_selection_models,
+)
+from void_liquidity.adapters.polymarket.markets.whales.qualified import (
+    models as qualified_market_models,
 )
 from void_liquidity.data.base import Base
 from void_liquidity.data.engine import build_sqlite_url, ensure_database_parent
 
 
-_ = track_whales_models, whale_market_models
+_ = (
+    whale_discovery_models,
+    whale_selection_models,
+    whale_market_models,
+    qualified_market_models,
+)
 
 
 config = context.config

@@ -1,6 +1,8 @@
 __all__ = [
     "events",
+    "models",
     "profiles",
     "ranking",
-    "selection",
+    "repository",
+    "service",
 ]

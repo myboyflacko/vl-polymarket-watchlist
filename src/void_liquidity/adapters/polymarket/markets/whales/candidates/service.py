@@ -14,7 +14,10 @@ from void_liquidity.adapters.polymarket.api.client import (
 from void_liquidity.adapters.polymarket.api.params.profile.current_positions import (
     CurrentPositionsParams,
 )
-from void_liquidity.adapters.polymarket.markets.whales.selection.selection import (
+from void_liquidity.adapters.polymarket.markets.whales.selection.repository import (
+    get_latest_selection_run_id,
+)
+from void_liquidity.adapters.polymarket.markets.whales.selection.service import (
     WhaleSelectionService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
@@ -24,6 +27,8 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import 
     WhalePositionCollectionError,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
+    list_latest_market_candidates,
+    list_market_candidates,
     persist_market_candidates,
 )
 
@@ -43,11 +48,13 @@ class WhaleMarketCandidateService:
     def __init__(self, *, min_whale_count: int = DEFAULT_MIN_WHALE_COUNT) -> None:
         self.min_whale_count = min_whale_count
 
-    async def collect(self) -> WhaleMarketCandidates:
-        return await self.run()
-
-    async def run(self) -> WhaleMarketCandidates:
-        wallets = WhaleSelectionService().wallets()
+    async def run(
+        self,
+        *,
+        selection_run_id: str | None = None,
+    ) -> WhaleMarketCandidates:
+        actual_selection_run_id = selection_run_id or get_latest_selection_run_id()
+        wallets = WhaleSelectionService().list(selection_run_id=actual_selection_run_id)
         if not wallets:
             return WhaleMarketCandidates()
 
@@ -84,16 +91,29 @@ class WhaleMarketCandidateService:
         *,
         candidates: WhaleMarketCandidates,
         run_id: str,
+        selection_run_id: str,
         seen_at: datetime | None = None,
     ) -> None:
         persist_market_candidates(
             candidates.candidates,
             run_id=run_id,
+            selection_run_id=selection_run_id,
             min_whale_count=self.min_whale_count,
             position_count=len(candidates.positions),
             error_count=len(candidates.errors),
             seen_at=seen_at or datetime.now(UTC),
         )
+
+    def list(
+        self,
+        *,
+        candidate_run_id: str | None = None,
+        limit: int | None = None,
+    ) -> list[MarketCandidate]:
+        if candidate_run_id is None:
+            return list_latest_market_candidates(limit=limit)
+
+        return list_market_candidates(candidate_run_id, limit=limit)
 
     def _build_market_candidates(
         self,

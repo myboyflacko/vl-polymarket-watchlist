@@ -19,7 +19,7 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleDiscoveryProfile,
 )
-from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.service import (
     WhaleDiscoveryService,
 )
 from void_liquidity.core.bindings import BindingSpec
@@ -30,6 +30,7 @@ from void_liquidity.core.events import DomainEvent, EventBus
 EVENT_SOURCE = "binding.polymarket.markets.whales.discovery"
 ADAPTER_NAME = "polymarket.markets.whales.discovery"
 PROVIDER_NAME = "polymarket"
+CACHE_NAMESPACE = "polymarket.markets.whales.discovery"
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -149,6 +150,10 @@ class PolymarketWhaleDiscoveryBinding:
                     )
                 )
                 raise
+
+            if cache is not None:
+                cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
+                cache.set(CACHE_NAMESPACE, "latest", whales)
 
             await bus.publish(
                 DomainEvent.create(

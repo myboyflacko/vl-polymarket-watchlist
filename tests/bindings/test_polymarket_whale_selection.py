@@ -36,7 +36,10 @@ def _request() -> DomainEvent:
         source="workflow.whale_selection",
         correlation_id="correlation-selection",
         metadata={"workflow": "whale_selection"},
-        payload={"profile": {"bottom_cut_percentile": 0}},
+        payload={
+            "profile": {"bottom_cut_percentile": 0},
+            "discovery_run_id": "discovery-run-1",
+        },
     )
 
 
@@ -52,7 +55,7 @@ def test_polymarket_whale_selection_binding_declares_runtime_contract() -> None:
     binding = PolymarketWhaleSelectionBinding()
 
     assert binding.spec.name == "polymarket.markets.whales.selection"
-    assert binding.spec.consumes == ()
+    assert binding.spec.consumes == ("polymarket.markets.whales.selection.requested",)
     assert binding.spec.produces == (
         POLYMARKET_WHALE_SELECTION_STARTED,
         POLYMARKET_WHALE_SELECTION_SELECTED,
@@ -68,8 +71,11 @@ def test_polymarket_whale_selection_binding_selects_and_publishes(
         def __init__(self, profile) -> None:
             assert profile is not None
 
-        def select(self) -> WhaleSelectionRankingResult:
+        def run(self, *, discovery_run_id: str | None = None) -> WhaleSelectionRankingResult:
             return _result()
+
+        def persist(self, **kwargs) -> None:
+            return None
 
     monkeypatch.setattr(binding_module, "WhaleSelectionService", FakeSelectionService)
     bus = EventBus()
@@ -104,7 +110,7 @@ def test_polymarket_whale_selection_binding_publishes_failed_event(
         def __init__(self, profile) -> None:
             self.profile = profile
 
-        def select(self) -> WhaleSelectionRankingResult:
+        def run(self, *, discovery_run_id: str | None = None) -> WhaleSelectionRankingResult:
             raise RuntimeError("selection failed")
 
     monkeypatch.setattr(binding_module, "WhaleSelectionService", FailingSelectionService)

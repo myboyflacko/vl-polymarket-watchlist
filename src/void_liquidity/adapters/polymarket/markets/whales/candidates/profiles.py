@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.service import (
     DEFAULT_MIN_WHALE_COUNT,
 )
 

@@ -8,9 +8,9 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
-    TrackedWhale,
-    TrackedWhaleMetricSnapshot,
-    WhaleTrackerRun,
+    DiscoveredWhale,
+    DiscoveredWhaleMetric,
+    WhaleDiscoveryRun,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
     Whale,
@@ -24,25 +24,36 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import
 from void_liquidity.data.engine import database_session
 
 
-def list_tracked_whale_wallets() -> list[str]:
+def get_latest_discovery_run_id() -> str | None:
     with database_session() as session:
         latest_run = session.scalar(_latest_completed_run_statement())
-        if latest_run is None:
-            return []
 
+    return latest_run.run_id if latest_run is not None else None
+
+
+def list_discovered_whale_wallets(run_id: str) -> list[str]:
+    with database_session() as session:
         return list(
             session.scalars(
-                select(TrackedWhale.proxy_wallet)
-                .where(TrackedWhale.run_id == latest_run.run_id)
-                .order_by(TrackedWhale.id)
+                select(DiscoveredWhale.proxy_wallet)
+                .where(DiscoveredWhale.run_id == run_id)
+                .order_by(DiscoveredWhale.id)
             )
         )
 
 
-def list_latest_whales() -> Whales:
+def list_latest_discovered_whale_wallets() -> list[str]:
+    latest_run_id = get_latest_discovery_run_id()
+    if latest_run_id is None:
+        return []
+
+    return list_discovered_whale_wallets(latest_run_id)
+
+
+def list_discovered_whales(run_id: str) -> Whales:
     with database_session() as session:
-        latest_run = session.scalar(_latest_completed_run_statement())
-        if latest_run is None:
+        run = session.get(WhaleDiscoveryRun, run_id)
+        if run is None:
             return Whales(
                 whales=[],
                 candidate_wallet_count=0,
@@ -53,19 +64,33 @@ def list_latest_whales() -> Whales:
 
         snapshots = list(
             session.scalars(
-                select(TrackedWhaleMetricSnapshot)
-                .where(TrackedWhaleMetricSnapshot.run_id == latest_run.run_id)
-                .order_by(TrackedWhaleMetricSnapshot.id)
+                select(DiscoveredWhaleMetric)
+                .where(DiscoveredWhaleMetric.run_id == run_id)
+                .order_by(DiscoveredWhaleMetric.id)
             )
         )
 
         return Whales(
             whales=[_whale_from_snapshot(snapshot) for snapshot in snapshots],
-            candidate_wallet_count=latest_run.candidate_wallet_count,
-            checked_wallet_count=latest_run.checked_wallet_count,
-            generated_at=latest_run.generated_at,
-            profile_version=latest_run.profile_version,
+            candidate_wallet_count=run.candidate_wallet_count,
+            checked_wallet_count=run.checked_wallet_count,
+            generated_at=run.generated_at,
+            profile_version=run.profile_version,
         )
+
+
+def list_latest_discovered_whales() -> Whales:
+    latest_run_id = get_latest_discovery_run_id()
+    if latest_run_id is None:
+        return Whales(
+            whales=[],
+            candidate_wallet_count=0,
+            checked_wallet_count=0,
+            generated_at=datetime.min.replace(tzinfo=UTC),
+            profile_version="unknown",
+        )
+
+    return list_discovered_whales(latest_run_id)
 
 
 def persist_whale_discovery_run(
@@ -79,7 +104,7 @@ def persist_whale_discovery_run(
 ) -> None:
     with database_session() as session:
         session.add(
-            WhaleTrackerRun(
+            WhaleDiscoveryRun(
                 run_id=run_id,
                 profile_version=profile.profile_version,
                 status="completed",
@@ -90,11 +115,10 @@ def persist_whale_discovery_run(
                 checked_wallet_count=whales.checked_wallet_count,
                 accepted_wallet_count=len(whales.whales),
                 profile=profile.model_dump(mode="json"),
-                report_path=None,
             )
         )
         session.flush()
-        _upsert_tracked_whales(
+        _insert_discovered_whales(
             session=session,
             run_id=run_id,
             seen_at=generated_at,
@@ -109,7 +133,7 @@ def persist_whale_discovery_run(
         session.commit()
 
 
-def _upsert_tracked_whales(
+def _insert_discovered_whales(
     *,
     session: Session,
     run_id: str,
@@ -120,8 +144,8 @@ def _upsert_tracked_whales(
         {
             "run_id": run_id,
             "proxy_wallet": whale.proxy_wallet,
-            "first_seen": seen_at,
-            "last_seen": seen_at,
+            "identity": whale.identity.model_dump(mode="json"),
+            "generated_at": seen_at,
         }
         for whale in whales
     ]
@@ -129,14 +153,13 @@ def _upsert_tracked_whales(
     if not rows:
         return
 
-    statement = insert(TrackedWhale).values(rows)
+    statement = insert(DiscoveredWhale).values(rows)
     session.execute(
-        statement.on_conflict_do_update(
-            index_elements=[TrackedWhale.proxy_wallet],
-            set_={
-                "run_id": run_id,
-                "last_seen": seen_at,
-            },
+        statement.on_conflict_do_nothing(
+            index_elements=[
+                DiscoveredWhale.run_id,
+                DiscoveredWhale.proxy_wallet,
+            ],
         )
     )
 
@@ -162,22 +185,22 @@ def _insert_metric_snapshots(
     ]
 
     if rows:
-        session.add_all(TrackedWhaleMetricSnapshot(**row) for row in rows)
+        session.add_all(DiscoveredWhaleMetric(**row) for row in rows)
 
 
 def _latest_completed_run_statement():
     return (
-        select(WhaleTrackerRun)
-        .where(WhaleTrackerRun.status == "completed")
+        select(WhaleDiscoveryRun)
+        .where(WhaleDiscoveryRun.status == "completed")
         .order_by(
-            WhaleTrackerRun.generated_at.desc(),
-            WhaleTrackerRun.run_id.desc(),
+            WhaleDiscoveryRun.generated_at.desc(),
+            WhaleDiscoveryRun.run_id.desc(),
         )
         .limit(1)
     )
 
 
-def _whale_from_snapshot(snapshot: TrackedWhaleMetricSnapshot) -> Whale:
+def _whale_from_snapshot(snapshot: DiscoveredWhaleMetric) -> Whale:
     metrics = dict(snapshot.metrics)
     metrics.pop("ranking", None)
     return Whale(

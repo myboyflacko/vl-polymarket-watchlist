@@ -43,6 +43,7 @@ class MarketCandidate(BaseModel):
 
 class WhaleMarketCandidateRunSummary(BaseModel):
     run_id: str
+    selection_run_id: str
     generated_at: datetime
     min_whale_count: int
     candidate_count: int

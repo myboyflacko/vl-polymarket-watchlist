@@ -40,7 +40,11 @@ def _request() -> DomainEvent:
         source="workflow.whale_market_procurement",
         correlation_id="correlation-qualified",
         metadata={"workflow": "whale_market_procurement"},
-        payload={"profile": {"name": "high_value"}, "limit": 1},
+        payload={
+            "profile": {"name": "high_value"},
+            "limit": 1,
+            "candidate_run_id": "candidate-run-1",
+        },
     )
 
 
@@ -84,9 +88,18 @@ def test_polymarket_whale_qualified_binding_derives_and_publishes(
         def __init__(self, profile: WhaleQualifiedMarketProfile) -> None:
             assert profile.name == "high_value"
 
-        def list(self, *, limit: int | None = None) -> QualifiedMarketResult:
+        def run(
+            self,
+            *,
+            candidate_run_id: str | None = None,
+            limit: int | None = None,
+        ) -> QualifiedMarketResult:
+            assert candidate_run_id == "candidate-run-1"
             assert limit == 1
             return _result()
+
+        def persist(self, **kwargs) -> None:
+            return None
 
     monkeypatch.setattr(
         binding_module,
@@ -123,7 +136,12 @@ def test_polymarket_whale_qualified_binding_publishes_failed_event(
         def __init__(self, profile: WhaleQualifiedMarketProfile) -> None:
             self.profile = profile
 
-        def list(self, *, limit: int | None = None) -> QualifiedMarketResult:
+        def run(
+            self,
+            *,
+            candidate_run_id: str | None = None,
+            limit: int | None = None,
+        ) -> QualifiedMarketResult:
             raise RuntimeError("qualification failed")
 
     monkeypatch.setattr(

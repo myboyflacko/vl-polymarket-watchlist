@@ -6,12 +6,22 @@ from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Intege
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from void_liquidity.data.base import Base
+from void_liquidity.adapters.polymarket.markets.whales.selection import (
+    models as _selection_models,
+)
+
+
+_ = _selection_models
 
 
 class WhaleMarketCandidateRun(Base):
     __tablename__ = "polymarket_whale_market_candidate_runs"
 
     run_id: Mapped[str] = mapped_column(String, primary_key=True)
+    selection_run_id: Mapped[str] = mapped_column(
+        ForeignKey("polymarket_whale_selection_runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     min_whale_count: Mapped[int] = mapped_column(Integer, nullable=False)
     candidate_count: Mapped[int] = mapped_column(Integer, nullable=False)

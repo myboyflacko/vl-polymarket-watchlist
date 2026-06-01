@@ -3,9 +3,9 @@ from datetime import date
 from typing import Any
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates import (
-    collector as collector_module,
+    service as service_module,
 )
-from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.service import (
     WhaleMarketCandidateService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
@@ -32,18 +32,19 @@ class FakeDataClient:
 
 def _patch_data_client(monkeypatch, get_current_positions) -> None:
     monkeypatch.setattr(
-        collector_module,
+        service_module,
         "get_polymarket_data_client",
         lambda: FakeDataClient(get_current_positions),
     )
 
 
-def _patch_selected_wallets(monkeypatch, wallets: list[str]) -> None:
+def _patch_selected_wallets(monkeypatch, selected_wallets: list[str]) -> None:
     class FakeSelectionService:
-        def wallets(self) -> list[str]:
-            return wallets
+        def list(self, *, selection_run_id=None) -> list[str]:
+            return selected_wallets
 
-    monkeypatch.setattr(collector_module, "WhaleSelectionService", FakeSelectionService)
+    monkeypatch.setattr(service_module, "WhaleSelectionService", FakeSelectionService)
+    monkeypatch.setattr(service_module, "get_latest_selection_run_id", lambda: "selection-run")
 
 
 def test_whale_market_collector_groups_positions_by_token_id() -> None:
@@ -161,7 +162,7 @@ def test_whale_market_collector_paginates_positions(
         return [_position(asset="3")]
 
     _patch_selected_wallets(monkeypatch, [WALLET_ONE])
-    monkeypatch.setattr(collector_module, "POSITION_PAGE_LIMIT", 2)
+    monkeypatch.setattr(service_module, "POSITION_PAGE_LIMIT", 2)
     _patch_data_client(monkeypatch, fake_get_current_positions)
 
     result = asyncio.run(WhaleMarketCandidateService(min_whale_count=1).run())
@@ -178,7 +179,7 @@ def test_whale_market_collector_persists_candidates(monkeypatch) -> None:
         persisted.append({"candidates": candidates, **kwargs})
 
     monkeypatch.setattr(
-        collector_module,
+        service_module,
         "persist_market_candidates",
         fake_persist_market_candidates,
     )
@@ -187,11 +188,13 @@ def test_whale_market_collector_persists_candidates(monkeypatch) -> None:
     WhaleMarketCandidateService(min_whale_count=2).persist(
         candidates=result,
         run_id="run-1",
+        selection_run_id="selection-run-1",
     )
 
     assert persisted
     assert persisted[0]["candidates"] == result.candidates
     assert persisted[0]["run_id"] == "run-1"
+    assert persisted[0]["selection_run_id"] == "selection-run-1"
     assert persisted[0]["min_whale_count"] == 2
     assert persisted[0]["position_count"] == 2
     assert persisted[0]["error_count"] == 0

@@ -6,18 +6,18 @@ from typing import Any
 from sqlalchemy import select
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
-    TrackedWhale,
-    TrackedWhaleMetricSnapshot,
-    WhaleTrackerRun,
+    DiscoveredWhale,
+    DiscoveredWhaleMetric,
+    WhaleDiscoveryRun,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleDiscoveryProfile,
 )
-from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import (
+from void_liquidity.adapters.polymarket.markets.whales.discovery.service import (
     WhaleDiscoveryService,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery import (
-    tracker as tracker_module,
+    service as service_module,
 )
 from void_liquidity.data.base import Base
 from void_liquidity.data.engine import create_database_engine, database_session
@@ -64,7 +64,7 @@ def _patch_data_client(
     get_current_positions=None,
 ) -> None:
     monkeypatch.setattr(
-        tracker_module,
+        service_module,
         "get_polymarket_data_client",
         lambda: FakeDataClient(
             get_leaderboard=get_leaderboard,
@@ -351,21 +351,21 @@ def test_whale_discovery_service_persists_metric_snapshots(
     )
 
     with database_session(database_path) as session:
-        run = session.scalar(select(WhaleTrackerRun))
-        tracked_whale = session.scalar(select(TrackedWhale))
-        snapshot = session.scalar(select(TrackedWhaleMetricSnapshot))
+        run = session.scalar(select(WhaleDiscoveryRun))
+        discovered_whale = session.scalar(select(DiscoveredWhale))
+        snapshot = session.scalar(select(DiscoveredWhaleMetric))
 
     assert run is not None
     assert run.run_id == "run-discovery"
-    assert tracked_whale is not None
-    assert tracked_whale.proxy_wallet == WALLET_ONE
+    assert discovered_whale is not None
+    assert discovered_whale.proxy_wallet == WALLET_ONE
     assert snapshot is not None
     assert snapshot.proxy_wallet == WALLET_ONE
     assert snapshot.metrics["trades"]["net_flow_30d"] == 38
     assert "ranking" not in snapshot.metrics
 
 
-def test_whale_discovery_service_persists_all_discovered_whales_as_tracked_whales(
+def test_whale_discovery_service_persists_all_discovered_whales_as_discovered_whales(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -384,13 +384,13 @@ def test_whale_discovery_service_persists_all_discovered_whales_as_tracked_whale
     )
 
     with database_session(database_path) as session:
-        tracked_whales = session.scalars(select(TrackedWhale)).all()
-        snapshots = session.scalars(select(TrackedWhaleMetricSnapshot)).all()
-        run = session.scalar(select(WhaleTrackerRun))
+        discovered_whales = session.scalars(select(DiscoveredWhale)).all()
+        snapshots = session.scalars(select(DiscoveredWhaleMetric)).all()
+        run = session.scalar(select(WhaleDiscoveryRun))
 
     assert run is not None
     assert run.accepted_wallet_count == 2
-    assert [whale.proxy_wallet for whale in tracked_whales] == [
+    assert [whale.proxy_wallet for whale in discovered_whales] == [
         WALLET_ONE,
         WALLET_TWO,
     ]

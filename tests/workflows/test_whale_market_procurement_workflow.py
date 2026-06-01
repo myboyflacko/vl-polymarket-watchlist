@@ -11,6 +11,9 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import
 from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
     WhaleQualifiedMarketProfile,
 )
+from void_liquidity.adapters.polymarket.markets.whales.selection.events import (
+    POLYMARKET_WHALE_SELECTION_REQUESTED,
+)
 from void_liquidity.bindings.polymarket.markets.whales.candidates import (
     PolymarketWhaleMarketCandidatesBinding,
 )
@@ -19,6 +22,9 @@ from void_liquidity.bindings.polymarket.markets.whales.discovery import (
 )
 from void_liquidity.bindings.polymarket.markets.whales.qualified import (
     PolymarketWhaleQualifiedMarketsBinding,
+)
+from void_liquidity.bindings.polymarket.markets.whales.selection import (
+    PolymarketWhaleSelectionBinding,
 )
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
@@ -46,6 +52,10 @@ def test_build_whale_market_procurement_runtime_installs_bindings() -> None:
         runtime.registry.get("polymarket.markets.whales.qualified"),
         PolymarketWhaleQualifiedMarketsBinding,
     )
+    assert isinstance(
+        runtime.registry.get("polymarket.markets.whales.selection"),
+        PolymarketWhaleSelectionBinding,
+    )
 
 
 def test_build_whale_market_procurement_scheduler_registers_process_order() -> None:
@@ -59,6 +69,7 @@ def test_build_whale_market_procurement_scheduler_registers_process_order() -> N
 
     assert [job.name for job in scheduler.registry] == [
         "whales.discover",
+        "whales.select",
         "whales.market_candidates",
         "whales.qualified.confirmed",
     ]
@@ -66,12 +77,13 @@ def test_build_whale_market_procurement_scheduler_registers_process_order() -> N
     events = [job.event_factory() for job in scheduler.registry]
     assert [event.event_type for event in events] == [
         POLYMARKET_WHALE_DISCOVERY_REQUESTED,
+        POLYMARKET_WHALE_SELECTION_REQUESTED,
         POLYMARKET_WHALE_MARKETS_REQUESTED,
         POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
     ]
     assert events[0].payload["profile"]["wallet_count"] == 3
-    assert events[2].payload["profile"]["name"] == "confirmed"
-    assert events[2].payload["limit"] == 2
+    assert events[3].payload["profile"]["name"] == "confirmed"
+    assert events[3].payload["limit"] == 2
 
 
 def test_run_whale_market_procurement_uses_scheduler_once(
@@ -112,6 +124,7 @@ def test_run_whale_market_procurement_uses_scheduler_once(
 
     assert [event.event_type for event in published_events] == [
         POLYMARKET_WHALE_DISCOVERY_REQUESTED,
+        POLYMARKET_WHALE_SELECTION_REQUESTED,
         POLYMARKET_WHALE_MARKETS_REQUESTED,
         POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
     ]

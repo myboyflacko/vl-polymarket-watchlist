@@ -32,6 +32,7 @@ def test_persist_market_candidates_ignores_empty_candidates(
     persist_market_candidates(
         [],
         run_id="run-empty",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=0,
         error_count=0,
@@ -58,6 +59,7 @@ def test_persist_market_candidates_inserts_candidate(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=1,
@@ -110,6 +112,7 @@ def test_persist_market_candidates_updates_existing_candidate_on_token_conflict(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,
@@ -126,6 +129,7 @@ def test_persist_market_candidates_updates_existing_candidate_on_token_conflict(
             )
         ],
         run_id="run-2",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=12,
         error_count=0,
@@ -167,6 +171,7 @@ def test_persist_market_candidates_updates_snapshot_on_same_run_token_conflict(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,
@@ -175,6 +180,7 @@ def test_persist_market_candidates_updates_snapshot_on_same_run_token_conflict(
     persist_market_candidates(
         [_candidate(whale_count=5, total_current_value=35)],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=4,
         position_count=12,
         error_count=1,
@@ -214,6 +220,7 @@ def test_get_latest_market_candidate_run_returns_newest_run(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,
@@ -222,6 +229,7 @@ def test_get_latest_market_candidate_run_returns_newest_run(
     persist_market_candidates(
         [_candidate(token_id="token-2", total_current_value=25)],
         run_id="run-2",
+        selection_run_id="selection-run",
         min_whale_count=4,
         position_count=12,
         error_count=1,
@@ -258,6 +266,7 @@ def test_list_latest_market_candidates_returns_latest_run_candidates_sorted(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,
@@ -282,6 +291,7 @@ def test_list_latest_market_candidates_returns_latest_run_candidates_sorted(
             ),
         ],
         run_id="run-2",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=12,
         error_count=0,
@@ -312,6 +322,7 @@ def test_list_latest_market_candidates_applies_limit(
             _candidate(token_id="token-2", whale_count=4),
         ],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,
@@ -333,6 +344,7 @@ def test_list_market_snapshots_returns_token_history_newest_first(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,
@@ -344,6 +356,7 @@ def test_list_market_snapshots_returns_token_history_newest_first(
             _candidate(token_id="token-2", whale_count=5, total_current_value=35),
         ],
         run_id="run-2",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=12,
         error_count=0,
@@ -372,6 +385,7 @@ def test_list_market_snapshots_returns_empty_list_for_unknown_token(
     persist_market_candidates(
         [_candidate()],
         run_id="run-1",
+        selection_run_id="selection-run",
         min_whale_count=3,
         position_count=10,
         error_count=0,

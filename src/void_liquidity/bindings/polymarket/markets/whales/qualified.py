@@ -16,7 +16,10 @@ from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
 from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
     POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED as POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_STARTED,
 )
-from void_liquidity.adapters.polymarket.markets.whales.qualified.qualified import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
+    get_latest_market_candidate_run,
+)
+from void_liquidity.adapters.polymarket.markets.whales.qualified.service import (
     WhaleQualifiedMarketService,
 )
 from void_liquidity.core.bindings import BindingSpec
@@ -34,6 +37,7 @@ EVENT_SOURCE = "binding.polymarket.markets.whales.qualified"
 ADAPTER_NAME = "polymarket.markets.whales.qualified"
 PROVIDER_NAME = "polymarket"
 DEFAULT_QUALIFIED_MARKET_PROFILE = WhaleQualifiedMarketProfile(name="high_value")
+CACHE_NAMESPACE = "polymarket.markets.whales.qualified"
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -54,6 +58,14 @@ def _limit_from_payload(payload: dict) -> int | None:
 
     if isinstance(limit, int):
         return limit
+
+    return None
+
+
+def _candidate_run_id_from_payload(payload: dict) -> str | None:
+    candidate_run_id = payload.get("candidate_run_id")
+    if isinstance(candidate_run_id, str):
+        return candidate_run_id
 
     return None
 
@@ -85,6 +97,21 @@ class PolymarketWhaleQualifiedMarketsBinding:
         run_id = _build_run_id(started_at)
         profile = _profile_from_payload(event.payload)
         limit = _limit_from_payload(event.payload)
+        candidate_run_id = (
+            _candidate_run_id_from_payload(event.payload)
+            or (
+                cache.get("polymarket.markets.whales.candidates", "latest_run_id")
+                if cache is not None
+                else None
+            )
+            or (
+                latest_run.run_id
+                if (latest_run := get_latest_market_candidate_run()) is not None
+                else None
+            )
+        )
+        if candidate_run_id is None:
+            raise ValueError("candidate_run_id is required without candidate runs")
         metadata = {
             "workflow": event.metadata.get("workflow"),
             "adapter": ADAPTER_NAME,
@@ -97,7 +124,11 @@ class PolymarketWhaleQualifiedMarketsBinding:
                 event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
-                payload={"profile": profile.name, "limit": limit},
+                payload={
+                    "profile": profile.name,
+                    "limit": limit,
+                    "candidate_run_id": candidate_run_id,
+                },
                 metadata=metadata,
             )
             await _publish(
@@ -105,11 +136,26 @@ class PolymarketWhaleQualifiedMarketsBinding:
                 event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_STARTED,
                 correlation_id=event.correlation_id,
                 run_id=run_id,
-                payload={"profile": profile.name, "limit": limit},
+                payload={
+                    "profile": profile.name,
+                    "limit": limit,
+                    "candidate_run_id": candidate_run_id,
+                },
                 metadata=metadata,
             )
 
-            result = WhaleQualifiedMarketService(profile=profile).list(limit=limit)
+            service = WhaleQualifiedMarketService(profile=profile)
+            result = service.run(candidate_run_id=candidate_run_id, limit=limit)
+            service.persist(
+                result=result,
+                run_id=run_id,
+                candidate_run_id=candidate_run_id,
+                generated_at=started_at,
+                limit=limit,
+            )
+            if cache is not None:
+                cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
+                cache.set(CACHE_NAMESPACE, "latest", result)
             await _publish(
                 bus=bus,
                 event_type=POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVED,
@@ -117,6 +163,7 @@ class PolymarketWhaleQualifiedMarketsBinding:
                 run_id=run_id,
                 payload={
                     "profile": profile.name,
+                    "candidate_run_id": candidate_run_id,
                     "qualified_market_count": len(result.qualified_markets),
                     "limit": limit,
                     "token_ids": [
@@ -128,6 +175,7 @@ class PolymarketWhaleQualifiedMarketsBinding:
             )
             completed_payload = {
                 "profile": profile.name,
+                "candidate_run_id": candidate_run_id,
                 "qualified_market_count": len(result.qualified_markets),
                 "limit": limit,
             }
@@ -151,6 +199,7 @@ class PolymarketWhaleQualifiedMarketsBinding:
         except Exception as exc:
             failed_payload = {
                 "profile": profile.name,
+                "candidate_run_id": candidate_run_id,
                 "limit": limit,
                 "error_type": type(exc).__name__,
                 "error": str(exc),

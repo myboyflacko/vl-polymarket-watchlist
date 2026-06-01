@@ -8,7 +8,7 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import 
     WhalePosition,
     WhalePositionCollectionError,
 )
-from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.service import (
     DEFAULT_MIN_WHALE_COUNT,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.events import (
@@ -38,6 +38,7 @@ def _request() -> DomainEvent:
         source="workflow.whale_market_candidates",
         correlation_id="correlation-markets",
         metadata={"workflow": "whale_market_candidates"},
+        payload={"selection_run_id": "selection-run-1"},
     )
 
 
@@ -103,7 +104,11 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
             assert min_whale_count == DEFAULT_MIN_WHALE_COUNT
             self.min_whale_count = min_whale_count
 
-        async def collect(self) -> WhaleMarketCandidates:
+        async def run(
+            self,
+            *,
+            selection_run_id: str | None = None,
+        ) -> WhaleMarketCandidates:
             return _result()
 
         def persist(self, **kwargs) -> None:
@@ -161,7 +166,11 @@ def test_polymarket_whale_markets_binding_caches_latest_result(
         ) -> None:
             self.min_whale_count = min_whale_count
 
-        async def collect(self) -> WhaleMarketCandidates:
+        async def run(
+            self,
+            *,
+            selection_run_id: str | None = None,
+        ) -> WhaleMarketCandidates:
             return _result()
 
         def persist(self, **kwargs) -> None:
@@ -198,7 +207,11 @@ def test_polymarket_whale_markets_binding_publishes_failed_event(
         ) -> None:
             self.min_whale_count = min_whale_count
 
-        async def collect(self) -> WhaleMarketCandidates:
+        async def run(
+            self,
+            *,
+            selection_run_id: str | None = None,
+        ) -> WhaleMarketCandidates:
             raise RuntimeError("collector failed")
 
     monkeypatch.setattr(
@@ -234,7 +247,11 @@ def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
         ) -> None:
             self.min_whale_count = min_whale_count
 
-        async def collect(self) -> WhaleMarketCandidates:
+        async def run(
+            self,
+            *,
+            selection_run_id: str | None = None,
+        ) -> WhaleMarketCandidates:
             return _result()
 
         def persist(self, **kwargs) -> None:

@@ -1,15 +1,37 @@
-from datetime import date
+from datetime import UTC, date, datetime
+from pathlib import Path
+
+from sqlalchemy import select
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
+from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
+    persist_market_candidates,
+)
+from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
+    WhaleDiscoveryRun,
+)
+from void_liquidity.adapters.polymarket.markets.whales.selection.models import (
+    WhaleSelectionRun,
+)
 from void_liquidity.adapters.polymarket.markets.whales.qualified import (
-    qualified as qualified_module,
+    service as qualified_module,
 )
 from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
     WhaleQualifiedMarketProfile,
 )
-from void_liquidity.adapters.polymarket.markets.whales.qualified.qualified import (
+from void_liquidity.adapters.polymarket.markets.whales.qualified.service import (
+    WhaleQualifiedMarketService,
     list_qualified_markets,
 )
+from void_liquidity.adapters.polymarket.markets.whales.qualified.models import (
+    QualifiedMarketRun,
+)
+from void_liquidity.data.base import Base
+from void_liquidity.data.engine import create_database_engine, database_session
+from void_liquidity.settings import get_settings
+
+
+NOW = datetime(2026, 5, 31, tzinfo=UTC)
 
 
 def test_list_qualified_markets_filters_confirmed_candidates(monkeypatch) -> None:
@@ -90,6 +112,84 @@ def test_list_qualified_markets_ranks_value_per_wallet_and_applies_limit(
         "dense"
     ]
     assert result.qualified_markets[0].score == 30
+
+
+def test_whale_qualified_market_service_persists_run_linked_to_candidates(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_path = _prepare_database(monkeypatch, tmp_path)
+    _insert_parent_runs(database_path)
+    persist_market_candidates(
+        [_candidate(token_id="token-1", total_current_value=90)],
+        run_id="candidate-run-1",
+        selection_run_id="selection-run-1",
+        min_whale_count=3,
+        position_count=3,
+        error_count=0,
+        seen_at=NOW,
+    )
+    service = WhaleQualifiedMarketService(
+        profile=WhaleQualifiedMarketProfile(name="high_value"),
+    )
+
+    result = service.run(candidate_run_id="candidate-run-1")
+    service.persist(
+        result=result,
+        run_id="qualified-run-1",
+        candidate_run_id="candidate-run-1",
+        generated_at=NOW,
+    )
+    persisted = service.list(run_id="qualified-run-1")
+
+    with database_session(database_path) as session:
+        run = session.scalar(select(QualifiedMarketRun))
+
+    assert run is not None
+    assert run.candidate_run_id == "candidate-run-1"
+    assert run.qualified_market_count == 1
+    assert [market.candidate.token_id for market in persisted.qualified_markets] == [
+        "token-1"
+    ]
+
+
+def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
+    database_path = tmp_path / "whales.sqlite3"
+    monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
+    get_settings.cache_clear()
+    engine = create_database_engine(database_path)
+    Base.metadata.create_all(engine)
+    return database_path
+
+
+def _insert_parent_runs(database_path: Path) -> None:
+    with database_session(database_path) as session:
+        session.add(
+            WhaleDiscoveryRun(
+                run_id="discovery-run-1",
+                profile_version="test",
+                status="completed",
+                started_at=NOW,
+                finished_at=NOW,
+                generated_at=NOW,
+                candidate_wallet_count=3,
+                checked_wallet_count=3,
+                accepted_wallet_count=3,
+                profile={},
+            )
+        )
+        session.add(
+            WhaleSelectionRun(
+                run_id="selection-run-1",
+                discovery_run_id="discovery-run-1",
+                generated_at=NOW,
+                profile={},
+                ranking_method="test",
+                selected_wallet_count=3,
+                removed_wallet_count=0,
+            )
+        )
+        session.commit()
 
 
 def _candidate(

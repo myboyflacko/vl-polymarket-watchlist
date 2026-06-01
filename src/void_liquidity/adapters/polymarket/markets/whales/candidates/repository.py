@@ -61,6 +61,35 @@ def list_latest_market_candidates(
     ]
 
 
+def list_market_candidates(
+    run_id: str,
+    *,
+    limit: int | None = None,
+) -> list[MarketCandidate]:
+    with database_session() as session:
+        statement = (
+            select(WhaleMarket, WhaleMarketMetricSnapshot)
+            .join(
+                WhaleMarketMetricSnapshot,
+                WhaleMarketMetricSnapshot.token_id == WhaleMarket.token_id,
+            )
+            .where(WhaleMarketMetricSnapshot.run_id == run_id)
+            .order_by(
+                WhaleMarketMetricSnapshot.whale_count.desc(),
+                WhaleMarketMetricSnapshot.total_current_value.desc(),
+            )
+        )
+        if limit is not None:
+            statement = statement.limit(limit)
+
+        rows = session.execute(statement).all()
+
+    return [
+        _market_candidate(market=market, snapshot=snapshot)
+        for market, snapshot in rows
+    ]
+
+
 def list_market_snapshots(
     token_id: str,
     *,
@@ -94,6 +123,7 @@ def persist_market_candidates(
     candidates: Iterable[MarketCandidate],
     *,
     run_id: str,
+    selection_run_id: str,
     min_whale_count: int,
     position_count: int,
     error_count: int,
@@ -106,6 +136,7 @@ def persist_market_candidates(
         session.merge(
             WhaleMarketCandidateRun(
                 run_id=run_id,
+                selection_run_id=selection_run_id,
                 generated_at=actual_seen_at,
                 min_whale_count=min_whale_count,
                 candidate_count=len(candidate_list),
@@ -141,6 +172,7 @@ def _latest_run_statement():
 def _run_summary(run: WhaleMarketCandidateRun) -> WhaleMarketCandidateRunSummary:
     return WhaleMarketCandidateRunSummary(
         run_id=run.run_id,
+        selection_run_id=run.selection_run_id,
         generated_at=run.generated_at,
         min_whale_count=run.min_whale_count,
         candidate_count=run.candidate_count,

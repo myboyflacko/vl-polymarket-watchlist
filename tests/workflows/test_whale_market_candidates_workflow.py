@@ -5,8 +5,11 @@ import pytest
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
     POLYMARKET_WHALE_DISCOVERY_REQUESTED,
 )
-from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.service import (
     DEFAULT_MIN_WHALE_COUNT,
+)
+from void_liquidity.adapters.polymarket.markets.whales.selection.events import (
+    POLYMARKET_WHALE_SELECTION_REQUESTED,
 )
 from void_liquidity.bindings.polymarket.markets.whales.discovery import (
     PolymarketWhaleDiscoveryBinding,
@@ -92,6 +95,7 @@ def test_run_whale_market_candidates_registers_domain_event_logger(
 
     assert [event.event_type for event in logged_events] == [
         POLYMARKET_WHALE_DISCOVERY_REQUESTED,
+        POLYMARKET_WHALE_SELECTION_REQUESTED,
         POLYMARKET_WHALE_MARKETS_REQUESTED,
         POLYMARKET_WHALE_MARKETS_COMPLETED,
     ]

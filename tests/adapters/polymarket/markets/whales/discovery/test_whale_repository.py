@@ -2,12 +2,12 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
-    TrackedWhale,
-    WhaleTrackerRun,
+    DiscoveredWhale,
+    WhaleDiscoveryRun,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.repository import (
-    list_latest_whales,
-    list_tracked_whale_wallets,
+    list_latest_discovered_whales,
+    list_latest_discovered_whale_wallets,
     persist_whale_discovery_run,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
@@ -33,16 +33,16 @@ NOW = datetime(2026, 5, 28, tzinfo=UTC)
 LATER = datetime(2026, 5, 29, tzinfo=UTC)
 
 
-def test_list_tracked_whale_wallets_returns_empty_list(
+def test_list_latest_discovered_whale_wallets_returns_empty_list(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     _prepare_database(monkeypatch, tmp_path)
 
-    assert list_tracked_whale_wallets() == []
+    assert list_latest_discovered_whale_wallets() == []
 
 
-def test_list_tracked_whale_wallets_returns_latest_run_wallets_in_insert_order(
+def test_list_latest_discovered_whale_wallets_returns_latest_run_wallets_in_insert_order(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -51,54 +51,54 @@ def test_list_tracked_whale_wallets_returns_latest_run_wallets_in_insert_order(
     with database_session(database_path) as session:
         session.add_all(
             [
-                _tracker_run(run_id="run-1", generated_at=NOW),
-                _tracker_run(run_id="run-2", generated_at=LATER),
+                _discovery_run(run_id="run-1", generated_at=NOW),
+                _discovery_run(run_id="run-2", generated_at=LATER),
             ]
         )
         session.add_all(
             [
-                TrackedWhale(
+                DiscoveredWhale(
                     run_id="run-1",
                     proxy_wallet="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                    first_seen=NOW,
-                    last_seen=NOW,
+                    identity={},
+                    generated_at=NOW,
                 ),
-                TrackedWhale(
+                DiscoveredWhale(
                     run_id="run-2",
                     proxy_wallet="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                    first_seen=LATER,
-                    last_seen=LATER,
+                    identity={},
+                    generated_at=LATER,
                 ),
-                TrackedWhale(
+                DiscoveredWhale(
                     run_id="run-2",
                     proxy_wallet="0xcccccccccccccccccccccccccccccccccccccccc",
-                    first_seen=LATER,
-                    last_seen=LATER,
+                    identity={},
+                    generated_at=LATER,
                 ),
             ]
         )
         session.commit()
 
-    assert list_tracked_whale_wallets() == [
+    assert list_latest_discovered_whale_wallets() == [
         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "0xcccccccccccccccccccccccccccccccccccccccc",
     ]
 
 
-def test_list_latest_whales_returns_empty_model_without_runs(
+def test_list_latest_discovered_whales_returns_empty_model_without_runs(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
     _prepare_database(monkeypatch, tmp_path)
 
-    whales = list_latest_whales()
+    whales = list_latest_discovered_whales()
 
     assert whales.whales == []
     assert whales.candidate_wallet_count == 0
     assert whales.checked_wallet_count == 0
 
 
-def test_list_latest_whales_reconstructs_latest_run_from_snapshots(
+def test_list_latest_discovered_whales_reconstructs_latest_run_from_snapshots(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
@@ -139,7 +139,7 @@ def test_list_latest_whales_reconstructs_latest_run_from_snapshots(
         whales=later_whales,
     )
 
-    whales = list_latest_whales()
+    whales = list_latest_discovered_whales()
 
     assert [whale.proxy_wallet for whale in whales.whales] == [
         "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -158,8 +158,8 @@ def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
     return database_path
 
 
-def _tracker_run(*, run_id: str, generated_at: datetime) -> WhaleTrackerRun:
-    return WhaleTrackerRun(
+def _discovery_run(*, run_id: str, generated_at: datetime) -> WhaleDiscoveryRun:
+    return WhaleDiscoveryRun(
         run_id=run_id,
         profile_version="test",
         status="completed",
@@ -170,7 +170,6 @@ def _tracker_run(*, run_id: str, generated_at: datetime) -> WhaleTrackerRun:
         checked_wallet_count=2,
         accepted_wallet_count=2,
         profile={},
-        report_path=None,
     )
 
 

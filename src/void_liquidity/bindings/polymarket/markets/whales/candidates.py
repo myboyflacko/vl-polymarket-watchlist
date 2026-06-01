@@ -3,9 +3,12 @@ from __future__ import annotations
 from collections import Counter
 from datetime import UTC, datetime
 
-from void_liquidity.adapters.polymarket.markets.whales.candidates.collector import (
+from void_liquidity.adapters.polymarket.markets.whales.candidates.service import (
     DEFAULT_MIN_WHALE_COUNT,
     WhaleMarketCandidateService,
+)
+from void_liquidity.adapters.polymarket.markets.whales.selection.repository import (
+    get_latest_selection_run_id,
 )
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
     WhaleMarketCandidates,
@@ -37,6 +40,14 @@ def _build_run_id(generated_at: datetime) -> str:
     return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
 
 
+def _selection_run_id_from_payload(payload: dict) -> str | None:
+    selection_run_id = payload.get("selection_run_id")
+    if isinstance(selection_run_id, str):
+        return selection_run_id
+
+    return None
+
+
 class PolymarketWhaleMarketCandidatesBinding:
     spec = BindingSpec(
         name="polymarket.markets.whales.candidates",
@@ -65,6 +76,17 @@ class PolymarketWhaleMarketCandidatesBinding:
     ) -> WhaleMarketCandidates:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
+        selection_run_id = (
+            _selection_run_id_from_payload(event.payload)
+            or (
+                cache.get("polymarket.markets.whales.selection", "latest_run_id")
+                if cache is not None
+                else None
+            )
+            or get_latest_selection_run_id()
+        )
+        if selection_run_id is None:
+            raise ValueError("selection_run_id is required without selection runs")
         metadata = {
             "workflow": event.metadata.get("workflow"),
             "adapter": ADAPTER_NAME,
@@ -77,13 +99,16 @@ class PolymarketWhaleMarketCandidatesBinding:
                     event_type=POLYMARKET_WHALE_MARKETS_STARTED,
                     source=EVENT_SOURCE,
                     correlation_id=event.correlation_id,
-                    payload={"run_id": run_id},
+                    payload={
+                        "run_id": run_id,
+                        "selection_run_id": selection_run_id,
+                    },
                     metadata=metadata,
                 )
             )
 
             service = WhaleMarketCandidateService(min_whale_count=self.min_whale_count)
-            result = await service.collect()
+            result = await service.run(selection_run_id=selection_run_id)
             if cache is not None:
                 cache.set(CACHE_NAMESPACE, "latest", result)
                 cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
@@ -95,6 +120,7 @@ class PolymarketWhaleMarketCandidatesBinding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
+                        "selection_run_id": selection_run_id,
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
@@ -111,6 +137,7 @@ class PolymarketWhaleMarketCandidatesBinding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
+                        "selection_run_id": selection_run_id,
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
@@ -123,6 +150,7 @@ class PolymarketWhaleMarketCandidatesBinding:
                 service.persist(
                     candidates=result,
                     run_id=run_id,
+                    selection_run_id=selection_run_id,
                     seen_at=started_at,
                 )
             except Exception as exc:
@@ -148,6 +176,7 @@ class PolymarketWhaleMarketCandidatesBinding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
+                        "selection_run_id": selection_run_id,
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
@@ -163,6 +192,7 @@ class PolymarketWhaleMarketCandidatesBinding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
+                        "selection_run_id": selection_run_id,
                         "candidate_count": len(result.candidates),
                         "position_count": len(result.positions),
                         "error_count": len(result.errors),
@@ -181,6 +211,7 @@ class PolymarketWhaleMarketCandidatesBinding:
                     correlation_id=event.correlation_id,
                     payload={
                         "run_id": run_id,
+                        "selection_run_id": selection_run_id,
                         "error_type": type(exc).__name__,
                         "error": str(exc),
                     },
