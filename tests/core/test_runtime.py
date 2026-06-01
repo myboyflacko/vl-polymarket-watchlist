@@ -3,6 +3,7 @@ import asyncio
 import pytest
 
 from void_liquidity.core.bindings import BindingRegistry, BindingSpec
+from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.core.runtime import Runtime
 
@@ -38,7 +39,12 @@ def test_runtime_connects_registered_bindings_once() -> None:
             produces=("run.completed",),
         )
 
-        async def handle(self, event: DomainEvent, bus: EventBus) -> None:
+        async def handle(
+            self,
+            event: DomainEvent,
+            bus: EventBus,
+            cache: WorkflowCache | None = None,
+        ) -> None:
             handled.append(event.correlation_id)
             await bus.publish(
                 DomainEvent.create(
@@ -65,6 +71,41 @@ def test_runtime_connects_registered_bindings_once() -> None:
 
     assert handled == ["abc"]
     assert completed == ["fake"]
+
+
+def test_runtime_passes_cache_to_registered_bindings() -> None:
+    seen: list[WorkflowCache | None] = []
+    cache = WorkflowCache()
+
+    class FakeBinding:
+        spec = BindingSpec(
+            name="fake",
+            version="1.0.0",
+            description="Test binding",
+            consumes=("run.requested",),
+        )
+
+        async def handle(
+            self,
+            event: DomainEvent,
+            bus: EventBus,
+            cache: WorkflowCache | None = None,
+        ) -> None:
+            seen.append(cache)
+
+    runtime = Runtime(cache=cache)
+    runtime.install(FakeBinding())
+
+    asyncio.run(
+        runtime.publish(
+            DomainEvent.create(
+                event_type="run.requested",
+                source="test",
+            )
+        )
+    )
+
+    assert seen == [cache]
 
 
 def test_binding_registry_rejects_duplicate_names() -> None:

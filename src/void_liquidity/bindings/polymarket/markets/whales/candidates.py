@@ -17,6 +17,7 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.events import 
     POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
 )
 from void_liquidity.core.bindings import BindingSpec
+from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
@@ -29,6 +30,7 @@ from void_liquidity.pipeline.markets.whales import (
 EVENT_SOURCE = "binding.polymarket.markets.whales.candidates"
 ADAPTER_NAME = "polymarket.markets.whales.candidates"
 PROVIDER_NAME = "polymarket"
+CACHE_NAMESPACE = "polymarket.markets.whales.candidates"
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -55,7 +57,12 @@ class PolymarketWhaleMarketCandidatesBinding:
     def __init__(self, *, min_whale_count: int = DEFAULT_MIN_WHALE_COUNT) -> None:
         self.min_whale_count = min_whale_count
 
-    async def handle(self, event: DomainEvent, bus: EventBus) -> WhaleMarketCandidates:
+    async def handle(
+        self,
+        event: DomainEvent,
+        bus: EventBus,
+        cache: WorkflowCache | None = None,
+    ) -> WhaleMarketCandidates:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
         metadata = {
@@ -77,6 +84,10 @@ class PolymarketWhaleMarketCandidatesBinding:
 
             service = WhaleMarketCandidateService(min_whale_count=self.min_whale_count)
             result = await service.collect()
+            if cache is not None:
+                cache.set(CACHE_NAMESPACE, "latest", result)
+                cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
+
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_DISCOVERED,

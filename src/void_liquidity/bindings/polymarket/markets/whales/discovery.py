@@ -19,6 +19,7 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.tracker import 
     WhaleDiscoveryService,
 )
 from void_liquidity.core.bindings import BindingSpec
+from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
@@ -57,7 +58,12 @@ class PolymarketWhaleDiscoveryBinding:
         ),
     )
 
-    async def handle(self, event: DomainEvent, bus: EventBus) -> None:
+    async def handle(
+        self,
+        event: DomainEvent,
+        bus: EventBus,
+        cache: WorkflowCache | None = None,
+    ) -> None:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
         metadata = {

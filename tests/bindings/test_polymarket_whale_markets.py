@@ -24,9 +24,11 @@ from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
 from void_liquidity.bindings.polymarket.markets.whales.candidates import (
+    CACHE_NAMESPACE,
     PolymarketWhaleMarketCandidatesBinding,
 )
 from void_liquidity.bindings.polymarket.markets.whales import candidates as binding_module
+from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
@@ -146,6 +148,43 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert "candidates" not in discovered
     assert discovered["error_summary"] == [{"message": "boom", "count": 1}]
     assert emitted_events[-1].payload["partial"] is True
+
+
+def test_polymarket_whale_markets_binding_caches_latest_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FakeCollector:
+        def __init__(
+            self,
+            *,
+            min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
+        ) -> None:
+            self.min_whale_count = min_whale_count
+
+        async def collect(self) -> WhaleMarketCandidates:
+            return _result()
+
+        def persist(self, **kwargs) -> None:
+            return None
+
+    monkeypatch.setattr(
+        binding_module,
+        "WhaleMarketCandidateService",
+        FakeCollector,
+    )
+    bus = EventBus()
+    cache = WorkflowCache()
+
+    result = asyncio.run(
+        PolymarketWhaleMarketCandidatesBinding().handle(
+            event=_request(),
+            bus=bus,
+            cache=cache,
+        )
+    )
+
+    assert cache.get(CACHE_NAMESPACE, "latest") == result
+    assert cache.get(CACHE_NAMESPACE, "latest_run_id")
 
 
 def test_polymarket_whale_markets_binding_publishes_failed_event(

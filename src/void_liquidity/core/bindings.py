@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
+from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
@@ -19,7 +20,12 @@ class BindingSpec:
 class Binding(Protocol):
     spec: BindingSpec
 
-    async def handle(self, event: DomainEvent, bus: EventBus) -> None:
+    async def handle(
+        self,
+        event: DomainEvent,
+        bus: EventBus,
+        cache: WorkflowCache | None = None,
+    ) -> object | None:
         """Handle one event emitted through the runtime bus."""
 
 
@@ -39,14 +45,18 @@ class BindingRegistry:
     def all(self) -> tuple[Binding, ...]:
         return tuple(self._bindings.values())
 
-    def connect(self, bus: EventBus) -> None:
+    def connect(self, bus: EventBus, cache: WorkflowCache | None = None) -> None:
         for binding in self._bindings.values():
             for event_type in binding.spec.consumes:
-                bus.subscribe(event_type, self._handler_for(binding, bus))
+                bus.subscribe(event_type, self._handler_for(binding, bus, cache))
 
     @staticmethod
-    def _handler_for(binding: Binding, bus: EventBus):
+    def _handler_for(
+        binding: Binding,
+        bus: EventBus,
+        cache: WorkflowCache | None,
+    ):
         async def handler(event: DomainEvent) -> None:
-            await binding.handle(event=event, bus=bus)
+            await binding.handle(event=event, bus=bus, cache=cache)
 
         return handler
