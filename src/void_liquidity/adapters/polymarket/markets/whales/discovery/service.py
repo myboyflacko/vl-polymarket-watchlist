@@ -437,34 +437,46 @@ class WhaleDiscoveryService:
             return _CurrentPositionRows(rows=[], complete=True)
 
         rows: list[dict[str, Any]] = []
-        offset = 0
+        complete = True
 
-        while offset <= 10_000:
-            params = CurrentPositionsParams(
-                user=proxy_wallet,
-                market=condition_ids,
-                limit=self.profile.current_positions_limit,
-                offset=offset,
-                sortBy="CURRENT",
-                sortDirection="DESC",
-            )
-            page = await client.get_current_positions(params)
+        for condition_id_chunk in _chunks(
+            condition_ids,
+            self.profile.current_positions_market_chunk_size,
+        ):
+            offset = 0
 
-            if not isinstance(page, list) or not page:
-                return _CurrentPositionRows(rows=rows, complete=True)
+            while offset <= 10_000:
+                params = CurrentPositionsParams(
+                    user=proxy_wallet,
+                    market=condition_id_chunk,
+                    limit=self.profile.current_positions_limit,
+                    offset=offset,
+                    sortBy="CURRENT",
+                    sortDirection="DESC",
+                )
+                page = await client.get_current_positions(params)
 
-            rows.extend(row for row in page if isinstance(row, dict))
+                if not isinstance(page, list) or not page:
+                    break
 
-            if len(page) < params.limit:
-                return _CurrentPositionRows(rows=rows, complete=True)
+                rows.extend(row for row in page if isinstance(row, dict))
 
-            offset += params.limit
+                if len(page) < params.limit:
+                    break
 
-        return _CurrentPositionRows(rows=rows, complete=False)
+                offset += params.limit
+            else:
+                complete = False
+
+        return _CurrentPositionRows(rows=rows, complete=complete)
 
 
 def _is_descending(values: list[datetime]) -> bool:
     return all(left >= right for left, right in zip(values, values[1:], strict=False))
+
+
+def _chunks(items: list[str], size: int) -> list[list[str]]:
+    return [items[index : index + size] for index in range(0, len(items), size)]
 
 
 class _WalletStageError(RuntimeError):

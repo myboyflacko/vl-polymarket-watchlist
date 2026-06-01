@@ -31,4 +31,5 @@ class WhaleDiscoveryProfile(BaseModel):
     max_trade_pages_per_wallet: int = Field(default=20, ge=1)
     taker_only: bool = True
     current_positions_limit: int = Field(default=500, ge=1, le=500)
+    current_positions_market_chunk_size: int = Field(default=50, ge=1, le=100)
     ranking: WhaleSelectionProfile = Field(default_factory=WhaleSelectionProfile)

@@ -101,6 +101,10 @@ def _trade(
     }
 
 
+def _condition_id(value: int) -> str:
+    return f"0x{value:064x}"
+
+
 def test_whale_discovery_service_collects_trade_first_metrics(
     monkeypatch,
 ) -> None:
@@ -235,6 +239,42 @@ def test_whale_discovery_service_isolates_current_position_errors_per_wallet(
     assert result.failed_wallet_count == 1
     assert result.collection_errors[0].proxy_wallet == WALLET_TWO
     assert result.collection_errors[0].stage == "current_positions"
+
+
+def test_whale_discovery_service_chunks_current_position_market_filters() -> None:
+    calls: list[tuple[list[str], int]] = []
+    condition_ids = [_condition_id(index) for index in range(5)]
+
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        calls.append((params.market, params.offset))
+        return [{"currentValue": 10}]
+
+    service = WhaleDiscoveryService(
+        profile=WhaleDiscoveryProfile(
+            wallet_count=1,
+            current_positions_market_chunk_size=2,
+        )
+    )
+
+    result = asyncio.run(
+        service._fetch_current_positions(
+            client=FakeDataClient(get_current_positions=fake_get_current_positions),
+            proxy_wallet=WALLET_ONE,
+            condition_ids=condition_ids,
+        )
+    )
+
+    assert [market for market, _ in calls] == [
+        condition_ids[0:2],
+        condition_ids[2:4],
+        condition_ids[4:5],
+    ]
+    assert [offset for _, offset in calls] == [0, 0, 0]
+    assert len(result.rows) == 3
+    assert result.complete is True
 
 
 def test_whale_discovery_service_leaderboard_errors_remain_fatal(monkeypatch) -> None:
