@@ -166,10 +166,8 @@ class PolymarketWhaleQualifiedMarketsBinding:
                     "candidate_run_id": candidate_run_id,
                     "qualified_market_count": len(result.qualified_markets),
                     "limit": limit,
-                    "token_ids": [
-                        market.candidate.token_id
-                        for market in result.qualified_markets
-                    ],
+                    "max_score": _max_score(result),
+                    "min_score": _min_score(result),
                 },
                 metadata=metadata,
             )
@@ -241,3 +239,17 @@ async def _publish(
             metadata=metadata,
         )
     )
+
+
+def _max_score(result: QualifiedMarketResult) -> float | None:
+    if not result.qualified_markets:
+        return None
+
+    return max(market.score for market in result.qualified_markets)
+
+
+def _min_score(result: QualifiedMarketResult) -> float | None:
+    if not result.qualified_markets:
+        return None
+
+    return min(market.score for market in result.qualified_markets)

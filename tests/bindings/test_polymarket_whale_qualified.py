@@ -125,8 +125,11 @@ def test_polymarket_whale_qualified_binding_derives_and_publishes(
     assert {event.source for event in emitted_events} == {
         "binding.polymarket.markets.whales.qualified"
     }
-    assert emitted_events[2].payload["qualified_market_count"] == 1
-    assert emitted_events[2].payload["token_ids"] == ["token-1"]
+    derived_payload = emitted_events[2].payload
+    assert derived_payload["qualified_market_count"] == 1
+    assert derived_payload["max_score"] == 100
+    assert derived_payload["min_score"] == 100
+    assert "token_ids" not in derived_payload
 
 
 def test_polymarket_whale_qualified_binding_publishes_failed_event(
