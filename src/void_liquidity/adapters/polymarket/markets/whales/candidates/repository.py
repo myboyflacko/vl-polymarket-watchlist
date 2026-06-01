@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Iterable
 from datetime import UTC, datetime
 
@@ -42,7 +43,7 @@ def list_latest_market_candidates(
             select(WhaleMarket, WhaleMarketMetricSnapshot)
             .join(
                 WhaleMarketMetricSnapshot,
-                WhaleMarketMetricSnapshot.token_id == WhaleMarket.token_id,
+                WhaleMarketMetricSnapshot.identity_id == WhaleMarket.id,
             )
             .where(WhaleMarketMetricSnapshot.run_id == latest_run.run_id)
             .order_by(
@@ -71,7 +72,7 @@ def list_market_candidates(
             select(WhaleMarket, WhaleMarketMetricSnapshot)
             .join(
                 WhaleMarketMetricSnapshot,
-                WhaleMarketMetricSnapshot.token_id == WhaleMarket.token_id,
+                WhaleMarketMetricSnapshot.identity_id == WhaleMarket.id,
             )
             .where(WhaleMarketMetricSnapshot.run_id == run_id)
             .order_by(
@@ -100,7 +101,7 @@ def list_market_snapshots(
             select(WhaleMarket, WhaleMarketMetricSnapshot)
             .join(
                 WhaleMarketMetricSnapshot,
-                WhaleMarketMetricSnapshot.token_id == WhaleMarket.token_id,
+                WhaleMarketMetricSnapshot.identity_id == WhaleMarket.id,
             )
             .where(WhaleMarket.token_id == token_id)
             .order_by(
@@ -137,6 +138,10 @@ def persist_market_candidates(
             WhaleMarketCandidateRun(
                 run_id=run_id,
                 selection_run_id=selection_run_id,
+                status="completed",
+                config_key=market_candidate_config_key(
+                    min_whale_count=min_whale_count,
+                ),
                 generated_at=actual_seen_at,
                 min_whale_count=min_whale_count,
                 candidate_count=len(candidate_list),
@@ -144,7 +149,7 @@ def persist_market_candidates(
                 error_count=error_count,
             )
         )
-        _upsert_markets(
+        identity_ids = _upsert_markets(
             candidates=candidate_list,
             seen_at=actual_seen_at,
             session=session,
@@ -154,6 +159,61 @@ def persist_market_candidates(
             run_id=run_id,
             generated_at=actual_seen_at,
             session=session,
+            identity_ids=identity_ids,
+        )
+        session.commit()
+
+
+def get_completed_market_candidate_run_for_parent(
+    *,
+    selection_run_id: str,
+    min_whale_count: int,
+) -> WhaleMarketCandidateRunSummary | None:
+    with database_session() as session:
+        run = session.scalar(
+            select(WhaleMarketCandidateRun)
+            .where(
+                WhaleMarketCandidateRun.selection_run_id == selection_run_id,
+                WhaleMarketCandidateRun.config_key
+                == market_candidate_config_key(min_whale_count=min_whale_count),
+                WhaleMarketCandidateRun.status == "completed",
+            )
+            .order_by(
+                WhaleMarketCandidateRun.generated_at.desc(),
+                WhaleMarketCandidateRun.run_id.desc(),
+            )
+            .limit(1)
+        )
+
+    return _run_summary(run) if run is not None else None
+
+
+def persist_failed_market_candidates(
+    *,
+    run_id: str,
+    selection_run_id: str,
+    min_whale_count: int,
+    generated_at: datetime,
+    error_type: str,
+    error: str,
+) -> None:
+    with database_session() as session:
+        session.add(
+            WhaleMarketCandidateRun(
+                run_id=run_id,
+                selection_run_id=selection_run_id,
+                status="failed",
+                config_key=market_candidate_config_key(
+                    min_whale_count=min_whale_count,
+                ),
+                generated_at=generated_at,
+                min_whale_count=min_whale_count,
+                candidate_count=0,
+                position_count=0,
+                error_count=0,
+                error_type=error_type,
+                error=error,
+            )
         )
         session.commit()
 
@@ -161,6 +221,7 @@ def persist_market_candidates(
 def _latest_run_statement():
     return (
         select(WhaleMarketCandidateRun)
+        .where(WhaleMarketCandidateRun.status == "completed")
         .order_by(
             WhaleMarketCandidateRun.generated_at.desc(),
             WhaleMarketCandidateRun.run_id.desc(),
@@ -236,13 +297,13 @@ def _upsert_markets(
     candidates: list[MarketCandidate],
     seen_at: datetime,
     session,
-) -> None:
+) -> dict[str, int]:
     rows = [
         _market_row(candidate=candidate, seen_at=seen_at)
         for candidate in candidates
     ]
     if not rows:
-        return
+        return {}
 
     statement = insert(WhaleMarket).values(rows)
     update_columns = {
@@ -256,6 +317,13 @@ def _upsert_markets(
             set_=update_columns,
         )
     )
+    return dict(
+        session.execute(
+            select(WhaleMarket.token_id, WhaleMarket.id).where(
+                WhaleMarket.token_id.in_([row["token_id"] for row in rows])
+            )
+        ).all()
+    )
 
 
 def _upsert_metric_snapshots(
@@ -264,12 +332,14 @@ def _upsert_metric_snapshots(
     run_id: str,
     generated_at: datetime,
     session,
+    identity_ids: dict[str, int],
 ) -> None:
     rows = [
         _snapshot_row(
             candidate=candidate,
             run_id=run_id,
             generated_at=generated_at,
+            identity_id=identity_ids[candidate.token_id],
         )
         for candidate in candidates
     ]
@@ -280,13 +350,13 @@ def _upsert_metric_snapshots(
     update_columns = {
         column: getattr(statement.excluded, column)
         for column in rows[0]
-        if column not in {"run_id", "token_id"}
+        if column not in {"run_id", "identity_id"}
     }
     session.execute(
         statement.on_conflict_do_update(
             index_elements=[
                 WhaleMarketMetricSnapshot.run_id,
-                WhaleMarketMetricSnapshot.token_id,
+                WhaleMarketMetricSnapshot.identity_id,
             ],
             set_=update_columns,
         )
@@ -314,10 +384,11 @@ def _snapshot_row(
     candidate: MarketCandidate,
     run_id: str,
     generated_at: datetime,
+    identity_id: int,
 ) -> dict:
     return {
         "run_id": run_id,
-        "token_id": candidate.token_id,
+        "identity_id": identity_id,
         "whale_count": candidate.whale_count,
         "wallets": candidate.wallets,
         "total_size": candidate.total_size,
@@ -326,3 +397,11 @@ def _snapshot_row(
         "cur_price": candidate.cur_price,
         "generated_at": generated_at,
     }
+
+
+def market_candidate_config_key(*, min_whale_count: int) -> str:
+    return json.dumps(
+        {"min_whale_count": min_whale_count},
+        sort_keys=True,
+        separators=(",", ":"),
+    )

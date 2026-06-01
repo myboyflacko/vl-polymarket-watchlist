@@ -18,6 +18,11 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.events import 
     POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
     POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
     POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+    POLYMARKET_WHALE_MARKETS_SKIPPED,
+)
+from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
+    get_completed_market_candidate_run_for_parent,
+    persist_failed_market_candidates,
 )
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.cache import WorkflowCache
@@ -33,7 +38,6 @@ from void_liquidity.pipeline.markets.whales import (
 EVENT_SOURCE = "binding.polymarket.markets.whales.candidates"
 ADAPTER_NAME = "polymarket.markets.whales.candidates"
 PROVIDER_NAME = "polymarket"
-CACHE_NAMESPACE = "polymarket.markets.whales.candidates"
 
 
 def _build_run_id(generated_at: datetime) -> str:
@@ -62,6 +66,7 @@ class PolymarketWhaleMarketCandidatesBinding:
             POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
             POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
             POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
+            POLYMARKET_WHALE_MARKETS_SKIPPED,
         ),
     )
 
@@ -78,11 +83,6 @@ class PolymarketWhaleMarketCandidatesBinding:
         run_id = _build_run_id(started_at)
         selection_run_id = (
             _selection_run_id_from_payload(event.payload)
-            or (
-                cache.get("polymarket.markets.whales.selection", "latest_run_id")
-                if cache is not None
-                else None
-            )
             or get_latest_selection_run_id()
         )
         if selection_run_id is None:
@@ -94,6 +94,30 @@ class PolymarketWhaleMarketCandidatesBinding:
         }
 
         try:
+            existing_run = get_completed_market_candidate_run_for_parent(
+                selection_run_id=selection_run_id,
+                min_whale_count=self.min_whale_count,
+            )
+            if existing_run is not None:
+                await bus.publish(
+                    DomainEvent.create(
+                        event_type=POLYMARKET_WHALE_MARKETS_SKIPPED,
+                        source=EVENT_SOURCE,
+                        correlation_id=event.correlation_id,
+                        payload={
+                            "run_id": existing_run.run_id,
+                            "selection_run_id": selection_run_id,
+                            "reason": "parent_config_already_completed",
+                        },
+                        metadata=metadata,
+                    )
+                )
+                return WhaleMarketCandidates(
+                    candidates=WhaleMarketCandidateService(
+                        min_whale_count=self.min_whale_count,
+                    ).list(candidate_run_id=existing_run.run_id)
+                )
+
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_STARTED,
@@ -109,9 +133,6 @@ class PolymarketWhaleMarketCandidatesBinding:
 
             service = WhaleMarketCandidateService(min_whale_count=self.min_whale_count)
             result = await service.run(selection_run_id=selection_run_id)
-            if cache is not None:
-                cache.set(CACHE_NAMESPACE, "latest", result)
-                cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
 
             await bus.publish(
                 DomainEvent.create(
@@ -204,6 +225,17 @@ class PolymarketWhaleMarketCandidatesBinding:
             )
             return result
         except Exception as exc:
+            try:
+                persist_failed_market_candidates(
+                    run_id=run_id,
+                    selection_run_id=selection_run_id,
+                    min_whale_count=self.min_whale_count,
+                    generated_at=started_at,
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_MARKETS_FAILED,

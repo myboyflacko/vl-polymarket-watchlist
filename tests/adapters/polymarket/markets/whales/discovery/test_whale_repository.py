@@ -60,23 +60,48 @@ def test_list_latest_discovered_whale_wallets_returns_latest_run_wallets_in_inse
         )
         session.add_all(
             [
+                DiscoveredWhale(
+                    id=1,
+                    proxy_wallet="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    identity={},
+                    first_seen_at=NOW,
+                    last_seen_at=NOW,
+                ),
+                DiscoveredWhale(
+                    id=2,
+                    proxy_wallet="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    identity={},
+                    first_seen_at=LATER,
+                    last_seen_at=LATER,
+                ),
+                DiscoveredWhale(
+                    id=3,
+                    proxy_wallet="0xcccccccccccccccccccccccccccccccccccccccc",
+                    identity={},
+                    first_seen_at=LATER,
+                    last_seen_at=LATER,
+                ),
+            ]
+        )
+        session.add_all(
+            [
                 DiscoveredWhaleMetric(
                     run_id="run-1",
-                    proxy_wallet="0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    identity_id=1,
                     metrics=_whale_metrics(100),
                     collection_quality={},
                     generated_at=NOW,
                 ),
                 DiscoveredWhaleMetric(
                     run_id="run-2",
-                    proxy_wallet="0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    identity_id=2,
                     metrics=_whale_metrics(200),
                     collection_quality={},
                     generated_at=LATER,
                 ),
                 DiscoveredWhaleMetric(
                     run_id="run-2",
-                    proxy_wallet="0xcccccccccccccccccccccccccccccccccccccccc",
+                    identity_id=3,
                     metrics=_whale_metrics(300),
                     collection_quality={},
                     generated_at=LATER,

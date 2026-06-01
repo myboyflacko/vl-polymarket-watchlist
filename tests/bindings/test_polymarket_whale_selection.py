@@ -16,6 +16,7 @@ from void_liquidity.adapters.polymarket.markets.whales.selection.events import (
     POLYMARKET_WHALE_SELECTION_COMPLETED,
     POLYMARKET_WHALE_SELECTION_FAILED,
     POLYMARKET_WHALE_SELECTION_SELECTED,
+    POLYMARKET_WHALE_SELECTION_SKIPPED,
     POLYMARKET_WHALE_SELECTION_STARTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.ranking import (
@@ -61,6 +62,7 @@ def test_polymarket_whale_selection_binding_declares_runtime_contract() -> None:
         POLYMARKET_WHALE_SELECTION_SELECTED,
         POLYMARKET_WHALE_SELECTION_COMPLETED,
         POLYMARKET_WHALE_SELECTION_FAILED,
+        POLYMARKET_WHALE_SELECTION_SKIPPED,
     )
 
 
@@ -78,6 +80,11 @@ def test_polymarket_whale_selection_binding_selects_and_publishes(
             return None
 
     monkeypatch.setattr(binding_module, "WhaleSelectionService", FakeSelectionService)
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_selection_run_for_parent",
+        lambda **_: None,
+    )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)
@@ -114,6 +121,11 @@ def test_polymarket_whale_selection_binding_publishes_failed_event(
             raise RuntimeError("selection failed")
 
     monkeypatch.setattr(binding_module, "WhaleSelectionService", FailingSelectionService)
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_selection_run_for_parent",
+        lambda **_: None,
+    )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
     bus.subscribe(EventBus.WILDCARD, emitted_events.append)

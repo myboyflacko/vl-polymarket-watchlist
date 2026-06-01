@@ -31,5 +31,12 @@ class QualifiedMarket(BaseModel):
 
 
 class QualifiedMarketResult(BaseModel):
-    profile: WhaleQualifiedMarketProfile
+    profiles: list[WhaleQualifiedMarketProfile] = Field(default_factory=list)
     qualified_markets: list[QualifiedMarket]
+
+    @property
+    def profile(self) -> WhaleQualifiedMarketProfile:
+        if self.profiles:
+            return self.profiles[0]
+
+        return WhaleQualifiedMarketProfile(name="high_value")

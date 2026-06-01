@@ -10,3 +10,6 @@ POLYMARKET_WHALE_QUALIFIED_MARKETS_COMPLETED = (
 POLYMARKET_WHALE_QUALIFIED_MARKETS_FAILED = (
     "polymarket.markets.whales.qualified.failed"
 )
+POLYMARKET_WHALE_QUALIFIED_MARKETS_SKIPPED = (
+    "polymarket.markets.whales.qualified.skipped"
+)

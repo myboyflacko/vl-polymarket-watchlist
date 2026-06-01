@@ -9,6 +9,7 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.service import
     DEFAULT_MIN_WHALE_COUNT,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.events import (
+    POLYMARKET_WHALE_DISCOVERY_COMPLETED,
     POLYMARKET_WHALE_DISCOVERY_REQUESTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
@@ -39,6 +40,7 @@ from void_liquidity.core.logging import VoidLogger
 from void_liquidity.core.runtime import Runtime
 from void_liquidity.core.scheduler import ScheduledJob, Scheduler
 from void_liquidity.pipeline.markets.whales import (
+    POLYMARKET_WHALE_MARKETS_COMPLETED as POLYMARKET_WHALE_MARKET_CANDIDATES_COMPLETED,
     POLYMARKET_WHALE_MARKETS_REQUESTED,
 )
 from void_liquidity.pipeline.markets.qualified import (
@@ -69,6 +71,7 @@ def build_whale_market_procurement_runtime(
         PolymarketWhaleMarketCandidatesBinding(min_whale_count=min_whale_count),
         PolymarketWhaleQualifiedMarketsBinding(),
     )
+    _install_workflow_chain(runtime)
     return runtime
 
 
@@ -101,18 +104,15 @@ def build_whale_market_procurement_scheduler(
             interval_seconds=900,
             event_factory=_event_factory(build_whale_market_candidates_event),
         ),
-        *[
-            ScheduledJob(
-                name=f"whales.qualified.{profile.name}",
-                interval_seconds=900,
-                event_factory=_event_factory(
-                    build_whale_qualified_markets_event,
-                    profile=profile,
-                    limit=qualified_limit,
-                ),
-            )
-            for profile in selected_qualified_profiles
-        ],
+        ScheduledJob(
+            name="whales.qualified",
+            interval_seconds=900,
+            event_factory=_event_factory(
+                build_whale_qualified_markets_event,
+                profiles=selected_qualified_profiles,
+                limit=qualified_limit,
+            ),
+        ),
     )
     return scheduler
 
@@ -136,35 +136,53 @@ def build_whale_discovery_event(
 
 def build_whale_market_candidates_event(
     *,
+    selection_run_id: str | None = None,
     source: str = "workflow.whale_market_procurement",
 ) -> DomainEvent:
+    payload = {}
+    if selection_run_id is not None:
+        payload["selection_run_id"] = selection_run_id
+
     return DomainEvent.create(
         event_type=POLYMARKET_WHALE_MARKETS_REQUESTED,
         source=source,
-        payload={},
+        payload=payload,
         metadata={"workflow": "whale_market_procurement"},
     )
 
 
 def build_whale_selection_event(
     *,
+    discovery_run_id: str | None = None,
     source: str = "workflow.whale_market_procurement",
 ) -> DomainEvent:
+    payload = {}
+    if discovery_run_id is not None:
+        payload["discovery_run_id"] = discovery_run_id
+
     return DomainEvent.create(
         event_type=POLYMARKET_WHALE_SELECTION_REQUESTED,
         source=source,
-        payload={},
+        payload=payload,
         metadata={"workflow": "whale_market_procurement"},
     )
 
 
 def build_whale_qualified_markets_event(
     *,
-    profile: WhaleQualifiedMarketProfile,
+    profile: WhaleQualifiedMarketProfile | None = None,
+    profiles: Sequence[WhaleQualifiedMarketProfile] | None = None,
+    candidate_run_id: str | None = None,
     limit: int | None = None,
     source: str = "workflow.whale_market_procurement",
 ) -> DomainEvent:
-    payload = {"profile": profile.model_dump(mode="json")}
+    payload = {}
+    if profiles is not None:
+        payload["profiles"] = [item.model_dump(mode="json") for item in profiles]
+    elif profile is not None:
+        payload["profile"] = profile.model_dump(mode="json")
+    if candidate_run_id is not None:
+        payload["candidate_run_id"] = candidate_run_id
     if limit is not None:
         payload["limit"] = limit
 
@@ -173,6 +191,32 @@ def build_whale_qualified_markets_event(
         source=source,
         payload=payload,
         metadata={"workflow": "whale_market_procurement"},
+    )
+
+
+def _install_workflow_chain(runtime: Runtime) -> None:
+    async def request_selection(event: DomainEvent) -> None:
+        discovery_run_id = event.payload.get("run_id")
+        if not isinstance(discovery_run_id, str):
+            return
+
+        await runtime.publish(
+            build_whale_selection_event(discovery_run_id=discovery_run_id)
+        )
+
+    async def request_qualified(event: DomainEvent) -> None:
+        candidate_run_id = event.payload.get("run_id")
+        if not isinstance(candidate_run_id, str):
+            return
+
+        await runtime.publish(
+            build_whale_qualified_markets_event(candidate_run_id=candidate_run_id)
+        )
+
+    runtime.bus.subscribe(POLYMARKET_WHALE_DISCOVERY_COMPLETED, request_selection)
+    runtime.bus.subscribe(
+        POLYMARKET_WHALE_MARKET_CANDIDATES_COMPLETED,
+        request_qualified,
     )
 
 

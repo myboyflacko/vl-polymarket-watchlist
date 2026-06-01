@@ -1,7 +1,10 @@
 from __future__ import annotations
 
-from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
+import json
 from datetime import UTC, datetime
+from collections.abc import Sequence
+
+from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.repository import (
     get_latest_market_candidate_run,
@@ -50,7 +53,26 @@ def list_qualified_markets(
     if limit is not None:
         sorted_markets = sorted_markets[:limit]
 
-    return QualifiedMarketResult(profile=profile, qualified_markets=sorted_markets)
+    return QualifiedMarketResult(profiles=[profile], qualified_markets=sorted_markets)
+
+
+def list_qualified_markets_for_profiles(
+    profiles: Sequence[WhaleQualifiedMarketProfile],
+    *,
+    candidate_run_id: str | None = None,
+    limit: int | None = None,
+) -> QualifiedMarketResult:
+    markets: list[QualifiedMarket] = []
+    for profile in profiles:
+        markets.extend(
+            list_qualified_markets(
+                profile,
+                candidate_run_id=candidate_run_id,
+                limit=limit,
+            ).qualified_markets
+        )
+
+    return QualifiedMarketResult(profiles=list(profiles), qualified_markets=markets)
 
 
 def _qualified_market(
@@ -101,8 +123,18 @@ def _qualified_market(
 
 
 class WhaleQualifiedMarketService:
-    def __init__(self, profile: WhaleQualifiedMarketProfile) -> None:
-        self.profile = profile
+    def __init__(
+        self,
+        profile: WhaleQualifiedMarketProfile | None = None,
+        profiles: Sequence[WhaleQualifiedMarketProfile] | None = None,
+    ) -> None:
+        self.profiles = list(profiles or ([profile] if profile is not None else []))
+        if not self.profiles:
+            self.profiles = [WhaleQualifiedMarketProfile(name="high_value")]
+
+    @property
+    def profile(self) -> WhaleQualifiedMarketProfile:
+        return self.profiles[0]
 
     def run(
         self,
@@ -110,8 +142,8 @@ class WhaleQualifiedMarketService:
         candidate_run_id: str | None = None,
         limit: int | None = None,
     ) -> QualifiedMarketResult:
-        return list_qualified_markets(
-            self.profile,
+        return list_qualified_markets_for_profiles(
+            self.profiles,
             candidate_run_id=candidate_run_id,
             limit=limit,
         )
@@ -133,7 +165,7 @@ class WhaleQualifiedMarketService:
             actual_candidate_run_id = latest_candidate_run.run_id
 
         persist_qualified_market_run(
-            profile=self.profile,
+            profiles=self.profiles,
             run_id=run_id,
             candidate_run_id=actual_candidate_run_id,
             generated_at=generated_at or datetime.now(UTC),
@@ -158,3 +190,21 @@ class WhaleQualifiedMarketService:
         return persisted.model_copy(
             update={"qualified_markets": persisted.qualified_markets[:limit]},
         )
+
+
+def qualified_config_key(
+    *,
+    profiles: Sequence[WhaleQualifiedMarketProfile],
+    limit: int | None,
+) -> str:
+    return json.dumps(
+        {
+            "profiles": [
+                profile.model_dump(mode="json")
+                for profile in sorted(profiles, key=lambda item: item.name)
+            ],
+            "limit": limit,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )

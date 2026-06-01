@@ -7,6 +7,7 @@ from void_liquidity.adapters.polymarket.markets.whales.selection.events import (
     POLYMARKET_WHALE_SELECTION_FAILED,
     POLYMARKET_WHALE_SELECTION_REQUESTED,
     POLYMARKET_WHALE_SELECTION_SELECTED,
+    POLYMARKET_WHALE_SELECTION_SKIPPED,
     POLYMARKET_WHALE_SELECTION_STARTED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.discovery.repository import (
@@ -17,6 +18,10 @@ from void_liquidity.adapters.polymarket.markets.whales.selection.profiles import
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.ranking import (
     WhaleSelectionRankingResult,
+)
+from void_liquidity.adapters.polymarket.markets.whales.selection.repository import (
+    get_completed_selection_run_for_parent,
+    persist_failed_whale_selection_run,
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.service import (
     WhaleSelectionService,
@@ -29,9 +34,6 @@ from void_liquidity.core.events import DomainEvent, EventBus
 EVENT_SOURCE = "binding.polymarket.markets.whales.selection"
 ADAPTER_NAME = "polymarket.markets.whales.selection"
 PROVIDER_NAME = "polymarket"
-CACHE_NAMESPACE = "polymarket.markets.whales.selection"
-
-
 def _build_run_id(generated_at: datetime) -> str:
     return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
 
@@ -64,6 +66,7 @@ class PolymarketWhaleSelectionBinding:
             POLYMARKET_WHALE_SELECTION_SELECTED,
             POLYMARKET_WHALE_SELECTION_COMPLETED,
             POLYMARKET_WHALE_SELECTION_FAILED,
+            POLYMARKET_WHALE_SELECTION_SKIPPED,
         ),
     )
 
@@ -75,13 +78,9 @@ class PolymarketWhaleSelectionBinding:
     ) -> WhaleSelectionRankingResult:
         started_at = datetime.now(UTC)
         run_id = _build_run_id(started_at)
+        profile = _profile_from_payload(event.payload)
         discovery_run_id = (
             _discovery_run_id_from_payload(event.payload)
-            or (
-                cache.get("polymarket.markets.whales.discovery", "latest_run_id")
-                if cache is not None
-                else None
-            )
             or get_latest_discovery_run_id()
         )
         if discovery_run_id is None:
@@ -93,6 +92,28 @@ class PolymarketWhaleSelectionBinding:
         }
 
         try:
+            existing_run_id = get_completed_selection_run_for_parent(
+                discovery_run_id=discovery_run_id,
+                profile=profile,
+            )
+            if existing_run_id is not None:
+                await bus.publish(
+                    DomainEvent.create(
+                        event_type=POLYMARKET_WHALE_SELECTION_SKIPPED,
+                        source=EVENT_SOURCE,
+                        correlation_id=event.correlation_id,
+                        payload={
+                            "run_id": existing_run_id,
+                            "discovery_run_id": discovery_run_id,
+                            "reason": "parent_config_already_completed",
+                        },
+                        metadata=metadata,
+                    )
+                )
+                return WhaleSelectionService(profile=profile).run(
+                    discovery_run_id=discovery_run_id,
+                )
+
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_SELECTION_STARTED,
@@ -106,7 +127,7 @@ class PolymarketWhaleSelectionBinding:
                 )
             )
 
-            service = WhaleSelectionService(profile=_profile_from_payload(event.payload))
+            service = WhaleSelectionService(profile=profile)
             result = service.run(discovery_run_id=discovery_run_id)
             service.persist(
                 ranking=result,
@@ -114,9 +135,6 @@ class PolymarketWhaleSelectionBinding:
                 discovery_run_id=discovery_run_id,
                 generated_at=started_at,
             )
-            if cache is not None:
-                cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
-                cache.set(CACHE_NAMESPACE, "latest", result)
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_SELECTION_SELECTED,
@@ -154,6 +172,17 @@ class PolymarketWhaleSelectionBinding:
             )
             return result
         except Exception as exc:
+            try:
+                persist_failed_whale_selection_run(
+                    profile=profile,
+                    run_id=run_id,
+                    discovery_run_id=discovery_run_id,
+                    generated_at=started_at,
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_SELECTION_FAILED,

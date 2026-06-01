@@ -8,3 +8,4 @@ POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED = (
 POLYMARKET_WHALE_MARKETS_PERSIST_FAILED = (
     "polymarket.markets.whales.candidates.persist_failed"
 )
+POLYMARKET_WHALE_MARKETS_SKIPPED = "polymarket.markets.whales.candidates.skipped"

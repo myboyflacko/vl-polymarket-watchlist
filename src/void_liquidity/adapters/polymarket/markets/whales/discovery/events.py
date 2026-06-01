@@ -2,6 +2,7 @@ POLYMARKET_WHALE_DISCOVERY_REQUESTED = "pipeline.markets.whales.discovery.reques
 POLYMARKET_WHALE_DISCOVERY_STARTED = "polymarket.markets.whales.discovery.started"
 POLYMARKET_WHALE_DISCOVERY_COMPLETED = "polymarket.markets.whales.discovery.completed"
 POLYMARKET_WHALE_DISCOVERY_FAILED = "polymarket.markets.whales.discovery.failed"
+POLYMARKET_WHALE_DISCOVERY_SKIPPED = "polymarket.markets.whales.discovery.skipped"
 POLYMARKET_WHALE_DISCOVERY_DISCOVERED = (
     "polymarket.markets.whales.discovery.discovered"
 )

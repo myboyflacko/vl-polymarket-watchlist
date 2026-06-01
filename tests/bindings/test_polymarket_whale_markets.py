@@ -16,6 +16,7 @@ from void_liquidity.adapters.polymarket.markets.whales.candidates.events import 
     POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED,
     POLYMARKET_WHALE_MARKETS_PERSIST_FAILED,
     POLYMARKET_WHALE_MARKETS_PERSIST_STARTED,
+    POLYMARKET_WHALE_MARKETS_SKIPPED,
 )
 from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_COMPLETED,
@@ -24,11 +25,9 @@ from void_liquidity.pipeline.markets.whales import (
     POLYMARKET_WHALE_MARKETS_STARTED,
 )
 from void_liquidity.bindings.polymarket.markets.whales.candidates import (
-    CACHE_NAMESPACE,
     PolymarketWhaleMarketCandidatesBinding,
 )
 from void_liquidity.bindings.polymarket.markets.whales import candidates as binding_module
-from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
 
 
@@ -88,6 +87,7 @@ def test_polymarket_whale_markets_binding_declares_runtime_contract() -> None:
     assert POLYMARKET_WHALE_MARKETS_COMPLETED in binding.spec.produces
     assert POLYMARKET_WHALE_MARKETS_DISCOVERED in binding.spec.produces
     assert POLYMARKET_WHALE_MARKETS_PERSIST_COMPLETED in binding.spec.produces
+    assert POLYMARKET_WHALE_MARKETS_SKIPPED in binding.spec.produces
 
 
 def test_polymarket_whale_markets_binding_collects_and_publishes(
@@ -118,6 +118,11 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
         binding_module,
         "WhaleMarketCandidateService",
         FakeCollector,
+    )
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_market_candidate_run_for_parent",
+        lambda **_: None,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
@@ -155,47 +160,6 @@ def test_polymarket_whale_markets_binding_collects_and_publishes(
     assert emitted_events[-1].payload["partial"] is True
 
 
-def test_polymarket_whale_markets_binding_caches_latest_result(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class FakeCollector:
-        def __init__(
-            self,
-            *,
-            min_whale_count: int = DEFAULT_MIN_WHALE_COUNT,
-        ) -> None:
-            self.min_whale_count = min_whale_count
-
-        async def run(
-            self,
-            *,
-            selection_run_id: str | None = None,
-        ) -> WhaleMarketCandidates:
-            return _result()
-
-        def persist(self, **kwargs) -> None:
-            return None
-
-    monkeypatch.setattr(
-        binding_module,
-        "WhaleMarketCandidateService",
-        FakeCollector,
-    )
-    bus = EventBus()
-    cache = WorkflowCache()
-
-    result = asyncio.run(
-        PolymarketWhaleMarketCandidatesBinding().handle(
-            event=_request(),
-            bus=bus,
-            cache=cache,
-        )
-    )
-
-    assert cache.get(CACHE_NAMESPACE, "latest") == result
-    assert cache.get(CACHE_NAMESPACE, "latest_run_id")
-
-
 def test_polymarket_whale_markets_binding_publishes_failed_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -218,6 +182,11 @@ def test_polymarket_whale_markets_binding_publishes_failed_event(
         binding_module,
         "WhaleMarketCandidateService",
         FailingCollector,
+    )
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_market_candidate_run_for_parent",
+        lambda **_: None,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
@@ -261,6 +230,11 @@ def test_polymarket_whale_markets_binding_publishes_persist_failed_event(
         binding_module,
         "WhaleMarketCandidateService",
         PersistFailingCollector,
+    )
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_market_candidate_run_for_parent",
+        lambda **_: None,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []

@@ -8,7 +8,7 @@ from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
-    DiscoveredWhale,
+    DiscoveredWhaleIdentity,
     DiscoveredWhaleMetric,
     WhaleDiscoveryRun,
 )
@@ -35,7 +35,11 @@ def list_discovered_whale_wallets(run_id: str) -> list[str]:
     with database_session() as session:
         return list(
             session.scalars(
-                select(DiscoveredWhaleMetric.proxy_wallet)
+                select(DiscoveredWhaleIdentity.proxy_wallet)
+                .join(
+                    DiscoveredWhaleMetric,
+                    DiscoveredWhaleMetric.identity_id == DiscoveredWhaleIdentity.id,
+                )
                 .where(DiscoveredWhaleMetric.run_id == run_id)
                 .order_by(DiscoveredWhaleMetric.id)
             )
@@ -63,15 +67,22 @@ def list_discovered_whales(run_id: str) -> Whales:
             )
 
         snapshots = list(
-            session.scalars(
-                select(DiscoveredWhaleMetric)
+            session.execute(
+                select(DiscoveredWhaleMetric, DiscoveredWhaleIdentity)
+                .join(
+                    DiscoveredWhaleIdentity,
+                    DiscoveredWhaleMetric.identity_id == DiscoveredWhaleIdentity.id,
+                )
                 .where(DiscoveredWhaleMetric.run_id == run_id)
                 .order_by(DiscoveredWhaleMetric.id)
             )
         )
 
         return Whales(
-            whales=[_whale_from_snapshot(snapshot) for snapshot in snapshots],
+            whales=[
+                _whale_from_snapshot(snapshot=snapshot, identity=identity)
+                for snapshot, identity in snapshots
+            ],
             candidate_wallet_count=run.candidate_wallet_count,
             checked_wallet_count=run.checked_wallet_count,
             generated_at=run.generated_at,
@@ -118,7 +129,7 @@ def persist_whale_discovery_run(
             )
         )
         session.flush()
-        _upsert_discovered_whales(
+        identity_ids = _upsert_discovered_whales(
             session=session,
             seen_at=generated_at,
             whales=whales.whales,
@@ -128,6 +139,37 @@ def persist_whale_discovery_run(
             run_id=run_id,
             generated_at=generated_at,
             whales=whales.whales,
+            identity_ids=identity_ids,
+        )
+        session.commit()
+
+
+def persist_failed_whale_discovery_run(
+    *,
+    profile: WhaleDiscoveryProfile,
+    run_id: str,
+    started_at: datetime,
+    finished_at: datetime,
+    generated_at: datetime,
+    error_type: str,
+    error: str,
+) -> None:
+    with database_session() as session:
+        session.add(
+            WhaleDiscoveryRun(
+                run_id=run_id,
+                profile_version=profile.profile_version,
+                status="failed",
+                started_at=started_at,
+                finished_at=finished_at,
+                generated_at=generated_at,
+                candidate_wallet_count=0,
+                checked_wallet_count=0,
+                accepted_wallet_count=0,
+                profile=profile.model_dump(mode="json"),
+                error_type=error_type,
+                error=error,
+            )
         )
         session.commit()
 
@@ -137,7 +179,7 @@ def _upsert_discovered_whales(
     session: Session,
     seen_at: datetime,
     whales: Iterable[Whale],
-) -> None:
+) -> dict[str, int]:
     rows = [
         {
             "proxy_wallet": whale.proxy_wallet,
@@ -149,18 +191,28 @@ def _upsert_discovered_whales(
     ]
 
     if not rows:
-        return
+        return {}
 
-    statement = insert(DiscoveredWhale).values(rows)
+    statement = insert(DiscoveredWhaleIdentity).values(rows)
     update_columns = {
         "identity": statement.excluded.identity,
         "last_seen_at": statement.excluded.last_seen_at,
     }
     session.execute(
         statement.on_conflict_do_update(
-            index_elements=[DiscoveredWhale.proxy_wallet],
+            index_elements=[DiscoveredWhaleIdentity.proxy_wallet],
             set_=update_columns,
         )
+    )
+    return dict(
+        session.execute(
+            select(DiscoveredWhaleIdentity.proxy_wallet, DiscoveredWhaleIdentity.id)
+            .where(
+                DiscoveredWhaleIdentity.proxy_wallet.in_(
+                    [row["proxy_wallet"] for row in rows]
+                )
+            )
+        ).all()
     )
 
 
@@ -170,11 +222,12 @@ def _upsert_metric_snapshots(
     run_id: str,
     generated_at: datetime,
     whales: Iterable[Whale],
+    identity_ids: dict[str, int],
 ) -> None:
     rows = [
         {
             "run_id": run_id,
-            "proxy_wallet": whale.proxy_wallet,
+            "identity_id": identity_ids[whale.proxy_wallet],
             "metrics": whale.metrics.model_dump(mode="json"),
             "collection_quality": whale.metrics.collection_quality.model_dump(
                 mode="json"
@@ -191,13 +244,13 @@ def _upsert_metric_snapshots(
     update_columns = {
         column: getattr(statement.excluded, column)
         for column in rows[0]
-        if column not in {"run_id", "proxy_wallet"}
+        if column not in {"run_id", "identity_id"}
     }
     session.execute(
         statement.on_conflict_do_update(
             index_elements=[
                 DiscoveredWhaleMetric.run_id,
-                DiscoveredWhaleMetric.proxy_wallet,
+                DiscoveredWhaleMetric.identity_id,
             ],
             set_=update_columns,
         )
@@ -216,10 +269,14 @@ def _latest_completed_run_statement():
     )
 
 
-def _whale_from_snapshot(snapshot: DiscoveredWhaleMetric) -> Whale:
+def _whale_from_snapshot(
+    *,
+    snapshot: DiscoveredWhaleMetric,
+    identity: DiscoveredWhaleIdentity,
+) -> Whale:
     metrics = dict(snapshot.metrics)
     metrics.pop("ranking", None)
     return Whale(
-        identity=WhaleIdentity(proxy_wallet=snapshot.proxy_wallet),
+        identity=WhaleIdentity(proxy_wallet=identity.proxy_wallet),
         metrics=WhaleMetrics.model_validate(metrics),
     )

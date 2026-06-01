@@ -23,11 +23,15 @@ class WhaleSelectionRun(Base):
         ForeignKey("polymarket_whale_discovery_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
+    status: Mapped[str] = mapped_column(String, nullable=False, default="completed")
+    config_key: Mapped[str] = mapped_column(String, nullable=False, default="{}")
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     profile: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     ranking_method: Mapped[str] = mapped_column(String, nullable=False)
-    selected_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    removed_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    selected_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    removed_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    error_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    error: Mapped[str | None] = mapped_column(String, nullable=True)
     metrics: Mapped[list["SelectedWhaleMetric"]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
@@ -36,10 +40,10 @@ class WhaleSelectionRun(Base):
 
 
 class SelectedWhale(Base):
-    __tablename__ = "polymarket_selected_whales"
+    __tablename__ = "polymarket_selected_whale_identities"
     __table_args__ = (
         Index(
-            "ux_selected_whales_proxy_wallet",
+            "ux_selected_whale_identities_proxy_wallet",
             "proxy_wallet",
             unique=True,
         ),
@@ -49,6 +53,11 @@ class SelectedWhale(Base):
     proxy_wallet: Mapped[str] = mapped_column(String, nullable=False)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metrics: Mapped[list["SelectedWhaleMetric"]] = relationship(
+        back_populates="identity",
+        cascade="all, delete-orphan",
+        order_by="SelectedWhaleMetric.id",
+    )
 
 
 class SelectedWhaleMetric(Base):
@@ -57,7 +66,7 @@ class SelectedWhaleMetric(Base):
         Index(
             "ux_selected_whale_metrics_run_wallet",
             "run_id",
-            "proxy_wallet",
+            "identity_id",
             unique=True,
         ),
     )
@@ -67,10 +76,21 @@ class SelectedWhaleMetric(Base):
         ForeignKey("polymarket_whale_selection_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
-    proxy_wallet: Mapped[str] = mapped_column(String, nullable=False)
+    identity_id: Mapped[int] = mapped_column(
+        ForeignKey("polymarket_selected_whale_identities.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[float] = mapped_column(Float, nullable=False)
     removed: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     run: Mapped[WhaleSelectionRun] = relationship(back_populates="metrics")
+    identity: Mapped[SelectedWhale] = relationship(
+        back_populates="metrics",
+        lazy="joined",
+    )
+
+    @property
+    def proxy_wallet(self) -> str:
+        return self.identity.proxy_wallet

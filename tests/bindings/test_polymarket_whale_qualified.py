@@ -17,6 +17,7 @@ from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
 from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
     POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVED,
     POLYMARKET_WHALE_QUALIFIED_MARKETS_FAILED as POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_FAILED,
+    POLYMARKET_WHALE_QUALIFIED_MARKETS_SKIPPED,
 )
 from void_liquidity.adapters.polymarket.markets.whales.qualified.events import (
     POLYMARKET_WHALE_QUALIFIED_MARKETS_STARTED as POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_STARTED,
@@ -51,7 +52,7 @@ def _request() -> DomainEvent:
 def _result() -> QualifiedMarketResult:
     profile = WhaleQualifiedMarketProfile(name="high_value")
     return QualifiedMarketResult(
-        profile=profile,
+        profiles=[profile],
         qualified_markets=[
             QualifiedMarket(
                 profile=profile.name,
@@ -78,6 +79,7 @@ def test_polymarket_whale_qualified_binding_declares_runtime_contract() -> None:
         POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVED,
         POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_COMPLETED,
         POLYMARKET_WHALE_QUALIFIED_MARKETS_DERIVATION_FAILED,
+        POLYMARKET_WHALE_QUALIFIED_MARKETS_SKIPPED,
     )
 
 
@@ -85,8 +87,8 @@ def test_polymarket_whale_qualified_binding_derives_and_publishes(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FakeQualifiedMarketService:
-        def __init__(self, profile: WhaleQualifiedMarketProfile) -> None:
-            assert profile.name == "high_value"
+        def __init__(self, profiles) -> None:
+            assert [profile.name for profile in profiles] == ["high_value"]
 
         def run(
             self,
@@ -105,6 +107,11 @@ def test_polymarket_whale_qualified_binding_derives_and_publishes(
         binding_module,
         "WhaleQualifiedMarketService",
         FakeQualifiedMarketService,
+    )
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_qualified_market_run_for_parent",
+        lambda **_: None,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []
@@ -136,8 +143,8 @@ def test_polymarket_whale_qualified_binding_publishes_failed_event(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     class FailingQualifiedMarketService:
-        def __init__(self, profile: WhaleQualifiedMarketProfile) -> None:
-            self.profile = profile
+        def __init__(self, profiles) -> None:
+            self.profiles = profiles
 
         def run(
             self,
@@ -151,6 +158,11 @@ def test_polymarket_whale_qualified_binding_publishes_failed_event(
         binding_module,
         "WhaleQualifiedMarketService",
         FailingQualifiedMarketService,
+    )
+    monkeypatch.setattr(
+        binding_module,
+        "get_completed_qualified_market_run_for_parent",
+        lambda **_: None,
     )
     bus = EventBus()
     emitted_events: list[DomainEvent] = []

@@ -13,15 +13,17 @@ class WhaleDiscoveryRun(Base):
     __tablename__ = "polymarket_whale_discovery_runs"
 
     run_id: Mapped[str] = mapped_column(String, primary_key=True)
-    profile_version: Mapped[str] = mapped_column(String, nullable=False)
     status: Mapped[str] = mapped_column(String, nullable=False, default="completed")
+    profile_version: Mapped[str] = mapped_column(String, nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-    candidate_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    checked_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    accepted_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    candidate_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    checked_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    accepted_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     profile: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    error_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    error: Mapped[str | None] = mapped_column(String, nullable=True)
     metrics: Mapped[list["DiscoveredWhaleMetric"]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
@@ -29,10 +31,10 @@ class WhaleDiscoveryRun(Base):
     )
 
 
-class DiscoveredWhale(Base):
-    __tablename__ = "polymarket_discovered_whales"
+class DiscoveredWhaleIdentity(Base):
+    __tablename__ = "polymarket_discovered_whale_identities"
     __table_args__ = (
-        Index("ux_discovered_whales_proxy_wallet", "proxy_wallet", unique=True),
+        Index("ux_discovered_whale_identities_proxy_wallet", "proxy_wallet", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -40,6 +42,14 @@ class DiscoveredWhale(Base):
     identity: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    metrics: Mapped[list["DiscoveredWhaleMetric"]] = relationship(
+        back_populates="identity",
+        cascade="all, delete-orphan",
+        order_by="DiscoveredWhaleMetric.id",
+    )
+
+
+DiscoveredWhale = DiscoveredWhaleIdentity
 
 
 class DiscoveredWhaleMetric(Base):
@@ -48,7 +58,7 @@ class DiscoveredWhaleMetric(Base):
         Index(
             "ux_discovered_whale_metrics_run_wallet",
             "run_id",
-            "proxy_wallet",
+            "identity_id",
             unique=True,
         ),
     )
@@ -58,8 +68,19 @@ class DiscoveredWhaleMetric(Base):
         ForeignKey("polymarket_whale_discovery_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
-    proxy_wallet: Mapped[str] = mapped_column(String, nullable=False)
+    identity_id: Mapped[int] = mapped_column(
+        ForeignKey("polymarket_discovered_whale_identities.id", ondelete="CASCADE"),
+        nullable=False,
+    )
     metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     collection_quality: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     run: Mapped[WhaleDiscoveryRun] = relationship(back_populates="metrics")
+    identity: Mapped[DiscoveredWhaleIdentity] = relationship(
+        back_populates="metrics",
+        lazy="joined",
+    )
+
+    @property
+    def proxy_wallet(self) -> str:
+        return self.identity.proxy_wallet

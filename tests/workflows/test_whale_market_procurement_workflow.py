@@ -71,7 +71,7 @@ def test_build_whale_market_procurement_scheduler_registers_process_order() -> N
         "whales.discover",
         "whales.select",
         "whales.market_candidates",
-        "whales.qualified.confirmed",
+        "whales.qualified",
     ]
 
     events = [job.event_factory() for job in scheduler.registry]
@@ -82,7 +82,7 @@ def test_build_whale_market_procurement_scheduler_registers_process_order() -> N
         POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
     ]
     assert events[0].payload["profile"]["wallet_count"] == 3
-    assert events[3].payload["profile"]["name"] == "confirmed"
+    assert events[3].payload["profiles"][0]["name"] == "confirmed"
     assert events[3].payload["limit"] == 2
 
 
@@ -128,7 +128,7 @@ def test_run_whale_market_procurement_uses_scheduler_once(
         POLYMARKET_WHALE_MARKETS_REQUESTED,
         POLYMARKET_WHALE_QUALIFIED_MARKETS_REQUESTED,
     ]
-    assert published_events[-1].payload["profile"]["name"] == "pain"
+    assert published_events[-1].payload["profiles"][0]["name"] == "pain"
     assert published_events[-1].payload["limit"] == 1
 
 

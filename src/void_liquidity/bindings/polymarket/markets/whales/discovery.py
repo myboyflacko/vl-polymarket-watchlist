@@ -22,6 +22,9 @@ from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import
 from void_liquidity.adapters.polymarket.markets.whales.discovery.service import (
     WhaleDiscoveryService,
 )
+from void_liquidity.adapters.polymarket.markets.whales.discovery.repository import (
+    persist_failed_whale_discovery_run,
+)
 from void_liquidity.core.bindings import BindingSpec
 from void_liquidity.core.cache import WorkflowCache
 from void_liquidity.core.events import DomainEvent, EventBus
@@ -30,9 +33,6 @@ from void_liquidity.core.events import DomainEvent, EventBus
 EVENT_SOURCE = "binding.polymarket.markets.whales.discovery"
 ADAPTER_NAME = "polymarket.markets.whales.discovery"
 PROVIDER_NAME = "polymarket"
-CACHE_NAMESPACE = "polymarket.markets.whales.discovery"
-
-
 def _build_run_id(generated_at: datetime) -> str:
     return generated_at.strftime("%Y%m%dT%H%M%S%fZ")
 
@@ -76,9 +76,9 @@ class PolymarketWhaleDiscoveryBinding:
             "adapter": ADAPTER_NAME,
             "provider": PROVIDER_NAME,
         }
+        profile = _profile_from_payload(event.payload)
 
         try:
-            profile = _profile_from_payload(event.payload)
             tracker = WhaleDiscoveryService(profile=profile)
             await bus.publish(
                 DomainEvent.create(
@@ -151,10 +151,6 @@ class PolymarketWhaleDiscoveryBinding:
                 )
                 raise
 
-            if cache is not None:
-                cache.set(CACHE_NAMESPACE, "latest_run_id", run_id)
-                cache.set(CACHE_NAMESPACE, "latest", whales)
-
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_DISCOVERY_PERSIST_COMPLETED,
@@ -187,6 +183,18 @@ class PolymarketWhaleDiscoveryBinding:
                 )
             )
         except Exception as exc:
+            try:
+                persist_failed_whale_discovery_run(
+                    profile=profile,
+                    run_id=run_id,
+                    started_at=started_at,
+                    finished_at=datetime.now(UTC),
+                    generated_at=started_at,
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                )
+            except Exception:
+                pass
             await bus.publish(
                 DomainEvent.create(
                     event_type=POLYMARKET_WHALE_DISCOVERY_FAILED,

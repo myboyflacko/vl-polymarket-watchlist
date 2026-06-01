@@ -22,11 +22,15 @@ class WhaleMarketCandidateRun(Base):
         ForeignKey("polymarket_whale_selection_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
+    status: Mapped[str] = mapped_column(String, nullable=False, default="completed")
+    config_key: Mapped[str] = mapped_column(String, nullable=False, default="{}")
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     min_whale_count: Mapped[int] = mapped_column(Integer, nullable=False)
     candidate_count: Mapped[int] = mapped_column(Integer, nullable=False)
     position_count: Mapped[int] = mapped_column(Integer, nullable=False)
     error_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    error_type: Mapped[str | None] = mapped_column(String, nullable=True)
+    error: Mapped[str | None] = mapped_column(String, nullable=True)
     snapshots: Mapped[list["WhaleMarketMetricSnapshot"]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
@@ -35,14 +39,15 @@ class WhaleMarketCandidateRun(Base):
 
 
 class WhaleMarket(Base):
-    __tablename__ = "polymarket_whale_markets"
+    __tablename__ = "polymarket_whale_market_identities"
     __table_args__ = (
-        Index("ix_whale_markets_condition_id", "condition_id"),
-        Index("ix_whale_markets_end_date", "end_date"),
+        Index("ux_whale_market_identities_token_id", "token_id", unique=True),
+        Index("ix_whale_market_identities_condition_id", "condition_id"),
+        Index("ix_whale_market_identities_end_date", "end_date"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    token_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    token_id: Mapped[str] = mapped_column(String, nullable=False)
     condition_id: Mapped[str] = mapped_column(String, nullable=False)
     title: Mapped[str] = mapped_column(String, nullable=False)
     slug: Mapped[str] = mapped_column(String, nullable=False)
@@ -74,10 +79,10 @@ class WhaleMarketMetricSnapshot(Base):
         Index(
             "ux_whale_market_metric_snapshots_run_token",
             "run_id",
-            "token_id",
+            "identity_id",
             unique=True,
         ),
-        Index("ix_whale_market_metric_snapshots_token_id", "token_id"),
+        Index("ix_whale_market_metric_snapshots_identity_id", "identity_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -85,8 +90,8 @@ class WhaleMarketMetricSnapshot(Base):
         ForeignKey("polymarket_whale_market_candidate_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
-    token_id: Mapped[str] = mapped_column(
-        ForeignKey("polymarket_whale_markets.token_id", ondelete="CASCADE"),
+    identity_id: Mapped[int] = mapped_column(
+        ForeignKey("polymarket_whale_market_identities.id", ondelete="CASCADE"),
         nullable=False,
     )
     whale_count: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -97,4 +102,8 @@ class WhaleMarketMetricSnapshot(Base):
     cur_price: Mapped[float] = mapped_column(Float, nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     run: Mapped[WhaleMarketCandidateRun] = relationship(back_populates="snapshots")
-    market: Mapped[WhaleMarket] = relationship(back_populates="snapshots")
+    market: Mapped[WhaleMarket] = relationship(back_populates="snapshots", lazy="joined")
+
+    @property
+    def token_id(self) -> str:
+        return self.market.token_id
