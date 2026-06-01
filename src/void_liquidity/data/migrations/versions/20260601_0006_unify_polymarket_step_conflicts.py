@@ -35,6 +35,16 @@ def downgrade() -> None:
 
 def _rebuild_discovered_whales() -> None:
     connection = op.get_bind()
+    columns = _table_columns("polymarket_discovered_whales")
+    if "generated_at" not in columns:
+        _create_index_if_missing(
+            "ux_discovered_whales_proxy_wallet",
+            "polymarket_discovered_whales",
+            ["proxy_wallet"],
+            unique=True,
+        )
+        return
+
     rows = connection.execute(
         sa.text(
             """
@@ -60,8 +70,8 @@ def _rebuild_discovered_whales() -> None:
         current["last_seen_at"] = generated_at
         current["identity"] = row["identity"]
 
-    op.drop_index("ux_discovered_whales_run_wallet", table_name="polymarket_discovered_whales")
-    op.drop_index("ix_discovered_whales_proxy_wallet", table_name="polymarket_discovered_whales")
+    _drop_index_if_exists("ux_discovered_whales_run_wallet", "polymarket_discovered_whales")
+    _drop_index_if_exists("ix_discovered_whales_proxy_wallet", "polymarket_discovered_whales")
     op.drop_table("polymarket_discovered_whales")
     op.create_table(
         "polymarket_discovered_whales",
@@ -105,11 +115,11 @@ def _dedupe_discovery_metrics() -> None:
             """
         )
     )
-    op.drop_index(
+    _drop_index_if_exists(
         "ix_discovered_whale_metrics_run_wallet",
-        table_name="polymarket_discovered_whale_metrics",
+        "polymarket_discovered_whale_metrics",
     )
-    op.create_index(
+    _create_index_if_missing(
         "ux_discovered_whale_metrics_run_wallet",
         "polymarket_discovered_whale_metrics",
         ["run_id", "proxy_wallet"],
@@ -119,6 +129,16 @@ def _dedupe_discovery_metrics() -> None:
 
 def _rebuild_selected_whales() -> None:
     connection = op.get_bind()
+    columns = _table_columns("polymarket_selected_whales")
+    if "run_id" not in columns:
+        _create_index_if_missing(
+            "ux_selected_whales_proxy_wallet",
+            "polymarket_selected_whales",
+            ["proxy_wallet"],
+            unique=True,
+        )
+        return
+
     rows = connection.execute(
         sa.text(
             """
@@ -143,7 +163,7 @@ def _rebuild_selected_whales() -> None:
             continue
         current["last_seen_at"] = generated_at
 
-    op.drop_index("ux_selected_whales_run_wallet", table_name="polymarket_selected_whales")
+    _drop_index_if_exists("ux_selected_whales_run_wallet", "polymarket_selected_whales")
     op.drop_table("polymarket_selected_whales")
     op.create_table(
         "polymarket_selected_whales",
@@ -173,8 +193,11 @@ def _rebuild_selected_whales() -> None:
 
 def _dedupe_selection_metrics() -> None:
     connection = op.get_bind()
-    with op.batch_alter_table("polymarket_selected_whale_metrics") as batch_op:
-        batch_op.add_column(sa.Column("removed", sa.Integer(), nullable=False, server_default="0"))
+    if "removed" not in _table_columns("polymarket_selected_whale_metrics"):
+        with op.batch_alter_table("polymarket_selected_whale_metrics") as batch_op:
+            batch_op.add_column(
+                sa.Column("removed", sa.Integer(), nullable=False, server_default="0")
+            )
     connection.execute(
         sa.text(
             """
@@ -200,11 +223,11 @@ def _dedupe_selection_metrics() -> None:
             """
         )
     )
-    op.drop_index(
+    _drop_index_if_exists(
         "ix_selected_whale_metrics_run_wallet",
-        table_name="polymarket_selected_whale_metrics",
+        "polymarket_selected_whale_metrics",
     )
-    op.create_index(
+    _create_index_if_missing(
         "ux_selected_whale_metrics_run_wallet",
         "polymarket_selected_whale_metrics",
         ["run_id", "proxy_wallet"],
@@ -214,6 +237,13 @@ def _dedupe_selection_metrics() -> None:
 
 def _rebuild_qualified_markets() -> None:
     connection = op.get_bind()
+    if _table_exists("polymarket_qualified_market_metric_snapshots"):
+        return
+    old_columns = _table_columns("polymarket_qualified_markets")
+    if "profile_name" not in old_columns:
+        _create_qualified_metric_snapshot_table()
+        return
+
     old_rows = list(
         connection.execute(
             sa.text(
@@ -227,9 +257,9 @@ def _rebuild_qualified_markets() -> None:
         ).mappings()
     )
 
-    op.drop_index(
+    _drop_index_if_exists(
         "ux_qualified_markets_run_token_profile",
-        table_name="polymarket_qualified_markets",
+        "polymarket_qualified_markets",
     )
     op.drop_table("polymarket_qualified_markets")
     op.create_table(
@@ -266,43 +296,7 @@ def _rebuild_qualified_markets() -> None:
         ["end_date"],
         unique=False,
     )
-    op.create_table(
-        "polymarket_qualified_market_metric_snapshots",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("run_id", sa.String(), nullable=False),
-        sa.Column("token_id", sa.String(), nullable=False),
-        sa.Column("profile_name", sa.String(), nullable=False),
-        sa.Column("rank", sa.Integer(), nullable=False),
-        sa.Column("score", sa.Float(), nullable=False),
-        sa.Column("price_delta", sa.Float(), nullable=False),
-        sa.Column("price_delta_pct", sa.Float(), nullable=True),
-        sa.Column("value_per_wallet", sa.Float(), nullable=False),
-        sa.Column("candidate", sa.JSON(), nullable=False),
-        sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["run_id"],
-            ["polymarket_qualified_market_runs.run_id"],
-            ondelete="CASCADE",
-        ),
-        sa.ForeignKeyConstraint(
-            ["token_id"],
-            ["polymarket_qualified_markets.token_id"],
-            ondelete="CASCADE",
-        ),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        "ux_qualified_market_metric_snapshots_run_token_profile",
-        "polymarket_qualified_market_metric_snapshots",
-        ["run_id", "token_id", "profile_name"],
-        unique=True,
-    )
-    op.create_index(
-        "ix_qualified_market_metric_snapshots_token_id",
-        "polymarket_qualified_market_metric_snapshots",
-        ["token_id"],
-        unique=False,
-    )
+    _create_qualified_metric_snapshot_table()
 
     identities: dict[str, dict] = {}
     snapshots: list[dict] = []
@@ -376,6 +370,95 @@ def _candidate_payload(value) -> dict:
     if isinstance(value, str):
         return json.loads(value)
     return dict(value)
+
+
+def _create_qualified_metric_snapshot_table() -> None:
+    op.create_table(
+        "polymarket_qualified_market_metric_snapshots",
+        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column("run_id", sa.String(), nullable=False),
+        sa.Column("token_id", sa.String(), nullable=False),
+        sa.Column("profile_name", sa.String(), nullable=False),
+        sa.Column("rank", sa.Integer(), nullable=False),
+        sa.Column("score", sa.Float(), nullable=False),
+        sa.Column("price_delta", sa.Float(), nullable=False),
+        sa.Column("price_delta_pct", sa.Float(), nullable=True),
+        sa.Column("value_per_wallet", sa.Float(), nullable=False),
+        sa.Column("candidate", sa.JSON(), nullable=False),
+        sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
+        sa.ForeignKeyConstraint(
+            ["run_id"],
+            ["polymarket_qualified_market_runs.run_id"],
+            ondelete="CASCADE",
+        ),
+        sa.ForeignKeyConstraint(
+            ["token_id"],
+            ["polymarket_qualified_markets.token_id"],
+            ondelete="CASCADE",
+        ),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        "ux_qualified_market_metric_snapshots_run_token_profile",
+        "polymarket_qualified_market_metric_snapshots",
+        ["run_id", "token_id", "profile_name"],
+        unique=True,
+    )
+    op.create_index(
+        "ix_qualified_market_metric_snapshots_token_id",
+        "polymarket_qualified_market_metric_snapshots",
+        ["token_id"],
+        unique=False,
+    )
+
+
+def _table_exists(table_name: str) -> bool:
+    connection = op.get_bind()
+    return (
+        connection.execute(
+            sa.text(
+                """
+                SELECT 1
+                FROM sqlite_master
+                WHERE type = 'table' AND name = :table_name
+                """
+            ),
+            {"table_name": table_name},
+        ).first()
+        is not None
+    )
+
+
+def _table_columns(table_name: str) -> set[str]:
+    connection = op.get_bind()
+    return {
+        row[1]
+        for row in connection.execute(sa.text(f"PRAGMA table_info({table_name})"))
+    }
+
+
+def _table_indexes(table_name: str) -> set[str]:
+    connection = op.get_bind()
+    return {
+        row[1]
+        for row in connection.execute(sa.text(f"PRAGMA index_list({table_name})"))
+    }
+
+
+def _drop_index_if_exists(index_name: str, table_name: str) -> None:
+    if index_name in _table_indexes(table_name):
+        op.drop_index(index_name, table_name=table_name)
+
+
+def _create_index_if_missing(
+    index_name: str,
+    table_name: str,
+    columns: list[str],
+    *,
+    unique: bool,
+) -> None:
+    if index_name not in _table_indexes(table_name):
+        op.create_index(index_name, table_name, columns, unique=unique)
 
 
 def _qualified_identity_row(
