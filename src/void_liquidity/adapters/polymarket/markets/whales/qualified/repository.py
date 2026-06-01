@@ -3,14 +3,20 @@ from __future__ import annotations
 from datetime import datetime
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.orm import Session
 
+from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import (
+    MarketCandidate,
+)
 from void_liquidity.adapters.polymarket.markets.whales.qualified.domain import (
     QualifiedMarket,
     QualifiedMarketResult,
     WhaleQualifiedMarketProfile,
 )
 from void_liquidity.adapters.polymarket.markets.whales.qualified.models import (
-    QualifiedMarketRow,
+    QualifiedMarketIdentity,
+    QualifiedMarketMetricSnapshot,
     QualifiedMarketRun,
 )
 from void_liquidity.data.engine import database_session
@@ -50,20 +56,16 @@ def persist_qualified_market_run(
                 limit=limit,
             )
         )
-        session.add_all(
-            QualifiedMarketRow(
-                run_id=run_id,
-                token_id=market.candidate.token_id,
-                profile_name=market.profile,
-                rank=index,
-                score=market.score,
-                price_delta=market.price_delta,
-                price_delta_pct=market.price_delta_pct,
-                value_per_wallet=market.value_per_wallet,
-                candidate=market.candidate.model_dump(mode="json"),
-                generated_at=generated_at,
-            )
-            for index, market in enumerate(result.qualified_markets, start=1)
+        _upsert_qualified_markets(
+            session=session,
+            markets=result.qualified_markets,
+            seen_at=generated_at,
+        )
+        _upsert_metric_snapshots(
+            session=session,
+            markets=result.qualified_markets,
+            run_id=run_id,
+            generated_at=generated_at,
         )
         session.commit()
 
@@ -77,10 +79,15 @@ def list_qualified_markets(run_id: str) -> QualifiedMarketResult:
                 qualified_markets=[],
             )
         rows = list(
-            session.scalars(
-                select(QualifiedMarketRow)
-                .where(QualifiedMarketRow.run_id == run_id)
-                .order_by(QualifiedMarketRow.rank)
+            session.execute(
+                select(QualifiedMarketIdentity, QualifiedMarketMetricSnapshot)
+                .join(
+                    QualifiedMarketMetricSnapshot,
+                    QualifiedMarketMetricSnapshot.token_id
+                    == QualifiedMarketIdentity.token_id,
+                )
+                .where(QualifiedMarketMetricSnapshot.run_id == run_id)
+                .order_by(QualifiedMarketMetricSnapshot.rank)
             )
         )
 
@@ -89,14 +96,14 @@ def list_qualified_markets(run_id: str) -> QualifiedMarketResult:
         profile=profile,
         qualified_markets=[
             QualifiedMarket(
-                profile=row.profile_name,
-                candidate=row.candidate,
-                score=row.score,
-                price_delta=row.price_delta,
-                price_delta_pct=row.price_delta_pct,
-                value_per_wallet=row.value_per_wallet,
+                profile=snapshot.profile_name,
+                candidate=_candidate_from_snapshot(market=market, snapshot=snapshot),
+                score=snapshot.score,
+                price_delta=snapshot.price_delta,
+                price_delta_pct=snapshot.price_delta_pct,
+                value_per_wallet=snapshot.value_per_wallet,
             )
-            for row in rows
+            for market, snapshot in rows
         ],
     )
 
@@ -110,3 +117,130 @@ def list_latest_qualified_markets() -> QualifiedMarketResult:
         )
 
     return list_qualified_markets(latest_run_id)
+
+
+def _upsert_qualified_markets(
+    *,
+    session: Session,
+    markets: list[QualifiedMarket],
+    seen_at: datetime,
+) -> None:
+    rows = [
+        _market_identity_row(candidate=market.candidate, seen_at=seen_at)
+        for market in markets
+    ]
+    if not rows:
+        return
+
+    statement = insert(QualifiedMarketIdentity).values(rows)
+    update_columns = {
+        column: getattr(statement.excluded, column)
+        for column in rows[0]
+        if column not in {"token_id", "first_seen_at"}
+    }
+    session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[QualifiedMarketIdentity.token_id],
+            set_=update_columns,
+        )
+    )
+
+
+def _upsert_metric_snapshots(
+    *,
+    session: Session,
+    markets: list[QualifiedMarket],
+    run_id: str,
+    generated_at: datetime,
+) -> None:
+    rows = [
+        _metric_snapshot_row(
+            market=market,
+            run_id=run_id,
+            rank=index,
+            generated_at=generated_at,
+        )
+        for index, market in enumerate(markets, start=1)
+    ]
+    if not rows:
+        return
+
+    statement = insert(QualifiedMarketMetricSnapshot).values(rows)
+    update_columns = {
+        column: getattr(statement.excluded, column)
+        for column in rows[0]
+        if column not in {"run_id", "token_id", "profile_name"}
+    }
+    session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[
+                QualifiedMarketMetricSnapshot.run_id,
+                QualifiedMarketMetricSnapshot.token_id,
+                QualifiedMarketMetricSnapshot.profile_name,
+            ],
+            set_=update_columns,
+        )
+    )
+
+
+def _market_identity_row(
+    *,
+    candidate: MarketCandidate,
+    seen_at: datetime,
+) -> dict:
+    return {
+        "token_id": candidate.token_id,
+        "condition_id": candidate.condition_id,
+        "title": candidate.title,
+        "slug": candidate.slug,
+        "outcome": candidate.outcome,
+        "opposite_token_id": candidate.opposite_token_id,
+        "opposite_outcome": candidate.opposite_outcome,
+        "end_date": candidate.end_date,
+        "negative_risk": candidate.negative_risk,
+        "first_seen_at": seen_at,
+        "last_seen_at": seen_at,
+    }
+
+
+def _metric_snapshot_row(
+    *,
+    market: QualifiedMarket,
+    run_id: str,
+    rank: int,
+    generated_at: datetime,
+) -> dict:
+    return {
+        "run_id": run_id,
+        "token_id": market.candidate.token_id,
+        "profile_name": market.profile,
+        "rank": rank,
+        "score": market.score,
+        "price_delta": market.price_delta,
+        "price_delta_pct": market.price_delta_pct,
+        "value_per_wallet": market.value_per_wallet,
+        "candidate": market.candidate.model_dump(mode="json"),
+        "generated_at": generated_at,
+    }
+
+
+def _candidate_from_snapshot(
+    *,
+    market: QualifiedMarketIdentity,
+    snapshot: QualifiedMarketMetricSnapshot,
+) -> MarketCandidate:
+    candidate = dict(snapshot.candidate)
+    candidate.update(
+        {
+            "token_id": market.token_id,
+            "condition_id": market.condition_id,
+            "title": market.title,
+            "slug": market.slug,
+            "outcome": market.outcome,
+            "opposite_token_id": market.opposite_token_id,
+            "opposite_outcome": market.opposite_outcome,
+            "end_date": market.end_date,
+            "negative_risk": market.negative_risk,
+        }
+    )
+    return MarketCandidate.model_validate(candidate)

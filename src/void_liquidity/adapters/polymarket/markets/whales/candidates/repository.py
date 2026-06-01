@@ -133,7 +133,7 @@ def persist_market_candidates(
     candidate_list = list(candidates)
 
     with database_session() as session:
-        session.merge(
+        session.add(
             WhaleMarketCandidateRun(
                 run_id=run_id,
                 selection_run_id=selection_run_id,

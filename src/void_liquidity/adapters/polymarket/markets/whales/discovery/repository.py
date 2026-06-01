@@ -35,9 +35,9 @@ def list_discovered_whale_wallets(run_id: str) -> list[str]:
     with database_session() as session:
         return list(
             session.scalars(
-                select(DiscoveredWhale.proxy_wallet)
-                .where(DiscoveredWhale.run_id == run_id)
-                .order_by(DiscoveredWhale.id)
+                select(DiscoveredWhaleMetric.proxy_wallet)
+                .where(DiscoveredWhaleMetric.run_id == run_id)
+                .order_by(DiscoveredWhaleMetric.id)
             )
         )
 
@@ -118,13 +118,12 @@ def persist_whale_discovery_run(
             )
         )
         session.flush()
-        _insert_discovered_whales(
+        _upsert_discovered_whales(
             session=session,
-            run_id=run_id,
             seen_at=generated_at,
             whales=whales.whales,
         )
-        _insert_metric_snapshots(
+        _upsert_metric_snapshots(
             session=session,
             run_id=run_id,
             generated_at=generated_at,
@@ -133,19 +132,18 @@ def persist_whale_discovery_run(
         session.commit()
 
 
-def _insert_discovered_whales(
+def _upsert_discovered_whales(
     *,
     session: Session,
-    run_id: str,
     seen_at: datetime,
     whales: Iterable[Whale],
 ) -> None:
     rows = [
         {
-            "run_id": run_id,
             "proxy_wallet": whale.proxy_wallet,
             "identity": whale.identity.model_dump(mode="json"),
-            "generated_at": seen_at,
+            "first_seen_at": seen_at,
+            "last_seen_at": seen_at,
         }
         for whale in whales
     ]
@@ -154,17 +152,19 @@ def _insert_discovered_whales(
         return
 
     statement = insert(DiscoveredWhale).values(rows)
+    update_columns = {
+        "identity": statement.excluded.identity,
+        "last_seen_at": statement.excluded.last_seen_at,
+    }
     session.execute(
-        statement.on_conflict_do_nothing(
-            index_elements=[
-                DiscoveredWhale.run_id,
-                DiscoveredWhale.proxy_wallet,
-            ],
+        statement.on_conflict_do_update(
+            index_elements=[DiscoveredWhale.proxy_wallet],
+            set_=update_columns,
         )
     )
 
 
-def _insert_metric_snapshots(
+def _upsert_metric_snapshots(
     *,
     session: Session,
     run_id: str,
@@ -184,8 +184,24 @@ def _insert_metric_snapshots(
         for whale in whales
     ]
 
-    if rows:
-        session.add_all(DiscoveredWhaleMetric(**row) for row in rows)
+    if not rows:
+        return
+
+    statement = insert(DiscoveredWhaleMetric).values(rows)
+    update_columns = {
+        column: getattr(statement.excluded, column)
+        for column in rows[0]
+        if column not in {"run_id", "proxy_wallet"}
+    }
+    session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[
+                DiscoveredWhaleMetric.run_id,
+                DiscoveredWhaleMetric.proxy_wallet,
+            ],
+            set_=update_columns,
+        )
+    )
 
 
 def _latest_completed_run_statement():

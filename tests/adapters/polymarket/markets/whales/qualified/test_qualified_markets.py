@@ -24,6 +24,8 @@ from void_liquidity.adapters.polymarket.markets.whales.qualified.service import 
     list_qualified_markets,
 )
 from void_liquidity.adapters.polymarket.markets.whales.qualified.models import (
+    QualifiedMarketIdentity,
+    QualifiedMarketMetricSnapshot,
     QualifiedMarketRun,
 )
 from void_liquidity.data.base import Base
@@ -32,6 +34,7 @@ from void_liquidity.settings import get_settings
 
 
 NOW = datetime(2026, 5, 31, tzinfo=UTC)
+LATER = datetime(2026, 6, 1, tzinfo=UTC)
 
 
 def test_list_qualified_markets_filters_confirmed_candidates(monkeypatch) -> None:
@@ -144,13 +147,83 @@ def test_whale_qualified_market_service_persists_run_linked_to_candidates(
 
     with database_session(database_path) as session:
         run = session.scalar(select(QualifiedMarketRun))
+        market = session.scalar(select(QualifiedMarketIdentity))
+        snapshot = session.scalar(select(QualifiedMarketMetricSnapshot))
 
     assert run is not None
     assert run.candidate_run_id == "candidate-run-1"
     assert run.qualified_market_count == 1
+    assert market is not None
+    assert market.token_id == "token-1"
+    assert market.first_seen_at == _sqlite_datetime(NOW)
+    assert market.last_seen_at == _sqlite_datetime(NOW)
+    assert snapshot is not None
+    assert snapshot.run_id == "qualified-run-1"
+    assert snapshot.token_id == "token-1"
+    assert snapshot.profile_name == "high_value"
+    assert snapshot.score == 90
     assert [market.candidate.token_id for market in persisted.qualified_markets] == [
         "token-1"
     ]
+
+
+def test_whale_qualified_market_persist_dedupes_market_and_appends_snapshots(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    database_path = _prepare_database(monkeypatch, tmp_path)
+    _insert_parent_runs(database_path)
+    service = WhaleQualifiedMarketService(
+        profile=WhaleQualifiedMarketProfile(name="high_value"),
+    )
+
+    persist_market_candidates(
+        [_candidate(token_id="token-1", total_current_value=90)],
+        run_id="candidate-run-1",
+        selection_run_id="selection-run-1",
+        min_whale_count=3,
+        position_count=3,
+        error_count=0,
+        seen_at=NOW,
+    )
+    service.persist(
+        result=service.run(candidate_run_id="candidate-run-1"),
+        run_id="qualified-run-1",
+        candidate_run_id="candidate-run-1",
+        generated_at=NOW,
+    )
+    persist_market_candidates(
+        [_candidate(token_id="token-1", total_current_value=120)],
+        run_id="candidate-run-2",
+        selection_run_id="selection-run-1",
+        min_whale_count=3,
+        position_count=3,
+        error_count=0,
+        seen_at=LATER,
+    )
+    service.persist(
+        result=service.run(candidate_run_id="candidate-run-2"),
+        run_id="qualified-run-2",
+        candidate_run_id="candidate-run-2",
+        generated_at=LATER,
+    )
+
+    with database_session(database_path) as session:
+        identities = session.scalars(select(QualifiedMarketIdentity)).all()
+        snapshots = session.scalars(
+            select(QualifiedMarketMetricSnapshot).order_by(
+                QualifiedMarketMetricSnapshot.run_id
+            )
+        ).all()
+
+    assert len(identities) == 1
+    assert identities[0].first_seen_at == _sqlite_datetime(NOW)
+    assert identities[0].last_seen_at == _sqlite_datetime(LATER)
+    assert [snapshot.run_id for snapshot in snapshots] == [
+        "qualified-run-1",
+        "qualified-run-2",
+    ]
+    assert [snapshot.score for snapshot in snapshots] == [90, 120]
 
 
 def _prepare_database(monkeypatch, tmp_path: Path) -> Path:
@@ -216,3 +289,7 @@ def _candidate(
         opposite_outcome="No",
         end_date=date(2026, 7, 20),
     )
+
+
+def _sqlite_datetime(value: datetime) -> datetime:
+    return value.replace(tzinfo=None)

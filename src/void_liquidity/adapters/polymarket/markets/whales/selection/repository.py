@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.orm import Session
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.domain import (
     Whale,
@@ -43,12 +45,12 @@ def list_selected_whale_wallets(run_id: str) -> list[str]:
     with database_session() as session:
         return list(
             session.scalars(
-                select(SelectedWhale.proxy_wallet)
+                select(SelectedWhaleMetric.proxy_wallet)
                 .where(
-                    SelectedWhale.run_id == run_id,
-                    SelectedWhale.removed == 0,
+                    SelectedWhaleMetric.run_id == run_id,
+                    SelectedWhaleMetric.removed == 0,
                 )
-                .order_by(SelectedWhale.rank)
+                .order_by(SelectedWhaleMetric.rank)
             )
         )
 
@@ -111,17 +113,25 @@ def persist_whale_selection_run(
         )
         for ranked in ranking.removed_whales
     ]
-    metric_rows = [
+    ranked_metric_rows = [
         _metric_row(
             run_id=run_id,
             ranked_whale=ranked,
             rank=index,
+            removed=0,
             generated_at=generated_at,
         )
-        for index, ranked in enumerate(
-            [*ranking.ranked_whales, *ranking.removed_whales],
-            start=1,
+        for index, ranked in enumerate(ranking.ranked_whales, start=1)
+    ]
+    removed_metric_rows = [
+        _metric_row(
+            run_id=run_id,
+            ranked_whale=ranked,
+            rank=0,
+            removed=1,
+            generated_at=generated_at,
         )
+        for ranked in ranking.removed_whales
     ]
 
     with database_session() as session:
@@ -136,18 +146,21 @@ def persist_whale_selection_run(
                 removed_wallet_count=len(ranking.removed_whales),
             )
         )
-        session.add_all(SelectedWhale(**row) for row in [*ranked_rows, *removed_rows])
-        session.add_all(SelectedWhaleMetric(**row) for row in metric_rows)
+        _upsert_selected_whales(
+            session=session,
+            rows=[*ranked_rows, *removed_rows],
+            seen_at=generated_at,
+        )
+        _upsert_metric_snapshots(
+            session=session,
+            rows=[*ranked_metric_rows, *removed_metric_rows],
+        )
         session.commit()
 
 
 def _selected_row(*, run_id: str, ranked_whale, rank: int, removed: int) -> dict:
     return {
-        "run_id": run_id,
         "proxy_wallet": ranked_whale.whale.proxy_wallet,
-        "rank": rank,
-        "score": ranked_whale.score,
-        "removed": removed,
     }
 
 
@@ -156,6 +169,7 @@ def _metric_row(
     run_id: str,
     ranked_whale,
     rank: int,
+    removed: int,
     generated_at: datetime,
 ) -> dict:
     whale: Whale = ranked_whale.whale
@@ -164,6 +178,54 @@ def _metric_row(
         "proxy_wallet": whale.proxy_wallet,
         "rank": rank,
         "score": ranked_whale.score,
+        "removed": removed,
         "metrics": whale.metrics.model_dump(mode="json"),
         "generated_at": generated_at,
     }
+
+
+def _upsert_selected_whales(
+    *,
+    session: Session,
+    rows: list[dict],
+    seen_at: datetime,
+) -> None:
+    identity_rows = [
+        {
+            "proxy_wallet": row["proxy_wallet"],
+            "first_seen_at": seen_at,
+            "last_seen_at": seen_at,
+        }
+        for row in rows
+    ]
+    if not identity_rows:
+        return
+
+    statement = insert(SelectedWhale).values(identity_rows)
+    session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[SelectedWhale.proxy_wallet],
+            set_={"last_seen_at": statement.excluded.last_seen_at},
+        )
+    )
+
+
+def _upsert_metric_snapshots(*, session: Session, rows: list[dict]) -> None:
+    if not rows:
+        return
+
+    statement = insert(SelectedWhaleMetric).values(rows)
+    update_columns = {
+        column: getattr(statement.excluded, column)
+        for column in rows[0]
+        if column not in {"run_id", "proxy_wallet"}
+    }
+    session.execute(
+        statement.on_conflict_do_update(
+            index_elements=[
+                SelectedWhaleMetric.run_id,
+                SelectedWhaleMetric.proxy_wallet,
+            ],
+            set_=update_columns,
+        )
+    )

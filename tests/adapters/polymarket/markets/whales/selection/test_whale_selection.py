@@ -1,6 +1,8 @@
 from datetime import UTC, datetime
 from pathlib import Path
 
+from sqlalchemy import select
+
 from void_liquidity.adapters.polymarket.markets.whales.discovery.profiles import (
     WhaleDiscoveryProfile,
 )
@@ -25,6 +27,8 @@ from void_liquidity.adapters.polymarket.markets.whales.selection import (
     service as selection_module,
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.models import (
+    SelectedWhale,
+    SelectedWhaleMetric,
     WhaleSelectionRun,
 )
 from void_liquidity.adapters.polymarket.markets.whales.selection.service import (
@@ -148,10 +152,23 @@ def test_whale_selection_service_persists_run_linked_to_discovery(
 
     with database_session(database_path) as session:
         run = session.get(WhaleSelectionRun, "selection-run-1")
+        selected_identities = session.scalars(select(SelectedWhale)).all()
+        metric_snapshots = session.scalars(
+            select(SelectedWhaleMetric).order_by(SelectedWhaleMetric.rank)
+        ).all()
 
     assert run is not None
     assert run.discovery_run_id == "discovery-run-1"
     assert run.selected_wallet_count == 2
+    assert {identity.proxy_wallet for identity in selected_identities} == {
+        "wallet-high",
+        "wallet-low",
+    }
+    assert [snapshot.proxy_wallet for snapshot in metric_snapshots] == [
+        "wallet-high",
+        "wallet-low",
+    ]
+    assert [snapshot.removed for snapshot in metric_snapshots] == [0, 0]
     assert list_selected_whale_wallets("selection-run-1") == [
         "wallet-high",
         "wallet-low",

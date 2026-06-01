@@ -1,7 +1,9 @@
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+import pytest
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from void_liquidity.adapters.polymarket.markets.whales.candidates.domain import MarketCandidate
 from void_liquidity.adapters.polymarket.markets.whales.candidates.models import (
@@ -162,11 +164,11 @@ def test_persist_market_candidates_updates_existing_candidate_on_token_conflict(
     assert snapshots[1].cur_price == 0.6
 
 
-def test_persist_market_candidates_updates_snapshot_on_same_run_token_conflict(
+def test_persist_market_candidates_rejects_duplicate_run_id(
     monkeypatch,
     tmp_path: Path,
 ) -> None:
-    database_path = _prepare_database(monkeypatch, tmp_path)
+    _prepare_database(monkeypatch, tmp_path)
 
     persist_market_candidates(
         [_candidate()],
@@ -177,28 +179,17 @@ def test_persist_market_candidates_updates_snapshot_on_same_run_token_conflict(
         error_count=0,
         seen_at=NOW,
     )
-    persist_market_candidates(
-        [_candidate(whale_count=5, total_current_value=35)],
-        run_id="run-1",
-        selection_run_id="selection-run",
-        min_whale_count=4,
-        position_count=12,
-        error_count=1,
-        seen_at=NOW,
-    )
 
-    with database_session(database_path) as session:
-        run = session.scalar(select(WhaleMarketCandidateRun))
-        snapshots = session.scalars(select(WhaleMarketMetricSnapshot)).all()
-
-    assert run is not None
-    assert run.min_whale_count == 4
-    assert run.candidate_count == 1
-    assert run.position_count == 12
-    assert run.error_count == 1
-    assert len(snapshots) == 1
-    assert snapshots[0].whale_count == 5
-    assert snapshots[0].total_current_value == 35
+    with pytest.raises(IntegrityError):
+        persist_market_candidates(
+            [_candidate(whale_count=5, total_current_value=35)],
+            run_id="run-1",
+            selection_run_id="selection-run",
+            min_whale_count=4,
+            position_count=12,
+            error_count=1,
+            seen_at=NOW,
+        )
 
 
 def test_get_latest_market_candidate_run_returns_none_without_runs(
