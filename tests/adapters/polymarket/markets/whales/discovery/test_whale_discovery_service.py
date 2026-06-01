@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import httpx
 from sqlalchemy import select
 
 from void_liquidity.adapters.polymarket.markets.whales.discovery.models import (
@@ -103,6 +104,16 @@ def _trade(
 
 def _condition_id(value: int) -> str:
     return f"0x{value:064x}"
+
+
+def _http_status_error(status_code: int, url: str = "https://data-api.test") -> httpx.HTTPStatusError:
+    request = httpx.Request("GET", url)
+    response = httpx.Response(status_code, request=request)
+    return httpx.HTTPStatusError(
+        f"Client error '{status_code}'",
+        request=request,
+        response=response,
+    )
 
 
 def test_whale_discovery_service_collects_trade_first_metrics(
@@ -241,6 +252,47 @@ def test_whale_discovery_service_isolates_current_position_errors_per_wallet(
     assert result.collection_errors[0].stage == "current_positions"
 
 
+def test_whale_discovery_service_keeps_wallet_when_deep_trade_page_returns_400(
+    monkeypatch,
+) -> None:
+    async def fake_get_leaderboard(client: Any, params: Any) -> list[dict[str, Any]]:
+        return [{"proxyWallet": WALLET_ONE, "rank": 1, "pnl": 100, "vol": 10_000}]
+
+    async def fake_get_trades(client: Any, params: Any) -> list[dict[str, Any]]:
+        if params.offset >= 2:
+            raise _http_status_error(400)
+
+        return [
+            _trade(days_ago=1, side="BUY", price=0.5, size=100),
+            _trade(days_ago=2, side="BUY", price=0.5, size=100),
+        ]
+
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        return [{"currentValue": 250}]
+
+    profile = WhaleDiscoveryProfile(
+        wallet_count=1,
+        trade_limit=2,
+        max_trade_pages_per_wallet=10,
+    )
+    _patch_data_client(
+        monkeypatch,
+        get_leaderboard=fake_get_leaderboard,
+        get_trades=fake_get_trades,
+        get_current_positions=fake_get_current_positions,
+    )
+
+    result = asyncio.run(WhaleDiscoveryService(profile=profile).run(now=NOW))
+
+    assert result.successful_wallet_count == 1
+    assert result.failed_wallet_count == 0
+    assert result.whales[0].metrics.trades.trade_count_30d == 2
+    assert result.whales[0].metrics.collection_quality.trades_complete is False
+
+
 def test_whale_discovery_service_chunks_current_position_market_filters() -> None:
     calls: list[tuple[list[str], int]] = []
     condition_ids = [_condition_id(index) for index in range(5)]
@@ -274,6 +326,48 @@ def test_whale_discovery_service_chunks_current_position_market_filters() -> Non
     ]
     assert [offset for _, offset in calls] == [0, 0, 0]
     assert len(result.rows) == 3
+    assert result.complete is True
+
+
+def test_whale_discovery_service_splits_current_position_chunks_on_403() -> None:
+    calls: list[list[str]] = []
+    condition_ids = [_condition_id(index) for index in range(4)]
+
+    async def fake_get_current_positions(
+        client: Any,
+        params: Any,
+    ) -> list[dict[str, Any]]:
+        calls.append(params.market)
+        if len(params.market) > 1:
+            raise _http_status_error(403)
+
+        return [{"currentValue": 10}]
+
+    service = WhaleDiscoveryService(
+        profile=WhaleDiscoveryProfile(
+            wallet_count=1,
+            current_positions_market_chunk_size=4,
+        )
+    )
+
+    result = asyncio.run(
+        service._fetch_current_positions(
+            client=FakeDataClient(get_current_positions=fake_get_current_positions),
+            proxy_wallet=WALLET_ONE,
+            condition_ids=condition_ids,
+        )
+    )
+
+    assert calls == [
+        condition_ids,
+        condition_ids[0:2],
+        condition_ids[0:1],
+        condition_ids[1:2],
+        condition_ids[2:4],
+        condition_ids[2:3],
+        condition_ids[3:4],
+    ]
+    assert len(result.rows) == 4
     assert result.complete is True
 
 

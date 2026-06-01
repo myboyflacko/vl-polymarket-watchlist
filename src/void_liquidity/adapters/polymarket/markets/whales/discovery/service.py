@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
+import httpx
+
 from void_liquidity.adapters.polymarket.api.client import (
     PolymarketDataClient,
     get_polymarket_data_client,
@@ -365,7 +367,21 @@ class WhaleDiscoveryService:
                 offset=offset,
                 takerOnly=self.profile.taker_only,
             )
-            page = await client.get_trades(params)
+            try:
+                page = await client.get_trades(params)
+            except httpx.HTTPStatusError as exc:
+                if (
+                    exc.response.status_code == 400
+                    and offset > 0
+                    and rows
+                ):
+                    return _TradePageRows(
+                        rows=rows,
+                        complete=False,
+                        sort_order=sort_order,
+                        invalid_row_count=invalid_row_count,
+                    )
+                raise
 
             if not isinstance(page, list) or not page:
                 return _TradePageRows(
@@ -443,32 +459,75 @@ class WhaleDiscoveryService:
             condition_ids,
             self.profile.current_positions_market_chunk_size,
         ):
-            offset = 0
-
-            while offset <= 10_000:
-                params = CurrentPositionsParams(
-                    user=proxy_wallet,
-                    market=condition_id_chunk,
-                    limit=self.profile.current_positions_limit,
-                    offset=offset,
-                    sortBy="CURRENT",
-                    sortDirection="DESC",
-                )
-                page = await client.get_current_positions(params)
-
-                if not isinstance(page, list) or not page:
-                    break
-
-                rows.extend(row for row in page if isinstance(row, dict))
-
-                if len(page) < params.limit:
-                    break
-
-                offset += params.limit
-            else:
+            result = await self._fetch_current_position_chunk(
+                client=client,
+                proxy_wallet=proxy_wallet,
+                condition_ids=condition_id_chunk,
+            )
+            rows.extend(result.rows)
+            if not result.complete:
                 complete = False
 
         return _CurrentPositionRows(rows=rows, complete=complete)
+
+    async def _fetch_current_position_chunk(
+        self,
+        *,
+        client: PolymarketDataClient,
+        proxy_wallet: str,
+        condition_ids: list[str],
+    ) -> _CurrentPositionRows:
+        rows: list[dict[str, Any]] = []
+        offset = 0
+
+        while offset <= 10_000:
+            params = CurrentPositionsParams(
+                user=proxy_wallet,
+                market=condition_ids,
+                limit=self.profile.current_positions_limit,
+                offset=offset,
+                sortBy="CURRENT",
+                sortDirection="DESC",
+            )
+            try:
+                page = await client.get_current_positions(params)
+            except httpx.HTTPStatusError as exc:
+                if exc.response.status_code != 403:
+                    raise
+
+                if len(condition_ids) == 1:
+                    return _CurrentPositionRows(rows=rows, complete=False)
+
+                if offset > 0 and rows:
+                    return _CurrentPositionRows(rows=rows, complete=False)
+
+                nested_rows: list[dict[str, Any]] = [*rows]
+                complete = True
+                for nested_chunk in _chunks(
+                    condition_ids,
+                    max(1, len(condition_ids) // 2),
+                ):
+                    nested_result = await self._fetch_current_position_chunk(
+                        client=client,
+                        proxy_wallet=proxy_wallet,
+                        condition_ids=nested_chunk,
+                    )
+                    nested_rows.extend(nested_result.rows)
+                    complete = complete and nested_result.complete
+
+                return _CurrentPositionRows(rows=nested_rows, complete=complete)
+
+            if not isinstance(page, list) or not page:
+                return _CurrentPositionRows(rows=rows, complete=True)
+
+            rows.extend(row for row in page if isinstance(row, dict))
+
+            if len(page) < params.limit:
+                return _CurrentPositionRows(rows=rows, complete=True)
+
+            offset += params.limit
+
+        return _CurrentPositionRows(rows=rows, complete=False)
 
 
 def _is_descending(values: list[datetime]) -> bool:
