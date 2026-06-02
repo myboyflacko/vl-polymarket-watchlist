@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -9,6 +11,20 @@ from pydantic import BaseModel, Field
 CandidateSource = Literal["pnl", "volume", "both"]
 TradeSortOrder = Literal["desc", "unknown"]
 WalletCollectionStage = Literal["trades", "current_positions"]
+
+
+@dataclass(frozen=True)
+class LeaderboardEntry:
+    proxy_wallet: str
+    row: dict[str, Any]
+
+
+@dataclass(frozen=True)
+class WhaleCandidate:
+    proxy_wallet: str
+    pnl_entry: dict[str, Any] | None
+    volume_entry: dict[str, Any] | None
+    candidate_collection_complete: bool
 
 
 class WhaleIdentity(BaseModel):

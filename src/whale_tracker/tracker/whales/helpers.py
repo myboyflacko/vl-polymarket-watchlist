@@ -19,10 +19,12 @@ from whale_tracker.providers.polymarket.params.profile.trades import TradesParam
 from whale_tracker.tracker.whales.domain import (
     CollectionQuality,
     ExposureMetrics,
+    LeaderboardEntry,
     LeaderboardMetrics,
     MarketMetrics,
     TradeMetrics,
     Whale,
+    WhaleCandidate,
     WhaleIdentity,
     WhaleMetrics,
     WalletCollectionError,
@@ -32,20 +34,6 @@ from whale_tracker.tracker.whales.profiles import WhaleDiscoveryProfile
 
 
 LeaderboardOrder = Literal["PNL", "VOL"]
-
-
-@dataclass(frozen=True)
-class _LeaderboardEntry:
-    proxy_wallet: str
-    row: dict[str, Any]
-
-
-@dataclass(frozen=True)
-class _Candidate:
-    proxy_wallet: str
-    pnl_entry: dict[str, Any] | None
-    volume_entry: dict[str, Any] | None
-    candidate_collection_complete: bool
 
 
 @dataclass(frozen=True)
@@ -272,9 +260,9 @@ async def collect_whales_from_polymarket(
     *,
     client: PolymarketDataClient,
     profile: WhaleDiscoveryProfile,
+    candidates: list[WhaleCandidate],
     now: datetime,
 ) -> Whales:
-    candidates = await _fetch_candidates(client=client, profile=profile)
     whales, collection_errors = await _collect_whales(
         client=client,
         profile=profile,
@@ -291,34 +279,16 @@ async def collect_whales_from_polymarket(
     )
 
 
-async def _fetch_candidates(
+async def fetch_leaderboards_from_polymarket(
     *,
     client: PolymarketDataClient,
     profile: WhaleDiscoveryProfile,
-) -> list[_Candidate]:
+) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     pnl_entries, volume_entries = await asyncio.gather(
         _fetch_leaderboard(client=client, profile=profile, order_by="PNL"),
         _fetch_leaderboard(client=client, profile=profile, order_by="VOL"),
     )
-    candidate_collection_complete = (
-        len(pnl_entries) >= profile.wallet_count
-        and len(volume_entries) >= profile.wallet_count
-    )
-    wallets = [*pnl_entries]
-
-    for wallet in volume_entries:
-        if wallet not in pnl_entries:
-            wallets.append(wallet)
-
-    return [
-        _Candidate(
-            proxy_wallet=wallet,
-            pnl_entry=pnl_entries.get(wallet),
-            volume_entry=volume_entries.get(wallet),
-            candidate_collection_complete=candidate_collection_complete,
-        )
-        for wallet in wallets
-    ]
+    return pnl_entries, volume_entries
 
 
 async def _fetch_leaderboard(
@@ -362,7 +332,7 @@ async def _fetch_leaderboard(
     return entries
 
 
-def _parse_leaderboard_entry(row: Any) -> _LeaderboardEntry | None:
+def _parse_leaderboard_entry(row: Any) -> LeaderboardEntry | None:
     if not isinstance(row, dict):
         return None
 
@@ -370,14 +340,14 @@ def _parse_leaderboard_entry(row: Any) -> _LeaderboardEntry | None:
     if not isinstance(proxy_wallet, str):
         return None
 
-    return _LeaderboardEntry(proxy_wallet=proxy_wallet, row=row)
+    return LeaderboardEntry(proxy_wallet=proxy_wallet, row=row)
 
 
 async def _collect_whales(
     *,
     client: PolymarketDataClient,
     profile: WhaleDiscoveryProfile,
-    candidates: list[_Candidate],
+    candidates: list[WhaleCandidate],
     now: datetime,
 ) -> tuple[list[Whale], list[WalletCollectionError]]:
     whales: list[Whale] = []
@@ -410,7 +380,7 @@ async def _collect_whale_safely(
     *,
     client: PolymarketDataClient,
     profile: WhaleDiscoveryProfile,
-    candidate: _Candidate,
+    candidate: WhaleCandidate,
     now: datetime,
 ) -> _WalletCollectionResult:
     try:
@@ -437,7 +407,7 @@ async def _collect_whale(
     *,
     client: PolymarketDataClient,
     profile: WhaleDiscoveryProfile,
-    candidate: _Candidate,
+    candidate: WhaleCandidate,
     now: datetime,
 ) -> Whale:
     try:
@@ -496,7 +466,7 @@ async def _collect_whale(
 
 def _identity(
     *,
-    candidate: _Candidate,
+    candidate: WhaleCandidate,
     trades: list[dict[str, Any]],
 ) -> WhaleIdentity:
     row = candidate.pnl_entry or candidate.volume_entry or {}
@@ -510,7 +480,7 @@ def _identity(
     )
 
 
-def _leaderboard_metrics(candidate: _Candidate) -> LeaderboardMetrics:
+def _leaderboard_metrics(candidate: WhaleCandidate) -> LeaderboardMetrics:
     pnl_entry = candidate.pnl_entry or {}
     volume_entry = candidate.volume_entry or {}
     candidate_source: Literal["pnl", "volume", "both"]

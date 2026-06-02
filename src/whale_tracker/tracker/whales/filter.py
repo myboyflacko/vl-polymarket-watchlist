@@ -1,14 +1,47 @@
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field
 
-from whale_tracker.tracker.whales.domain import FilteredWhales, Whale, Whales
+from whale_tracker.tracker.whales.domain import (
+    FilteredWhales,
+    Whale,
+    WhaleCandidate,
+    Whales,
+)
 
 
 class WhaleFilterProfile(BaseModel):
     name: str = "default_whale_filter"
     min_trade_count_30d: int = Field(default=0, ge=0)
     min_current_position_value: float = Field(default=0.0, ge=0)
+
+
+def select_leaderboard_candidates(
+    *,
+    pnl_entries: dict[str, dict[str, Any]],
+    volume_entries: dict[str, dict[str, Any]],
+    wallet_count: int,
+) -> list[WhaleCandidate]:
+    candidate_collection_complete = (
+        len(pnl_entries) >= wallet_count and len(volume_entries) >= wallet_count
+    )
+    wallets = [*pnl_entries]
+
+    for wallet in volume_entries:
+        if wallet not in pnl_entries:
+            wallets.append(wallet)
+
+    return [
+        WhaleCandidate(
+            proxy_wallet=wallet,
+            pnl_entry=pnl_entries.get(wallet),
+            volume_entry=volume_entries.get(wallet),
+            candidate_collection_complete=candidate_collection_complete,
+        )
+        for wallet in wallets
+    ]
 
 
 def filter_whales(*, whales: Whales, profile: WhaleFilterProfile) -> FilteredWhales:

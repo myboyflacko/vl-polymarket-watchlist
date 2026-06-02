@@ -9,8 +9,15 @@ from whale_tracker.tracker.whales.domain import (
     WhaleTrackingResult,
     Whales,
 )
-from whale_tracker.tracker.whales.filter import WhaleFilterProfile, filter_whales
-from whale_tracker.tracker.whales.helpers import collect_whales_from_polymarket
+from whale_tracker.tracker.whales.filter import (
+    WhaleFilterProfile,
+    filter_whales,
+    select_leaderboard_candidates,
+)
+from whale_tracker.tracker.whales.helpers import (
+    collect_whales_from_polymarket,
+    fetch_leaderboards_from_polymarket,
+)
 from whale_tracker.tracker.whales.profiles import WhaleDiscoveryProfile
 from whale_tracker.tracker.whales.repository import (
     list_discovered_whales,
@@ -84,9 +91,20 @@ class WhaleTrackerService:
 
     async def discover(self, *, now: datetime | None = None) -> Whales:
         generated_at = now or datetime.now(UTC)
-        return await collect_whales_from_polymarket(
-            client=get_polymarket_data_client(),
+        client = get_polymarket_data_client()
+        pnl_entries, volume_entries = await fetch_leaderboards_from_polymarket(
+            client=client,
             profile=self.profile,
+        )
+        candidates = select_leaderboard_candidates(
+            pnl_entries=pnl_entries,
+            volume_entries=volume_entries,
+            wallet_count=self.profile.wallet_count,
+        )
+        return await collect_whales_from_polymarket(
+            client=client,
+            profile=self.profile,
+            candidates=candidates,
             now=generated_at,
         )
 
