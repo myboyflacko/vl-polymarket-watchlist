@@ -24,6 +24,9 @@ dev = [
     "pytest==9.0.3",
 ]
 
+[project.scripts]
+whale-tracker = "whale_tracker.cli:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["whale_tracker*"]
