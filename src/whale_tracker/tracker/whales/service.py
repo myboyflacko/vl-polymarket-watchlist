@@ -12,11 +12,11 @@ from whale_tracker.tracker.whales.domain import (
 from whale_tracker.tracker.whales.filter import (
     WhaleFilterProfile,
     filter_whales,
-    select_leaderboard_candidates,
 )
 from whale_tracker.tracker.whales.helpers import (
     collect_whales_from_polymarket,
     fetch_leaderboards_from_polymarket,
+    select_leaderboard_candidates,
 )
 from whale_tracker.tracker.whales.profiles import WhaleDiscoveryProfile
 from whale_tracker.tracker.whales.repository import (

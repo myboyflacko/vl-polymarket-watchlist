@@ -256,6 +256,32 @@ def chunks(items: list[str], size: int) -> list[list[str]]:
     return [items[index : index + size] for index in range(0, len(items), size)]
 
 
+def select_leaderboard_candidates(
+    *,
+    pnl_entries: dict[str, dict[str, Any]],
+    volume_entries: dict[str, dict[str, Any]],
+    wallet_count: int,
+) -> list[WhaleCandidate]:
+    candidate_collection_complete = (
+        len(pnl_entries) >= wallet_count and len(volume_entries) >= wallet_count
+    )
+    wallets = [*pnl_entries]
+
+    for wallet in volume_entries:
+        if wallet not in pnl_entries:
+            wallets.append(wallet)
+
+    return [
+        WhaleCandidate(
+            proxy_wallet=wallet,
+            pnl_entry=pnl_entries.get(wallet),
+            volume_entry=volume_entries.get(wallet),
+            candidate_collection_complete=candidate_collection_complete,
+        )
+        for wallet in wallets
+    ]
+
+
 async def collect_whales_from_polymarket(
     *,
     client: PolymarketDataClient,

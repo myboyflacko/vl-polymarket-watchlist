@@ -1,4 +1,4 @@
-from whale_tracker.tracker.whales.filter import select_leaderboard_candidates
+from whale_tracker.tracker.whales.helpers import select_leaderboard_candidates
 
 
 def test_select_leaderboard_candidates_unions_pnl_and_volume_wallets() -> None:

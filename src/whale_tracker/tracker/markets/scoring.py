@@ -17,18 +17,16 @@ def score_markets(
     profiles: Sequence[MarketScoringProfile],
     limit: int | None = None,
 ) -> ScoredMarkets:
+    qualified = qualify_markets(filtered_markets.markets, profiles=profiles)
     scored = [
         ScoredMarket(market=market, score=market.score)
-        for market in _rank_scored_markets(
-            qualify_markets(filtered_markets.markets, profiles=profiles),
-            limit=limit,
-        )
+        for market in _rank_scored_markets(qualified, limit=limit)
     ]
 
     scored_tokens = {entry.market.token_id for entry in scored}
     removed = [
         ScoredMarket(market=market, score=market.score)
-        for market in qualify_markets(filtered_markets.markets, profiles=profiles)
+        for market in qualified
         if market.token_id not in scored_tokens
     ]
 
