@@ -212,7 +212,7 @@ def test_market_tracker_run_without_scoring_persists_filtered_markets(
 def _prepare_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
     database_path = tmp_path / "markets.sqlite3"
     get_settings.cache_clear()
-    monkeypatch.setenv("VOID_LIQUIDITY_SQLITE_PATH", str(database_path))
+    monkeypatch.setenv("WHALE_TRACKER_SQLITE_PATH", str(database_path))
     engine = create_database_engine(database_path)
     Base.metadata.create_all(engine)
     return database_path

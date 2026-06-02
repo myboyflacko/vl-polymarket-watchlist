@@ -3,10 +3,9 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "void-liquidity"
+name = "whale-tracker"
 version = "0.1.0"
-description = "Market data and trading research system starting with Polymarket."
-readme = "README.md"
+description = "Polymarket whale and market tracking service."
 requires-python = ">=3.12"
 dependencies = [
     "alembic==1.17.2",
@@ -20,11 +19,6 @@ dependencies = [
     "ruff==0.15.14"
 ]
 
-[project.scripts]
-void-track-whales-v2 = "void_liquidity.workflows.whale_discovery:main"
-void-whale-market-candidates = "void_liquidity.workflows.whale_market_candidates:main"
-void-whale-market-procurement = "void_liquidity.workflows.whale_market_procurement:main"
-
 [project.optional-dependencies]
 dev = [
     "pytest==9.0.3",
@@ -32,7 +26,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["void_liquidity*"]
+include = ["whale_tracker*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
