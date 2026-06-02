@@ -8,9 +8,7 @@ from importlib import import_module
 from whale_tracker.core.db.base import Base
 from whale_tracker.core.db.engine import create_database_engine
 from whale_tracker.core.logging import configure_logging
-from whale_tracker.tracker.markets.profiles import MarketTrackingProfile
 from whale_tracker.tracker.markets.service import MarketTrackerService
-from whale_tracker.tracker.whales.scoring import WhaleScoringProfile
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
 
@@ -31,7 +29,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "schedule":
-        asyncio.run(schedule(args))
+        try:
+            asyncio.run(schedule(args))
+        except KeyboardInterrupt:
+            print("Scheduler stopped.")
         return 0
 
     raise ValueError(f"Unknown command: {args.command}")
@@ -59,10 +60,16 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run whales and markets continuously.",
     )
     schedule_parser.add_argument(
-        "--interval",
+        "--whales-interval",
         type=positive_int,
         default=3600,
-        help="Seconds to sleep after each full workflow run.",
+        help="Seconds between whale tracking runs.",
+    )
+    schedule_parser.add_argument(
+        "--markets-interval",
+        type=positive_int,
+        default=900,
+        help="Seconds between market tracking runs.",
     )
     add_service_options(schedule_parser)
 
@@ -71,9 +78,9 @@ def build_parser() -> argparse.ArgumentParser:
 
 def add_service_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--score",
+        "--no-scoring",
         action="store_true",
-        help="Enable default scoring profiles.",
+        help="Disable default scoring profiles.",
     )
     parser.add_argument(
         "--market-limit",
@@ -89,45 +96,64 @@ def add_service_options(parser: argparse.ArgumentParser) -> None:
 
 
 async def run_once(args: argparse.Namespace) -> None:
+    scoring_enabled = not args.no_scoring
+
     if args.service == "whales":
-        await run_whales(score=args.score)
+        await run_whales(scoring_enabled=scoring_enabled)
         return
 
     if args.service == "markets":
         await run_markets(
-            score=args.score,
+            scoring_enabled=scoring_enabled,
             limit=args.market_limit,
             whales_run_id=args.whales_run_id,
         )
         return
 
-    whale_run_id = await run_whales(score=args.score)
+    whale_run_id = await run_whales(scoring_enabled=scoring_enabled)
     await run_markets(
-        score=args.score,
+        scoring_enabled=scoring_enabled,
         limit=args.market_limit,
         whales_run_id=whale_run_id,
     )
 
 
 async def schedule(args: argparse.Namespace) -> None:
+    scoring_enabled = not args.no_scoring
+    whales_runner = scheduled_runner(
+        name="whales",
+        interval=args.whales_interval,
+        runner=lambda: run_whales(scoring_enabled=scoring_enabled),
+    )
+    markets_runner = scheduled_runner(
+        name="markets",
+        interval=args.markets_interval,
+        runner=lambda: run_markets(
+            scoring_enabled=scoring_enabled,
+            limit=args.market_limit,
+            whales_run_id=args.whales_run_id,
+        ),
+    )
+    await asyncio.gather(whales_runner, markets_runner)
+
+
+async def scheduled_runner(
+    *,
+    name: str,
+    interval: int,
+    runner,
+) -> None:
     while True:
         try:
-            await run_once(
-                argparse.Namespace(
-                    service="all",
-                    score=args.score,
-                    market_limit=args.market_limit,
-                    whales_run_id=args.whales_run_id,
-                )
-            )
+            await runner()
         except Exception:
-            logger.exception("Scheduled workflow failed")
+            logger.exception("Scheduled service failed", extra={"service": name})
 
-        await asyncio.sleep(args.interval)
+        await asyncio.sleep(interval)
 
 
-async def run_whales(*, score: bool) -> str:
-    service = build_whale_service(score=score)
+async def run_whales(*, scoring_enabled: bool) -> str:
+    service = build_whale_service(scoring_enabled=scoring_enabled)
     result = await service.run()
     selected_count = result.result_whales.wallet_count
 
@@ -144,11 +170,11 @@ async def run_whales(*, score: bool) -> str:
 
 async def run_markets(
     *,
-    score: bool,
+    scoring_enabled: bool,
     limit: int | None,
     whales_run_id: str | None,
 ) -> str:
-    service = build_market_service(score=score)
+    service = build_market_service(scoring_enabled=scoring_enabled)
     result = await service.run(whales_run_id=whales_run_id, limit=limit)
     selected_count = result.result_markets.market_count
 
@@ -164,18 +190,18 @@ async def run_markets(
     return result.run_id
 
 
-def build_whale_service(*, score: bool) -> WhaleTrackerService:
+def build_whale_service(*, scoring_enabled: bool) -> WhaleTrackerService:
     service = WhaleTrackerService()
-    if score:
-        service.register_scoring(WhaleScoringProfile())
+    if not scoring_enabled:
+        service.register_scoring(None)
 
     return service
 
 
-def build_market_service(*, score: bool) -> MarketTrackerService:
+def build_market_service(*, scoring_enabled: bool) -> MarketTrackerService:
     service = MarketTrackerService()
-    if score:
-        service.register_scoring(MarketTrackingProfile().scoring)
+    if not scoring_enabled:
+        service.register_scoring(None)
 
     return service
 

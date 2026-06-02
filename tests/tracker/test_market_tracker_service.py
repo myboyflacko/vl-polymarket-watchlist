@@ -125,7 +125,7 @@ def test_market_tracker_run_persists_markets_and_qualified_markets(
     assert run.checked_market_count == 2
     assert run.filtered_market_count == 1
     assert run.scored_market_count == 1
-    assert run.removed_market_count == 0
+    assert run.removed_market_count == 1
     assert identity is not None
     assert identity.token_id == YES_TOKEN
     assert snapshot is not None
@@ -189,6 +189,7 @@ def test_market_tracker_run_without_scoring_persists_filtered_markets(
     service = MarketTrackerService(
         filter_profile=MarketFilterProfile(min_whale_count=2),
     )
+    service.register_scoring(None)
 
     result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
 

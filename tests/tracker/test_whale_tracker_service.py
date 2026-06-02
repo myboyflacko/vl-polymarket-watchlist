@@ -117,6 +117,7 @@ def test_whale_tracker_run_without_scoring_persists_filtered_whales(
             wallet_batch_size=2,
         )
     )
+    service.register_scoring(None)
 
     result = asyncio.run(service.run(now=NOW))
 

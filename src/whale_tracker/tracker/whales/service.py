@@ -43,7 +43,7 @@ class WhaleTrackerService:
     ) -> None:
         self.profile = profile or WhaleDiscoveryProfile()
         self.filter_profile = filter_profile or self.profile.filter
-        self.scoring_profile = scoring_profile
+        self.scoring_profile = scoring_profile or self.profile.scoring or WhaleScoringProfile()
 
     def register_filter(self, profile: WhaleFilterProfile) -> None:
         self.filter_profile = profile

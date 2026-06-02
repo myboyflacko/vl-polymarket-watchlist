@@ -17,6 +17,7 @@ from whale_tracker.tracker.markets.repository import (
     list_qualified_markets,
     persist_market_run,
 )
+from whale_tracker.tracker.markets.profiles import MarketTrackingProfile
 from whale_tracker.tracker.markets.scoring import MarketScoringProfile, score_markets
 from whale_tracker.tracker.whales.repository import (
     get_latest_selection_run_id,
@@ -35,7 +36,7 @@ class MarketTrackerService:
         scoring_profile: tuple[MarketScoringProfile, ...] | None = None,
     ) -> None:
         self.filter_profile = filter_profile or MarketFilterProfile()
-        self.scoring_profile = scoring_profile
+        self.scoring_profile = scoring_profile or MarketTrackingProfile().scoring
 
     def register_filter(self, profile: MarketFilterProfile) -> None:
         self.filter_profile = profile
