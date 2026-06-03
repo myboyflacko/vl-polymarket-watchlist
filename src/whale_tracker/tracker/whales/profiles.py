@@ -5,10 +5,30 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from whale_tracker.tracker.whales.filter import WhaleFilterProfile
-from whale_tracker.tracker.whales.scoring import WhaleScoringProfile
+from whale_tracker.tracker.whales.scoring import (
+    DEFAULT_WHALE_SCORING_PROFILE,
+    DEFAULT_WHALE_SCORING_STRATEGY,
+    PERCENTILE_WHALE_SCORING_PROFILE,
+    PERCENTILE_WHALE_SCORING_STRATEGY,
+    WhaleScoringProfile,
+)
 
 
 WhaleSelectionProfile = WhaleScoringProfile
+
+
+def z_score_whale_scoring_profile() -> WhaleScoringProfile:
+    return WhaleScoringProfile(
+        name=DEFAULT_WHALE_SCORING_PROFILE,
+        strategy=DEFAULT_WHALE_SCORING_STRATEGY,
+    )
+
+
+def percentile_whale_scoring_profile() -> WhaleScoringProfile:
+    return WhaleScoringProfile(
+        name=PERCENTILE_WHALE_SCORING_PROFILE,
+        strategy=PERCENTILE_WHALE_SCORING_STRATEGY,
+    )
 
 
 class WhaleDiscoveryProfile(BaseModel):
