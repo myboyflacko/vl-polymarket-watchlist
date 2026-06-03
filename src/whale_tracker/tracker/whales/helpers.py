@@ -30,7 +30,7 @@ from whale_tracker.tracker.whales.domain import (
     WalletCollectionError,
     Whales,
 )
-from whale_tracker.tracker.whales.profiles import WhaleDiscoveryProfile
+from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
 
 
 LeaderboardOrder = Literal["PNL", "VOL"]

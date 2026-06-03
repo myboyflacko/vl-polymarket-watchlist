@@ -14,9 +14,8 @@ from whale_tracker.tracker.whales.domain import (
     WhaleMetrics,
 )
 from whale_tracker.tracker.whales.scoring import (
-    WhaleScoringProfile,
-    register_whale_scoring_strategy,
-    score_whales,
+    PercentileWhaleScoringProfile,
+    ZScoreWhaleScoringProfile,
 )
 
 
@@ -24,8 +23,8 @@ NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
 
 def test_z_score_scoring_ranks_current_run_metrics() -> None:
-    result = score_whales(
-        filtered_whales=_filtered_whales(
+    result = ZScoreWhaleScoringProfile(bottom_cut_percentile=0.5).run(
+        _filtered_whales(
             [
                 _whale(
                     "0x1",
@@ -44,8 +43,7 @@ def test_z_score_scoring_ranks_current_run_metrics() -> None:
                     exposure=10,
                 ),
             ]
-        ),
-        profile=WhaleScoringProfile(bottom_cut_percentile=0.5),
+        )
     )
 
     assert [entry.whale.proxy_wallet for entry in result.whales] == ["0x1"]
@@ -53,22 +51,21 @@ def test_z_score_scoring_ranks_current_run_metrics() -> None:
 
 
 def test_z_score_scoring_uses_weighted_mean() -> None:
-    result = score_whales(
-        filtered_whales=_filtered_whales(
+    result = ZScoreWhaleScoringProfile(
+        pnl_weight=3,
+        volume_weight=1,
+        trade_activity_weight=0,
+        recency_weight=0,
+        exposure_weight=0,
+        concentration_penalty_weight=0,
+        bottom_cut_percentile=0,
+    ).run(
+        _filtered_whales(
             [
                 _whale("0x1", pnl=20, volume=0),
                 _whale("0x2", pnl=10, volume=10),
             ]
-        ),
-        profile=WhaleScoringProfile(
-            pnl_weight=3,
-            volume_weight=1,
-            trade_activity_weight=0,
-            recency_weight=0,
-            exposure_weight=0,
-            concentration_penalty_weight=0,
-            bottom_cut_percentile=0,
-        ),
+        )
     )
 
     scores = {entry.whale.proxy_wallet: entry.score for entry in result.whales}
@@ -78,22 +75,21 @@ def test_z_score_scoring_uses_weighted_mean() -> None:
 
 
 def test_z_score_concentration_is_penalty_without_bonus() -> None:
-    result = score_whales(
-        filtered_whales=_filtered_whales(
+    result = ZScoreWhaleScoringProfile(
+        pnl_weight=0,
+        volume_weight=0,
+        trade_activity_weight=0,
+        recency_weight=0,
+        exposure_weight=0,
+        concentration_penalty_weight=1,
+        bottom_cut_percentile=0,
+    ).run(
+        _filtered_whales(
             [
                 _whale("0x1", market_concentration=0.9),
                 _whale("0x2", market_concentration=0.1),
             ]
-        ),
-        profile=WhaleScoringProfile(
-            pnl_weight=0,
-            volume_weight=0,
-            trade_activity_weight=0,
-            recency_weight=0,
-            exposure_weight=0,
-            concentration_penalty_weight=1,
-            bottom_cut_percentile=0,
-        ),
+        )
     )
 
     scores = {entry.whale.proxy_wallet: entry.score for entry in result.whales}
@@ -103,54 +99,45 @@ def test_z_score_concentration_is_penalty_without_bonus() -> None:
 
 
 def test_z_score_zero_variance_metrics_score_zero() -> None:
-    result = score_whales(
-        filtered_whales=_filtered_whales(
+    result = ZScoreWhaleScoringProfile(
+        pnl_weight=1,
+        volume_weight=0,
+        trade_activity_weight=0,
+        recency_weight=0,
+        exposure_weight=0,
+        concentration_penalty_weight=0,
+        bottom_cut_percentile=0,
+    ).run(
+        _filtered_whales(
             [
                 _whale("0x1", pnl=10),
                 _whale("0x2", pnl=10),
             ]
-        ),
-        profile=WhaleScoringProfile(
-            pnl_weight=1,
-            volume_weight=0,
-            trade_activity_weight=0,
-            recency_weight=0,
-            exposure_weight=0,
-            concentration_penalty_weight=0,
-            bottom_cut_percentile=0,
-        ),
+        )
     )
 
     assert [entry.score for entry in result.whales] == [0.0, 0.0]
 
 
-def test_custom_whale_scoring_strategy_can_be_registered() -> None:
-    strategy_name = "test_fixed_scores"
-
-    def fixed_scores(
-        whales: list[Whale],
-        profile: WhaleScoringProfile,
-    ) -> dict[str, float]:
-        return {whale.proxy_wallet: index for index, whale in enumerate(whales)}
-
-    register_whale_scoring_strategy(strategy_name, fixed_scores)
-
-    result = score_whales(
-        filtered_whales=_filtered_whales(
-            [_whale("0x1"), _whale("0x2"), _whale("0x3"), _whale("0x4")]
-        ),
-        profile=WhaleScoringProfile(
-            name="custom",
-            strategy=strategy_name,
-            bottom_cut_percentile=0.5,
-        ),
+def test_percentile_scoring_profile_is_usable() -> None:
+    result = PercentileWhaleScoringProfile(
+        volume_weight=0,
+        trade_activity_weight=0,
+        recency_weight=0,
+        exposure_weight=0,
+        concentration_penalty_weight=0,
+        bottom_cut_percentile=0.5,
+    ).run(
+        _filtered_whales(
+            [
+                _whale("0x1", pnl=100),
+                _whale("0x2", pnl=10),
+            ]
+        )
     )
 
-    assert [entry.whale.proxy_wallet for entry in result.whales] == ["0x4", "0x3"]
-    assert [entry.whale.proxy_wallet for entry in result.removed_whales] == [
-        "0x2",
-        "0x1",
-    ]
+    assert [entry.whale.proxy_wallet for entry in result.whales] == ["0x1"]
+    assert result.profile_name == "trade_first_percentile_v1"
 
 
 def _filtered_whales(whales: list[Whale]) -> FilteredWhales:
