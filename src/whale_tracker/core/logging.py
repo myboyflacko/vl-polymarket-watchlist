@@ -1,10 +1,7 @@
 import logging
 import sys
-import traceback
-from datetime import datetime
 from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
-from typing import Any, Protocol
 
 from pythonjsonlogger.json import JsonFormatter
 
@@ -22,25 +19,6 @@ _LEVEL_MAP = {
     "ERROR": logging.ERROR,
     "CRITICAL": logging.CRITICAL,
 }
-
-_SENSITIVE_PAYLOAD_KEYS = {
-    "proxy_wallet",
-    "ranked_wallets",
-    "removed_wallets",
-    "token_id",
-    "token_ids",
-    "wallets",
-}
-
-
-class _DomainEventLike(Protocol):
-    event_type: str
-    source: str
-    occurred_at: datetime
-    correlation_id: str
-    payload: dict[str, Any]
-    metadata: dict[str, Any]
-
 
 def _log_path(settings: Settings) -> Path:
     log_dir = settings.logging.log_dir
@@ -108,86 +86,6 @@ def configure_logging(settings: Settings | None = None) -> None:
     root_logger.setLevel(log_level)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
-
-
-class VoidLogger:
-    def __init__(self, name):
-        self._logger = logging.getLogger(name)
-
-    def log_event(
-        self,
-        event: str,
-        level: str = "INFO",
-        **context: Any,
-    ) -> None:
-        configure_logging()
-        normalized_level = level.upper()
-
-        if normalized_level not in _LEVEL_MAP:
-            raise ValueError(f"Provide one of this log levels {_LEVEL_MAP.keys()}")
-
-        self._logger.log(
-            _LEVEL_MAP[normalized_level],
-            event,
-            extra={
-                "event": event,
-                "context": context,
-            },
-        )
-
-    def log_domain_event(self, event: _DomainEventLike) -> None:
-        level = "ERROR" if event.event_type.endswith(".failed") else "INFO"
-        self.log_event(
-            event.event_type,
-            level=level,
-            source=event.source,
-            occurred_at=event.occurred_at.isoformat(),
-            correlation_id=event.correlation_id,
-            payload=_sanitize_log_payload(event.payload),
-            metadata=event.metadata,
-        )
-
-    def log_error(
-        self,
-        event: str,
-        exc: Exception,
-        level: str = "ERROR",
-        **context: Any,
-    ) -> None:
-        configure_logging()
-        normalized_level = level.upper()
-
-        if normalized_level not in _LEVEL_MAP:
-            raise ValueError(f"Provide one of this log levels {_LEVEL_MAP.keys()}")
-
-        self._logger.log(
-            _LEVEL_MAP[normalized_level],
-            event,
-            extra={
-                "event": event,
-                "error_type": type(exc).__name__,
-                "error": str(exc),
-                "traceback": "".join(
-                    traceback.format_exception(type(exc), exc, exc.__traceback__)
-                ).strip(),
-                "context": context,
-            },
-            stacklevel=2,
-        )
-
-
-def _sanitize_log_payload(value: Any) -> Any:
-    if isinstance(value, dict):
-        return {
-            key: _sanitize_log_payload(item)
-            for key, item in value.items()
-            if key not in _SENSITIVE_PAYLOAD_KEYS
-        }
-
-    if isinstance(value, list):
-        return [_sanitize_log_payload(item) for item in value]
-
-    return value
 
 
 def _log_level(value: str) -> int:
