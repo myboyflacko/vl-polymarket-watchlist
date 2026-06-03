@@ -19,23 +19,33 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging()
     args = build_parser().parse_args(argv)
 
-    if args.command == "init-db":
-        init_db()
-        print("Database initialized.")
-        return 0
+    try:
+        if args.command == "init-db":
+            init_db()
+            print("Database initialized.")
+            return 0
 
-    if args.command == "run":
-        asyncio.run(run_once(args))
-        return 0
+        if args.command == "run":
+            asyncio.run(run_once(args))
+            return 0
 
-    if args.command == "schedule":
-        try:
-            asyncio.run(schedule(args))
-        except KeyboardInterrupt:
-            print("Scheduler stopped.")
-        return 0
+        if args.command == "schedule":
+            try:
+                asyncio.run(schedule(args))
+            except KeyboardInterrupt:
+                print("Scheduler stopped.")
+            return 0
 
-    raise ValueError(f"Unknown command: {args.command}")
+        raise ValueError(f"Unknown command: {args.command}")
+    except Exception:
+        logger.exception(
+            "Command failed",
+            extra={
+                "event": _command_failure_event(args),
+                "context": _command_context(args),
+            },
+        )
+        return 1
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -147,15 +157,47 @@ async def scheduled_runner(
         try:
             await runner()
         except Exception:
-            logger.exception("Scheduled service failed", extra={"service": name})
+            logger.exception(
+                "Service failed",
+                extra={
+                    "event": "service.failed",
+                    "context": {"service": name},
+                },
+            )
 
         await asyncio.sleep(interval)
 
 
 async def run_whales(*, scoring_enabled: bool) -> str:
+    logger.info(
+        "Service started",
+        extra={
+            "event": "service.started",
+            "context": {
+                "service": "whales",
+                "scoring_enabled": scoring_enabled,
+            },
+        },
+    )
     service = build_whale_service(scoring_enabled=scoring_enabled)
     result = await service.run()
     selected_count = result.result_whales.wallet_count
+    error_count = len(result.collection_errors)
+
+    logger.info(
+        "Service completed",
+        extra={
+            "event": "service.completed",
+            "context": {
+                "service": "whales",
+                "run_id": result.run_id,
+                "checked": result.whales.checked_wallet_count,
+                "filtered": result.filtered_whales.wallet_count,
+                "selected": selected_count,
+                "errors": error_count,
+            },
+        },
+    )
 
     print(
         "Whales completed: "
@@ -163,7 +205,7 @@ async def run_whales(*, scoring_enabled: bool) -> str:
         f"checked={result.whales.checked_wallet_count} "
         f"filtered={result.filtered_whales.wallet_count} "
         f"selected={selected_count} "
-        f"errors={len(result.collection_errors)}"
+        f"errors={error_count}"
     )
     return result.run_id
 
@@ -174,9 +216,38 @@ async def run_markets(
     limit: int | None,
     whales_run_id: str | None,
 ) -> str:
+    logger.info(
+        "Service started",
+        extra={
+            "event": "service.started",
+            "context": {
+                "service": "markets",
+                "scoring_enabled": scoring_enabled,
+                "limit": limit,
+                "whales_run_id": whales_run_id,
+            },
+        },
+    )
     service = build_market_service(scoring_enabled=scoring_enabled)
     result = await service.run(whales_run_id=whales_run_id, limit=limit)
     selected_count = result.result_markets.market_count
+    error_count = len(result.errors)
+
+    logger.info(
+        "Service completed",
+        extra={
+            "event": "service.completed",
+            "context": {
+                "service": "markets",
+                "run_id": result.run_id,
+                "whales_run_id": result.whales_run_id,
+                "checked": result.filtered_markets.checked_market_count,
+                "filtered": result.filtered_markets.market_count,
+                "selected": selected_count,
+                "errors": error_count,
+            },
+        },
+    )
 
     print(
         "Markets completed: "
@@ -185,7 +256,7 @@ async def run_markets(
         f"checked={result.filtered_markets.checked_market_count} "
         f"filtered={result.filtered_markets.market_count} "
         f"selected={selected_count} "
-        f"errors={len(result.errors)}"
+        f"errors={error_count}"
     )
     return result.run_id
 
@@ -219,6 +290,21 @@ def positive_int(value: str) -> int:
     if parsed < 1:
         raise argparse.ArgumentTypeError("Must be greater than 0.")
     return parsed
+
+
+def _command_failure_event(args: argparse.Namespace) -> str:
+    if args.command in {"run", "schedule"}:
+        return "service.failed"
+
+    return "cli.failed"
+
+
+def _command_context(args: argparse.Namespace) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in vars(args).items()
+        if isinstance(value, str | int | float | bool | type(None))
+    }
 
 
 if __name__ == "__main__":

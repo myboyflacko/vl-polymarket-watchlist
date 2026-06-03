@@ -1,17 +1,19 @@
 import logging
-import os
+import sys
 import traceback
 from datetime import datetime
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import Any, Protocol
 
 from pythonjsonlogger.json import JsonFormatter
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_LOG_FILE_NAME = "polymarket_services.jsonl"
-LOG_DIR_ENV = "WHALE_TRACKER_LOG_DIR"
+from whale_tracker.settings import PROJECT_ROOT, Settings, get_settings
 
-_HANDLER_NAME = "whale_tracker_jsonl"
+DEFAULT_LOG_FILE_NAME = "whale_tracker.jsonl"
+
+_FILE_HANDLER_NAME = "whale_tracker_jsonl_file"
+_STDOUT_HANDLER_NAME = "whale_tracker_jsonl_stdout"
 
 _LEVEL_MAP = {
     "DEBUG": logging.DEBUG,
@@ -40,9 +42,8 @@ class _DomainEventLike(Protocol):
     metadata: dict[str, Any]
 
 
-def _log_path() -> Path:
-    configured_log_dir = os.getenv(LOG_DIR_ENV)
-    log_dir = Path(configured_log_dir) if configured_log_dir else PROJECT_ROOT / "logs"
+def _log_path(settings: Settings) -> Path:
+    log_dir = settings.logging.log_dir
 
     if not log_dir.is_absolute():
         log_dir = PROJECT_ROOT / log_dir
@@ -50,35 +51,61 @@ def _log_path() -> Path:
     return log_dir / DEFAULT_LOG_FILE_NAME
 
 
-def configure_logging() -> None:
+def configure_logging(settings: Settings | None = None) -> None:
+    settings = settings or get_settings()
     root_logger = logging.getLogger()
-    log_path = _log_path()
+    log_path = _log_path(settings)
+    log_level = _log_level(settings.logging.level)
 
-    for handler in root_logger.handlers:
-        if handler.name != _HANDLER_NAME:
+    configured_handlers = {
+        handler.name: handler
+        for handler in root_logger.handlers
+        if handler.name in {_FILE_HANDLER_NAME, _STDOUT_HANDLER_NAME}
+    }
+    file_handler = configured_handlers.get(_FILE_HANDLER_NAME)
+    stdout_handler = configured_handlers.get(_STDOUT_HANDLER_NAME)
+
+    if (
+        file_handler is not None
+        and stdout_handler is not None
+        and Path(getattr(file_handler, "baseFilename", "")) == log_path
+        and getattr(file_handler, "backupCount", None)
+        == settings.logging.retention_days
+        and root_logger.level == log_level
+    ):
+        return
+
+    for handler in list(root_logger.handlers):
+        if handler.name not in {_FILE_HANDLER_NAME, _STDOUT_HANDLER_NAME}:
             continue
-
-        if Path(getattr(handler, "baseFilename", "")) == log_path:
-            return
 
         root_logger.removeHandler(handler)
         handler.close()
 
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    handler = logging.FileHandler(log_path, encoding="utf-8")
-    handler.name = _HANDLER_NAME
-
     formatter = JsonFormatter(
-        "{asctime}{levelname}{name}{event}{error_type}{error}"
-        "{traceback}{context}",
+        "{asctime}{levelname}{name}{message}{event}{error_type}{error}"
+        "{traceback}{context}{exc_info}",
         style="{",
     )
 
-    handler.setFormatter(formatter)
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.name = _STDOUT_HANDLER_NAME
+    stdout_handler.setFormatter(formatter)
 
-    root_logger.addHandler(handler)
-    root_logger.setLevel(logging.DEBUG)
+    file_handler = TimedRotatingFileHandler(
+        log_path,
+        when="midnight",
+        backupCount=settings.logging.retention_days,
+        encoding="utf-8",
+    )
+    file_handler.name = _FILE_HANDLER_NAME
+    file_handler.setFormatter(formatter)
+
+    root_logger.addHandler(stdout_handler)
+    root_logger.addHandler(file_handler)
+    root_logger.setLevel(log_level)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -161,3 +188,12 @@ def _sanitize_log_payload(value: Any) -> Any:
         return [_sanitize_log_payload(item) for item in value]
 
     return value
+
+
+def _log_level(value: str) -> int:
+    normalized_level = value.upper()
+
+    if normalized_level not in _LEVEL_MAP:
+        raise ValueError(f"Provide one of this log levels {_LEVEL_MAP.keys()}")
+
+    return _LEVEL_MAP[normalized_level]

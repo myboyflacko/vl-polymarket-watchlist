@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 
 from whale_tracker.providers.polymarket.client import get_polymarket_data_client
@@ -21,9 +20,6 @@ from whale_tracker.tracker.markets.scoring import MarketScoringProfile
 from whale_tracker.tracker.whales.repository import (
     get_latest_selection_run_id,
 )
-
-
-logger = logging.getLogger(__name__)
 
 
 class MarketTrackerService:
@@ -55,28 +51,24 @@ class MarketTrackerService:
         run_id = _build_run_id(generated_at)
         actual_whales_run_id = whales_run_id or get_latest_selection_run_id()
 
-        try:
-            markets = await self._collect_markets(
-                whales_run_id=actual_whales_run_id,
-                generated_at=generated_at,
-            )
-            filtered_markets = self.filter_profile.run(markets)
-            scored_markets = (
-                self.scoring_profile.run(filtered_markets, limit=limit)
-                if self.scoring_profile is not None
-                else None
-            )
-            persist_market_run(
-                run_id=run_id,
-                whales_run_id=actual_whales_run_id,
-                generated_at=generated_at,
-                filtered_markets=filtered_markets,
-                scored_markets=scored_markets,
-                limit=limit,
-            )
-        except Exception:
-            logger.exception("Market tracking run failed", extra={"run_id": run_id})
-            raise
+        markets = await self._collect_markets(
+            whales_run_id=actual_whales_run_id,
+            generated_at=generated_at,
+        )
+        filtered_markets = self.filter_profile.run(markets)
+        scored_markets = (
+            self.scoring_profile.run(filtered_markets, limit=limit)
+            if self.scoring_profile is not None
+            else None
+        )
+        persist_market_run(
+            run_id=run_id,
+            whales_run_id=actual_whales_run_id,
+            generated_at=generated_at,
+            filtered_markets=filtered_markets,
+            scored_markets=scored_markets,
+            limit=limit,
+        )
 
         return MarketTrackingResult(
             run_id=run_id,

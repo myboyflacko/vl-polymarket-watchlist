@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import logging
 from datetime import UTC, datetime
 
 from whale_tracker.providers.polymarket.client import get_polymarket_data_client
@@ -30,9 +29,6 @@ from whale_tracker.tracker.whales.scoring import (
 )
 
 
-logger = logging.getLogger(__name__)
-
-
 class WhaleTrackerService:
     def __init__(
         self,
@@ -55,25 +51,21 @@ class WhaleTrackerService:
         started_at = now or datetime.now(UTC)
         run_id = _build_run_id(started_at, suffix="whales")
 
-        try:
-            whales = await self.discover(now=started_at)
-            filtered_whales = self.filter_profile.run(whales)
-            scored_whales = (
-                self.scoring_profile.run(filtered_whales)
-                if self.scoring_profile is not None
-                else None
-            )
-            persist_whale_run(
-                run_id=run_id,
-                started_at=started_at,
-                finished_at=datetime.now(UTC),
-                whales=whales,
-                filtered_whales=filtered_whales,
-                scored_whales=scored_whales,
-            )
-        except Exception:
-            logger.exception("Whale tracking run failed", extra={"run_id": run_id})
-            raise
+        whales = await self.discover(now=started_at)
+        filtered_whales = self.filter_profile.run(whales)
+        scored_whales = (
+            self.scoring_profile.run(filtered_whales)
+            if self.scoring_profile is not None
+            else None
+        )
+        persist_whale_run(
+            run_id=run_id,
+            started_at=started_at,
+            finished_at=datetime.now(UTC),
+            whales=whales,
+            filtered_whales=filtered_whales,
+            scored_whales=scored_whales,
+        )
 
         return WhaleTrackingResult(
             run_id=run_id,
