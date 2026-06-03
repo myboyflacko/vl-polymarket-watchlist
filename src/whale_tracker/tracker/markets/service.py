@@ -17,10 +17,7 @@ from whale_tracker.tracker.markets.repository import (
     list_qualified_markets,
     persist_market_run,
 )
-from whale_tracker.tracker.markets.scoring import (
-    MarketScoringProfile,
-    ZScoreMarketScoringProfile,
-)
+from whale_tracker.tracker.markets.scoring import MarketScoringProfile
 from whale_tracker.tracker.whales.repository import (
     get_latest_selection_run_id,
 )
@@ -39,15 +36,12 @@ class MarketTrackerService:
     ) -> None:
         self.discovery_profile = discovery_profile or DefaultMarketDiscoveryProfile()
         self.filter_profile = filter_profile or DefaultMarketFilterProfile()
-        self.scoring_profile = scoring_profile or ZScoreMarketScoringProfile()
+        self.scoring_profile = scoring_profile
 
     def register_filter(self, profile: DefaultMarketFilterProfile) -> None:
         self.filter_profile = profile
 
-    def register_scoring(
-        self,
-        profile: MarketScoringProfile | None,
-    ) -> None:
+    def register_scoring(self, profile: MarketScoringProfile | None) -> None:
         self.scoring_profile = profile
 
     async def run(

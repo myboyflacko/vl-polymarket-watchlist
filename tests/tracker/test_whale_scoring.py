@@ -23,7 +23,7 @@ NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
 
 def test_z_score_scoring_ranks_current_run_metrics() -> None:
-    result = ZScoreWhaleScoringProfile(bottom_cut_percentile=0.5).run(
+    result = ZScoreWhaleScoringProfile().run(
         _filtered_whales(
             [
                 _whale(
@@ -50,6 +50,28 @@ def test_z_score_scoring_ranks_current_run_metrics() -> None:
     assert [entry.whale.proxy_wallet for entry in result.removed_whales] == ["0x2"]
 
 
+def test_z_score_scoring_selects_wallets_above_configured_score() -> None:
+    result = ZScoreWhaleScoringProfile(
+        min_score=70,
+        pnl_weight=1,
+        volume_weight=0,
+        trade_activity_weight=0,
+        recency_weight=0,
+        exposure_weight=0,
+        concentration_penalty_weight=0,
+    ).run(
+        _filtered_whales(
+            [
+                _whale("0x1", pnl=20),
+                _whale("0x2", pnl=10),
+            ]
+        )
+    )
+
+    assert [entry.whale.proxy_wallet for entry in result.whales] == ["0x1"]
+    assert [entry.whale.proxy_wallet for entry in result.removed_whales] == ["0x2"]
+
+
 def test_z_score_scoring_uses_weighted_mean() -> None:
     result = ZScoreWhaleScoringProfile(
         pnl_weight=3,
@@ -58,7 +80,6 @@ def test_z_score_scoring_uses_weighted_mean() -> None:
         recency_weight=0,
         exposure_weight=0,
         concentration_penalty_weight=0,
-        bottom_cut_percentile=0,
     ).run(
         _filtered_whales(
             [
@@ -68,10 +89,10 @@ def test_z_score_scoring_uses_weighted_mean() -> None:
         )
     )
 
-    scores = {entry.whale.proxy_wallet: entry.score for entry in result.whales}
+    scores = _scores_by_wallet(result)
 
-    assert scores["0x1"] == pytest.approx(62.2459, rel=1e-4)
-    assert scores["0x2"] == pytest.approx(37.7541, rel=1e-4)
+    assert scores["0x1"] == pytest.approx(73.1059, rel=1e-4)
+    assert scores["0x2"] == pytest.approx(26.8941, rel=1e-4)
 
 
 def test_z_score_concentration_is_penalty_without_bonus() -> None:
@@ -82,7 +103,6 @@ def test_z_score_concentration_is_penalty_without_bonus() -> None:
         recency_weight=0,
         exposure_weight=0,
         concentration_penalty_weight=1,
-        bottom_cut_percentile=0,
     ).run(
         _filtered_whales(
             [
@@ -92,9 +112,9 @@ def test_z_score_concentration_is_penalty_without_bonus() -> None:
         )
     )
 
-    scores = {entry.whale.proxy_wallet: entry.score for entry in result.whales}
+    scores = _scores_by_wallet(result)
 
-    assert scores["0x1"] == pytest.approx(26.8941, rel=1e-4)
+    assert scores["0x1"] == pytest.approx(11.9203, rel=1e-4)
     assert scores["0x2"] == pytest.approx(50.0)
 
 
@@ -106,7 +126,6 @@ def test_z_score_zero_variance_metrics_score_neutral() -> None:
         recency_weight=0,
         exposure_weight=0,
         concentration_penalty_weight=0,
-        bottom_cut_percentile=0,
     ).run(
         _filtered_whales(
             [
@@ -116,7 +135,7 @@ def test_z_score_zero_variance_metrics_score_neutral() -> None:
         )
     )
 
-    assert [entry.score for entry in result.whales] == [50.0, 50.0]
+    assert [entry.score for entry in result.removed_whales] == [50.0, 50.0]
 
 
 def test_percentile_scoring_profile_is_usable() -> None:
@@ -147,6 +166,13 @@ def _filtered_whales(whales: list[Whale]) -> FilteredWhales:
         generated_at=NOW,
         profile_name="test_filter",
     )
+
+
+def _scores_by_wallet(result) -> dict[str, float]:
+    return {
+        entry.whale.proxy_wallet: entry.score
+        for entry in result.whales + result.removed_whales
+    }
 
 
 def _whale(

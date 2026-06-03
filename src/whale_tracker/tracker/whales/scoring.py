@@ -25,7 +25,6 @@ class BaseWhaleScoringProfile(BaseModel):
     recency_weight: float = Field(default=0.15, ge=0)
     exposure_weight: float = Field(default=0.10, ge=0)
     concentration_penalty_weight: float = Field(default=0.10, ge=0)
-    bottom_cut_percentile: float = Field(default=0.75, ge=0, le=1)
 
     def run(self, filtered_whales: FilteredWhales) -> ScoredWhales:
         if not filtered_whales.whales:
@@ -60,6 +59,7 @@ class BaseWhaleScoringProfile(BaseModel):
 
 class PercentileWhaleScoringProfile(BaseWhaleScoringProfile):
     name: str = PERCENTILE_WHALE_SCORING_PROFILE
+    bottom_cut_percentile: float = Field(default=0.75, ge=0, le=1)
 
     def _scores(self, whales: list[Whale]) -> dict[str, float]:
         pnl = _percentile_scores(
@@ -111,7 +111,36 @@ class PercentileWhaleScoringProfile(BaseWhaleScoringProfile):
 
 class ZScoreWhaleScoringProfile(BaseWhaleScoringProfile):
     name: str = DEFAULT_Z_SCORE_WHALE_SCORING_PROFILE
-    score_scale: float = Field(default=1.0, gt=0)
+    score_scale: float = Field(default=2.0, gt=0)
+    min_score: float = Field(default=50.0, ge=0, le=100)
+
+    def run(self, filtered_whales: FilteredWhales) -> ScoredWhales:
+        if not filtered_whales.whales:
+            return ScoredWhales(
+                whales=[],
+                removed_whales=[],
+                generated_at=filtered_whales.generated_at,
+                profile_name=self.name,
+            )
+
+        scores = self._scores(filtered_whales.whales)
+        ranked = [
+            ScoredWhale(whale=whale, score=scores[whale.proxy_wallet])
+            for whale in sorted(
+                filtered_whales.whales,
+                key=lambda item: scores[item.proxy_wallet],
+                reverse=True,
+            )
+        ]
+        selected = [entry for entry in ranked if entry.score > self.min_score]
+        removed = [entry for entry in ranked if entry.score <= self.min_score]
+
+        return ScoredWhales(
+            whales=selected,
+            removed_whales=removed,
+            generated_at=filtered_whales.generated_at,
+            profile_name=self.name,
+        )
 
     def _scores(self, whales: list[Whale]) -> dict[str, float]:
         pnl = _z_scores(

@@ -73,7 +73,7 @@ def test_whale_tracker_run_persists_prefilter_and_afterfilter(
             leaderboard_limit=2,
             wallet_batch_size=2,
         ),
-        scoring_profile=ZScoreWhaleScoringProfile(bottom_cut_percentile=0.5),
+        scoring_profile=ZScoreWhaleScoringProfile(),
     )
 
     result = asyncio.run(service.run(now=NOW))

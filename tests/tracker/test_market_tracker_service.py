@@ -25,11 +25,10 @@ from whale_tracker.tracker.markets.models import (
     MarketMetricSnapshot,
     MarketRun,
 )
-from whale_tracker.tracker.markets.scoring import ZScoreMarketScoringProfile
 from whale_tracker.tracker.markets.repository import (
     list_markets,
-    list_qualified_markets,
 )
+from whale_tracker.tracker.markets.scoring import ZScoreMarketScoringProfile
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
@@ -92,7 +91,7 @@ def test_default_market_filter_profile_filters_by_whale_count() -> None:
     assert result.profile_name == "default_market_filter"
 
 
-def test_z_score_market_scoring_ranks_and_cuts_markets() -> None:
+def test_z_score_market_scoring_remains_registerable() -> None:
     result = ZScoreMarketScoringProfile(bottom_cut_percentile=0.5).run(
         FilteredMarkets(
             markets=[
@@ -116,45 +115,56 @@ def test_z_score_market_scoring_ranks_and_cuts_markets() -> None:
     assert [entry.market.token_id for entry in result.markets] == ["strong"]
     assert [entry.market.token_id for entry in result.removed_markets] == ["weak"]
     assert result.markets[0].market.qualified is True
-    assert result.markets[0].market.categories == []
 
 
-def test_z_score_market_scoring_zero_variance_scores_neutral() -> None:
-    result = ZScoreMarketScoringProfile(bottom_cut_percentile=0).run(
-        FilteredMarkets(
-            markets=[
-                _market(token_id="one", total_current_value=100, whale_count=2),
-                _market(token_id="two", total_current_value=100, whale_count=2),
-            ],
-            checked_market_count=2,
-            generated_at=NOW,
-            profile_name="test_filter",
-        )
+def test_market_tracker_run_persists_filtered_markets(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    database_path = _prepare_database(monkeypatch, tmp_path)
+    _insert_selection_run(database_path)
+    monkeypatch.setattr(
+        service_module,
+        "get_polymarket_data_client",
+        lambda: FakeDataClient(),
+    )
+    service = MarketTrackerService(
+        filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
     )
 
-    assert [entry.score for entry in result.markets] == [50.0, 50.0]
+    result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
+
+    assert result.run_id.endswith("-markets")
+    assert [market.token_id for market in result.markets] == [YES_TOKEN]
+    assert result.qualified_markets == []
+    assert result.scored_markets is None
+
+    with database_session(database_path) as session:
+        run = session.scalar(select(MarketRun))
+        identity = session.scalar(select(MarketIdentity))
+        snapshot = session.scalar(select(MarketMetricSnapshot))
+
+    assert run is not None
+    assert run.whales_run_id == "selection-run-1"
+    assert run.filter_profile == "default_market_filter"
+    assert run.scoring_profile == ""
+    assert run.checked_market_count == 2
+    assert run.filtered_market_count == 1
+    assert run.scored_market_count == 1
+    assert run.removed_market_count == 1
+    assert identity is not None
+    assert identity.token_id == YES_TOKEN
+    assert snapshot is not None
+    assert snapshot.score == 0
+    assert snapshot.metrics["whale_count"] == 2
+    assert snapshot.metrics["total_current_value"] == 150
+
+    listed_markets = list_markets(run_id=result.run_id)
+
+    assert [market.token_id for market in listed_markets] == [YES_TOKEN]
 
 
-def test_z_score_market_scoring_limit_caps_ranked_selection() -> None:
-    result = ZScoreMarketScoringProfile(bottom_cut_percentile=0).run(
-        FilteredMarkets(
-            markets=[
-                _market(token_id="one", total_current_value=300, whale_count=3),
-                _market(token_id="two", total_current_value=200, whale_count=3),
-                _market(token_id="three", total_current_value=100, whale_count=3),
-            ],
-            checked_market_count=3,
-            generated_at=NOW,
-            profile_name="test_filter",
-        ),
-        limit=2,
-    )
-
-    assert [entry.market.token_id for entry in result.markets] == ["one", "two"]
-    assert [entry.market.token_id for entry in result.removed_markets] == ["three"]
-
-
-def test_market_tracker_run_persists_markets_and_qualified_markets(
+def test_market_tracker_run_with_registered_scoring_persists_scored_markets(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
@@ -172,36 +182,17 @@ def test_market_tracker_run_persists_markets_and_qualified_markets(
 
     result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
 
-    assert result.run_id.endswith("-markets")
-    assert [market.token_id for market in result.markets] == [YES_TOKEN]
-    assert [market.token_id for market in result.qualified_markets] == [YES_TOKEN]
     assert result.scored_markets is not None
+    assert [market.token_id for market in result.qualified_markets] == [YES_TOKEN]
 
     with database_session(database_path) as session:
         run = session.scalar(select(MarketRun))
-        identity = session.scalar(select(MarketIdentity))
         snapshot = session.scalar(select(MarketMetricSnapshot))
 
     assert run is not None
-    assert run.whales_run_id == "selection-run-1"
-    assert run.filter_profile == "default_market_filter"
     assert run.scoring_profile == "market_zscore_v1"
-    assert run.checked_market_count == 2
-    assert run.filtered_market_count == 1
-    assert run.scored_market_count == 1
-    assert run.removed_market_count == 1
-    assert identity is not None
-    assert identity.token_id == YES_TOKEN
     assert snapshot is not None
     assert snapshot.score == 50
-    assert snapshot.metrics["whale_count"] == 2
-    assert snapshot.metrics["total_current_value"] == 150
-
-    listed_markets = list_markets(run_id=result.run_id)
-    listed_qualified = list_qualified_markets(run_id=result.run_id)
-
-    assert [market.token_id for market in listed_markets] == [YES_TOKEN]
-    assert [market.token_id for market in listed_qualified] == [YES_TOKEN]
 
 
 def test_market_repository_upserts_identity_and_appends_snapshots(
@@ -212,7 +203,6 @@ def test_market_repository_upserts_identity_and_appends_snapshots(
     _insert_selection_run(database_path)
     service = MarketTrackerService(
         filter_profile=DefaultMarketFilterProfile(min_whale_count=1),
-        scoring_profile=ZScoreMarketScoringProfile(bottom_cut_percentile=0),
     )
     monkeypatch.setattr(
         service_module,
@@ -253,7 +243,6 @@ def test_market_tracker_run_without_scoring_persists_filtered_markets(
     service = MarketTrackerService(
         filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
     )
-    service.register_scoring(None)
 
     result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
 

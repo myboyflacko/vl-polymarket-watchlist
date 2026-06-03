@@ -22,7 +22,7 @@ class ZScoreMarketScoringProfile(BaseModel):
     total_current_value_weight: float = Field(default=1.0, ge=0)
     value_per_wallet_weight: float = Field(default=1.0, ge=0)
     bottom_cut_percentile: float = Field(default=0.75, ge=0, le=1)
-    score_scale: float = Field(default=1.0, gt=0)
+    score_scale: float = Field(default=2.0, gt=0)
 
     def run(
         self,
