@@ -46,11 +46,10 @@ Settings are Pydantic settings loaded from environment variables and `.env`.
 
 Main settings groups:
 
-- `PolymarketSettings`: general Polymarket endpoints, request delay, retry and API
-  credential fields.
 - `PolymarketDataApiClientSettings`: Data API base URL, timeout, concurrency,
   request delay, retry/backoff and per-endpoint rate limits.
 - `DatabaseSettings`: SQLite path or explicit database URL.
+- `LoggingSettings`: log directory, log level and retention period.
 
 Default database path:
 
@@ -58,17 +57,46 @@ Default database path:
 data/db/whale_tracker.sqlite3
 ```
 
+Default log path:
+
+```text
+logs/whale_tracker.jsonl
+```
+
 Useful environment variables:
 
 - `WHALE_TRACKER_SQLITE_PATH`
 - `WHALE_TRACKER_DATABASE_URL`
+- `WHALE_TRACKER_LOG_DIR`
+- `WHALE_TRACKER_LOG_LEVEL`
+- `WHALE_TRACKER_LOG_RETENTION_DAYS`
 - `POLYMARKET_DATA_API_BASE_URL`
 - `POLYMARKET_DATA_API_TIMEOUT_SECONDS`
 - `POLYMARKET_DATA_API_MAX_CONCURRENT_REQUESTS`
+- `POLYMARKET_DATA_API_REQUEST_DELAY_SECONDS`
+- `POLYMARKET_DATA_API_RATE_LIMIT_RETRY_ATTEMPTS`
+- `POLYMARKET_DATA_API_RATE_LIMIT_BACKOFF_SECONDS`
 - `POLYMARKET_DATA_API_REQUESTS_PER_SECOND`
 - `POLYMARKET_TRADES_REQUESTS_PER_SECOND`
 - `POLYMARKET_POSITIONS_REQUESTS_PER_SECOND`
 - `POLYMARKET_LEADERBOARD_REQUESTS_PER_SECOND`
+
+### `src/whale_tracker/core/logging.py`
+
+Logging is configured by `configure_logging()` and uses JSON lines for both
+stdout and a rotating file handler.
+
+Current behavior:
+
+- writes to stdout and `logs/whale_tracker.jsonl` by default
+- rotates the file log at midnight
+- keeps rotated logs for `WHALE_TRACKER_LOG_RETENTION_DAYS`, default `14`
+- supports `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`
+- reduces `httpx` and `httpcore` log noise to `WARNING`
+- is idempotent for the same log path, retention and level
+
+If `WHALE_TRACKER_LOG_DIR` is relative, it is resolved relative to the project
+root.
 
 ### `src/whale_tracker/tracker/whales`
 
