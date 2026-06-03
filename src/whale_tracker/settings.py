@@ -11,41 +11,6 @@ DEFAULT_SQLITE_PATH = PROJECT_ROOT / "data/db/whale_tracker.sqlite3"
 DEFAULT_LOG_DIR = PROJECT_ROOT / "logs"
 
 
-class PolymarketSettings(BaseSettings):
-    data_api: str = "https://data-api.polymarket.com"
-    gamma_api: str = "https://gamma-api.polymarket.com"
-    max_concurrent_profile_requests: int = Field(
-        default=4,
-        ge=1,
-        alias="MAX_CONCURRENT_PROFILE_REQUESTS",
-    )
-    request_delay_seconds: float = Field(
-        default=0.5,
-        ge=0,
-        alias="POLYMARKET_REQUEST_DELAY_SECONDS",
-    )
-    rate_limit_retry_attempts: int = Field(
-        default=5,
-        ge=0,
-        alias="POLYMARKET_RATE_LIMIT_RETRY_ATTEMPTS",
-    )
-    rate_limit_backoff_seconds: float = Field(
-        default=60.0,
-        ge=0,
-        alias="POLYMARKET_RATE_LIMIT_BACKOFF_SECONDS",
-    )
-
-    polymarket_pk: str = Field(default="", alias="POLYMARKET_PK")
-    polymarket_api_key: str = Field(default="", alias="POLYMARKET_API_KEY")
-
-    model_config = SettingsConfigDict(
-        env_file=ENV_FILE,
-        env_file_encoding="utf-8",
-        populate_by_name=True,
-        extra="ignore",
-    )
-
-
 class PolymarketDataApiClientSettings(BaseSettings):
     base_url: str = Field(
         default="https://data-api.polymarket.com",
@@ -143,7 +108,6 @@ class LoggingSettings(BaseSettings):
 
 
 class Settings(BaseSettings):
-    polymarket: PolymarketSettings = Field(default_factory=PolymarketSettings)
     polymarket_data_api_client: PolymarketDataApiClientSettings = Field(
         default_factory=PolymarketDataApiClientSettings,
     )
