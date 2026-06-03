@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from math import sqrt
+from math import exp, sqrt
 
 from pydantic import BaseModel, Field
 
@@ -22,6 +22,7 @@ class ZScoreMarketScoringProfile(BaseModel):
     total_current_value_weight: float = Field(default=1.0, ge=0)
     value_per_wallet_weight: float = Field(default=1.0, ge=0)
     bottom_cut_percentile: float = Field(default=0.75, ge=0, le=1)
+    score_scale: float = Field(default=1.0, gt=0)
 
     def run(
         self,
@@ -83,7 +84,7 @@ class ZScoreMarketScoringProfile(BaseModel):
 
         scored: list[Market] = []
         for market in markets:
-            score = (
+            raw_score = (
                 (
                     self.whale_count_weight * whale_count[market.token_id]
                     + self.total_current_value_weight
@@ -95,6 +96,7 @@ class ZScoreMarketScoringProfile(BaseModel):
                 if metric_weight_sum
                 else 0.0
             )
+            score = _sigmoid_score(raw_score, scale=self.score_scale)
             scored.append(
                 market.model_copy(
                     update={
@@ -143,6 +145,10 @@ def _z_scores(
         market.token_id: z_score_by_token.get(market.token_id, 0.0)
         for market in markets
     }
+
+
+def _sigmoid_score(raw_score: float, *, scale: float) -> float:
+    return 100 / (1 + exp(-raw_score * scale))
 
 
 def _value_per_wallet(market: Market) -> float:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from math import sqrt
+from math import exp, sqrt
 
 from pydantic import BaseModel, Field
 
@@ -111,6 +111,7 @@ class PercentileWhaleScoringProfile(BaseWhaleScoringProfile):
 
 class ZScoreWhaleScoringProfile(BaseWhaleScoringProfile):
     name: str = DEFAULT_Z_SCORE_WHALE_SCORING_PROFILE
+    score_scale: float = Field(default=1.0, gt=0)
 
     def _scores(self, whales: list[Whale]) -> dict[str, float]:
         pnl = _z_scores(
@@ -151,23 +152,27 @@ class ZScoreWhaleScoringProfile(BaseWhaleScoringProfile):
         )
 
         return {
-            whale.proxy_wallet: (
+            whale.proxy_wallet: _sigmoid_score(
                 (
-                    self.pnl_weight * pnl[whale.proxy_wallet]
-                    + self.volume_weight * volume[whale.proxy_wallet]
-                    + self.trade_activity_weight * trade_activity[whale.proxy_wallet]
-                    + self.recency_weight * recency[whale.proxy_wallet]
-                    + self.exposure_weight * exposure[whale.proxy_wallet]
+                    (
+                        self.pnl_weight * pnl[whale.proxy_wallet]
+                        + self.volume_weight * volume[whale.proxy_wallet]
+                        + self.trade_activity_weight
+                        * trade_activity[whale.proxy_wallet]
+                        + self.recency_weight * recency[whale.proxy_wallet]
+                        + self.exposure_weight * exposure[whale.proxy_wallet]
+                    )
+                    / metric_weight_sum
+                    if metric_weight_sum
+                    else 0.0
                 )
-                / metric_weight_sum
-                if metric_weight_sum
-                else 0.0
-            )
-            - self.concentration_penalty_weight
-            * max(
-                0.0,
-                market_concentration[whale.proxy_wallet],
-                position_concentration[whale.proxy_wallet],
+                - self.concentration_penalty_weight
+                * max(
+                    0.0,
+                    market_concentration[whale.proxy_wallet],
+                    position_concentration[whale.proxy_wallet],
+                ),
+                scale=self.score_scale,
             )
             for whale in whales
         }
@@ -210,6 +215,10 @@ def _z_scores(
         whale.proxy_wallet: z_score_by_wallet.get(whale.proxy_wallet, 0.0)
         for whale in whales
     }
+
+
+def _sigmoid_score(raw_score: float, *, scale: float) -> float:
+    return 100 / (1 + exp(-raw_score * scale))
 
 
 def _percentile_scores(

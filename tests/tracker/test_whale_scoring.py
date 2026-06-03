@@ -70,8 +70,8 @@ def test_z_score_scoring_uses_weighted_mean() -> None:
 
     scores = {entry.whale.proxy_wallet: entry.score for entry in result.whales}
 
-    assert scores["0x1"] == pytest.approx(0.5)
-    assert scores["0x2"] == pytest.approx(-0.5)
+    assert scores["0x1"] == pytest.approx(62.2459, rel=1e-4)
+    assert scores["0x2"] == pytest.approx(37.7541, rel=1e-4)
 
 
 def test_z_score_concentration_is_penalty_without_bonus() -> None:
@@ -94,11 +94,11 @@ def test_z_score_concentration_is_penalty_without_bonus() -> None:
 
     scores = {entry.whale.proxy_wallet: entry.score for entry in result.whales}
 
-    assert scores["0x1"] == pytest.approx(-1.0)
-    assert scores["0x2"] == pytest.approx(0.0)
+    assert scores["0x1"] == pytest.approx(26.8941, rel=1e-4)
+    assert scores["0x2"] == pytest.approx(50.0)
 
 
-def test_z_score_zero_variance_metrics_score_zero() -> None:
+def test_z_score_zero_variance_metrics_score_neutral() -> None:
     result = ZScoreWhaleScoringProfile(
         pnl_weight=1,
         volume_weight=0,
@@ -116,7 +116,7 @@ def test_z_score_zero_variance_metrics_score_zero() -> None:
         )
     )
 
-    assert [entry.score for entry in result.whales] == [0.0, 0.0]
+    assert [entry.score for entry in result.whales] == [50.0, 50.0]
 
 
 def test_percentile_scoring_profile_is_usable() -> None:

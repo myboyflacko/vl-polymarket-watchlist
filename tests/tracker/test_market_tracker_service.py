@@ -119,7 +119,7 @@ def test_z_score_market_scoring_ranks_and_cuts_markets() -> None:
     assert result.markets[0].market.categories == []
 
 
-def test_z_score_market_scoring_zero_variance_scores_zero() -> None:
+def test_z_score_market_scoring_zero_variance_scores_neutral() -> None:
     result = ZScoreMarketScoringProfile(bottom_cut_percentile=0).run(
         FilteredMarkets(
             markets=[
@@ -132,7 +132,7 @@ def test_z_score_market_scoring_zero_variance_scores_zero() -> None:
         )
     )
 
-    assert [entry.score for entry in result.markets] == [0.0, 0.0]
+    assert [entry.score for entry in result.markets] == [50.0, 50.0]
 
 
 def test_z_score_market_scoring_limit_caps_ranked_selection() -> None:
@@ -193,7 +193,7 @@ def test_market_tracker_run_persists_markets_and_qualified_markets(
     assert identity is not None
     assert identity.token_id == YES_TOKEN
     assert snapshot is not None
-    assert snapshot.score == 0
+    assert snapshot.score == 50
     assert snapshot.metrics["whale_count"] == 2
     assert snapshot.metrics["total_current_value"] == 150
 
