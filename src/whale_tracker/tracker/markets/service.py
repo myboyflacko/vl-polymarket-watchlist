@@ -10,18 +10,19 @@ from whale_tracker.tracker.markets.domain import (
     MarketTrackingResult,
     Markets,
 )
-from whale_tracker.tracker.markets.filter import MarketFilterProfile, filter_markets
-from whale_tracker.tracker.markets.helpers import collect_wallet_positions
+from whale_tracker.tracker.markets.discovery import DefaultMarketDiscoveryProfile
+from whale_tracker.tracker.markets.filter import DefaultMarketFilterProfile
 from whale_tracker.tracker.markets.repository import (
     list_markets,
     list_qualified_markets,
     persist_market_run,
 )
-from whale_tracker.tracker.markets.profiles import MarketTrackingProfile
-from whale_tracker.tracker.markets.scoring import MarketScoringProfile, score_markets
+from whale_tracker.tracker.markets.scoring import (
+    MarketScoringProfile,
+    ZScoreMarketScoringProfile,
+)
 from whale_tracker.tracker.whales.repository import (
     get_latest_selection_run_id,
-    list_selected_whale_wallets,
 )
 
 
@@ -32,18 +33,20 @@ class MarketTrackerService:
     def __init__(
         self,
         *,
-        filter_profile: MarketFilterProfile | None = None,
-        scoring_profile: tuple[MarketScoringProfile, ...] | None = None,
+        discovery_profile: DefaultMarketDiscoveryProfile | None = None,
+        filter_profile: DefaultMarketFilterProfile | None = None,
+        scoring_profile: MarketScoringProfile | None = None,
     ) -> None:
-        self.filter_profile = filter_profile or MarketFilterProfile()
-        self.scoring_profile = scoring_profile or MarketTrackingProfile().scoring
+        self.discovery_profile = discovery_profile or DefaultMarketDiscoveryProfile()
+        self.filter_profile = filter_profile or DefaultMarketFilterProfile()
+        self.scoring_profile = scoring_profile or ZScoreMarketScoringProfile()
 
-    def register_filter(self, profile: MarketFilterProfile) -> None:
+    def register_filter(self, profile: DefaultMarketFilterProfile) -> None:
         self.filter_profile = profile
 
     def register_scoring(
         self,
-        profile: tuple[MarketScoringProfile, ...] | None,
+        profile: MarketScoringProfile | None,
     ) -> None:
         self.scoring_profile = profile
 
@@ -63,16 +66,9 @@ class MarketTrackerService:
                 whales_run_id=actual_whales_run_id,
                 generated_at=generated_at,
             )
-            filtered_markets = filter_markets(
-                markets=markets,
-                profile=self.filter_profile,
-            )
+            filtered_markets = self.filter_profile.run(markets)
             scored_markets = (
-                score_markets(
-                    filtered_markets=filtered_markets,
-                    profiles=self.scoring_profile,
-                    limit=limit,
-                )
+                self.scoring_profile.run(filtered_markets, limit=limit)
                 if self.scoring_profile is not None
                 else None
             )
@@ -119,22 +115,9 @@ class MarketTrackerService:
         whales_run_id: str | None,
         generated_at: datetime,
     ) -> Markets:
-        wallets = (
-            list_selected_whale_wallets(whales_run_id)
-            if whales_run_id is not None
-            else []
-        )
-        if not wallets:
-            return Markets(generated_at=generated_at)
-
-        positions, errors = await collect_wallet_positions(
+        return await self.discovery_profile.run(
             client=get_polymarket_data_client(),
-            wallets=wallets,
-        )
-        return Markets(
-            positions=positions,
-            errors=errors,
-            checked_market_count=len(positions),
+            whales_run_id=whales_run_id,
             generated_at=generated_at,
         )
 

@@ -1,17 +1,8 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
 
 from pydantic import BaseModel, Field
-
-
-QualifiedMarketProfileName = Literal[
-    "confirmed",
-    "pain",
-    "high_value",
-    "value_per_wallet",
-]
 
 
 class WhalePosition(BaseModel):
@@ -49,8 +40,8 @@ class Market(BaseModel):
     end_date: date | None = None
     negative_risk: bool = False
     qualified: bool = False
-    categories: list[QualifiedMarketProfileName] = Field(default_factory=list)
-    category_scores: dict[QualifiedMarketProfileName, float] = Field(default_factory=dict)
+    categories: list[str] = Field(default_factory=list)
+    category_scores: dict[str, float] = Field(default_factory=dict)
     score: float = 0.0
     price_delta: float = 0.0
     price_delta_pct: float | None = None

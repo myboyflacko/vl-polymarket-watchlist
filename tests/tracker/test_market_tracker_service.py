@@ -10,9 +10,14 @@ from whale_tracker.core.db.base import Base
 from whale_tracker.core.db.engine import create_database_engine, database_session
 from whale_tracker.settings import get_settings
 from whale_tracker.tracker.markets import service as service_module
-from whale_tracker.tracker.markets.domain import Market, WhalePosition
+from whale_tracker.tracker.markets.domain import (
+    FilteredMarkets,
+    Market,
+    Markets,
+    WhalePosition,
+)
 from whale_tracker.tracker.markets.filter import (
-    MarketFilterProfile,
+    DefaultMarketFilterProfile,
     build_market_candidates,
 )
 from whale_tracker.tracker.markets.models import (
@@ -20,10 +25,7 @@ from whale_tracker.tracker.markets.models import (
     MarketMetricSnapshot,
     MarketRun,
 )
-from whale_tracker.tracker.markets.scoring import (
-    MarketScoringProfile,
-    qualify_markets,
-)
+from whale_tracker.tracker.markets.scoring import ZScoreMarketScoringProfile
 from whale_tracker.tracker.markets.repository import (
     list_markets,
     list_qualified_markets,
@@ -72,22 +74,84 @@ def test_build_market_candidates_groups_and_filters() -> None:
     assert candidates[0].weighted_avg_price == 0.4
 
 
-def test_qualify_markets_marks_matching_profiles() -> None:
-    markets = qualify_markets(
-        [
-            _market(token_id="confirmed", weighted_avg_price=0.4, cur_price=0.5),
-            _market(token_id="pain", weighted_avg_price=0.6, cur_price=0.5),
-        ],
-        profiles=(
-            MarketScoringProfile(name="confirmed"),
-            MarketScoringProfile(name="pain"),
-        ),
+def test_default_market_filter_profile_filters_by_whale_count() -> None:
+    result = DefaultMarketFilterProfile(min_whale_count=2).run(
+        Markets(
+            positions=[
+                _whale_position(WALLET_ONE, token_id=YES_TOKEN),
+                _whale_position(WALLET_TWO, token_id=YES_TOKEN),
+                _whale_position(WALLET_ONE, token_id=NO_TOKEN),
+            ],
+            checked_market_count=3,
+            generated_at=NOW,
+        )
     )
 
-    assert markets[0].qualified is True
-    assert markets[0].categories == ["confirmed"]
-    assert markets[1].qualified is True
-    assert markets[1].categories == ["pain"]
+    assert [market.token_id for market in result.markets] == [YES_TOKEN]
+    assert [market.token_id for market in result.removed_markets] == [NO_TOKEN]
+    assert result.profile_name == "default_market_filter"
+
+
+def test_z_score_market_scoring_ranks_and_cuts_markets() -> None:
+    result = ZScoreMarketScoringProfile(bottom_cut_percentile=0.5).run(
+        FilteredMarkets(
+            markets=[
+                _market(
+                    token_id="strong",
+                    total_current_value=300,
+                    whale_count=3,
+                ),
+                _market(
+                    token_id="weak",
+                    total_current_value=30,
+                    whale_count=3,
+                ),
+            ],
+            checked_market_count=2,
+            generated_at=NOW,
+            profile_name="test_filter",
+        )
+    )
+
+    assert [entry.market.token_id for entry in result.markets] == ["strong"]
+    assert [entry.market.token_id for entry in result.removed_markets] == ["weak"]
+    assert result.markets[0].market.qualified is True
+    assert result.markets[0].market.categories == []
+
+
+def test_z_score_market_scoring_zero_variance_scores_zero() -> None:
+    result = ZScoreMarketScoringProfile(bottom_cut_percentile=0).run(
+        FilteredMarkets(
+            markets=[
+                _market(token_id="one", total_current_value=100, whale_count=2),
+                _market(token_id="two", total_current_value=100, whale_count=2),
+            ],
+            checked_market_count=2,
+            generated_at=NOW,
+            profile_name="test_filter",
+        )
+    )
+
+    assert [entry.score for entry in result.markets] == [0.0, 0.0]
+
+
+def test_z_score_market_scoring_limit_caps_ranked_selection() -> None:
+    result = ZScoreMarketScoringProfile(bottom_cut_percentile=0).run(
+        FilteredMarkets(
+            markets=[
+                _market(token_id="one", total_current_value=300, whale_count=3),
+                _market(token_id="two", total_current_value=200, whale_count=3),
+                _market(token_id="three", total_current_value=100, whale_count=3),
+            ],
+            checked_market_count=3,
+            generated_at=NOW,
+            profile_name="test_filter",
+        ),
+        limit=2,
+    )
+
+    assert [entry.market.token_id for entry in result.markets] == ["one", "two"]
+    assert [entry.market.token_id for entry in result.removed_markets] == ["three"]
 
 
 def test_market_tracker_run_persists_markets_and_qualified_markets(
@@ -102,8 +166,8 @@ def test_market_tracker_run_persists_markets_and_qualified_markets(
         lambda: FakeDataClient(),
     )
     service = MarketTrackerService(
-        filter_profile=MarketFilterProfile(min_whale_count=2),
-        scoring_profile=(MarketScoringProfile(name="high_value"),),
+        filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
+        scoring_profile=ZScoreMarketScoringProfile(bottom_cut_percentile=0),
     )
 
     result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
@@ -121,7 +185,7 @@ def test_market_tracker_run_persists_markets_and_qualified_markets(
     assert run is not None
     assert run.whales_run_id == "selection-run-1"
     assert run.filter_profile == "default_market_filter"
-    assert run.scoring_profile == "qualified_market_profiles"
+    assert run.scoring_profile == "market_zscore_v1"
     assert run.checked_market_count == 2
     assert run.filtered_market_count == 1
     assert run.scored_market_count == 1
@@ -129,7 +193,7 @@ def test_market_tracker_run_persists_markets_and_qualified_markets(
     assert identity is not None
     assert identity.token_id == YES_TOKEN
     assert snapshot is not None
-    assert snapshot.score == 150
+    assert snapshot.score == 0
     assert snapshot.metrics["whale_count"] == 2
     assert snapshot.metrics["total_current_value"] == 150
 
@@ -147,8 +211,8 @@ def test_market_repository_upserts_identity_and_appends_snapshots(
     database_path = _prepare_database(monkeypatch, tmp_path)
     _insert_selection_run(database_path)
     service = MarketTrackerService(
-        filter_profile=MarketFilterProfile(min_whale_count=1),
-        scoring_profile=(MarketScoringProfile(name="high_value"),),
+        filter_profile=DefaultMarketFilterProfile(min_whale_count=1),
+        scoring_profile=ZScoreMarketScoringProfile(bottom_cut_percentile=0),
     )
     monkeypatch.setattr(
         service_module,
@@ -187,7 +251,7 @@ def test_market_tracker_run_without_scoring_persists_filtered_markets(
         lambda: FakeDataClient(),
     )
     service = MarketTrackerService(
-        filter_profile=MarketFilterProfile(min_whale_count=2),
+        filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
     )
     service.register_scoring(None)
 

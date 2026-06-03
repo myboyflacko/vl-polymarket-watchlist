@@ -10,28 +10,26 @@ from whale_tracker.tracker.markets.domain import (
     MarketTrackingResult,
     WhalePosition,
 )
-from whale_tracker.tracker.markets.filter import MarketFilterProfile
-from whale_tracker.tracker.markets.profiles import (
-    MarketCandidateProfile,
+from whale_tracker.tracker.markets.discovery import DefaultMarketDiscoveryProfile
+from whale_tracker.tracker.markets.filter import DefaultMarketFilterProfile
+from whale_tracker.tracker.markets.scoring import (
     MarketScoringProfile,
-    MarketTrackingProfile,
-    QualifiedMarketProfile,
+    ZScoreMarketScoringProfile,
 )
 from whale_tracker.tracker.markets.service import MarketTrackerService
 
 __all__ = [
+    "DefaultMarketDiscoveryProfile",
+    "DefaultMarketFilterProfile",
     "FilteredMarkets",
     "Market",
-    "MarketCandidateProfile",
-    "MarketFilterProfile",
     "MarketRunResult",
     "Markets",
     "MarketScoringProfile",
     "MarketTrackerService",
-    "MarketTrackingProfile",
     "MarketTrackingResult",
-    "QualifiedMarketProfile",
     "ScoredMarket",
     "ScoredMarkets",
     "WhalePosition",
+    "ZScoreMarketScoringProfile",
 ]

@@ -3,37 +3,42 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 
+from pydantic import BaseModel, Field
+
 from whale_tracker.tracker.markets.domain import (
     FilteredMarkets,
     Market,
     Markets,
     WhalePosition,
 )
-from whale_tracker.tracker.markets.profiles import MarketFilterProfile
 
 
-def filter_markets(*, markets: Markets, profile: MarketFilterProfile) -> FilteredMarkets:
-    candidates = _build_market_candidates(markets.positions)
-    kept: list[Market] = []
-    removed: list[Market] = []
+class DefaultMarketFilterProfile(BaseModel):
+    name: str = "default_market_filter"
+    min_whale_count: int = Field(default=3, ge=1)
 
-    for market in candidates:
-        if market.whale_count >= profile.min_whale_count:
-            kept.append(market)
-        else:
-            removed.append(market)
+    def run(self, markets: Markets) -> FilteredMarkets:
+        candidates = _build_market_candidates(markets.positions)
+        kept: list[Market] = []
+        removed: list[Market] = []
 
-    return FilteredMarkets(
-        markets=sorted(
-            kept,
-            key=lambda market: (market.whale_count, market.total_current_value),
-            reverse=True,
-        ),
-        removed_markets=removed,
-        checked_market_count=len(candidates),
-        generated_at=markets.generated_at,
-        profile_name=profile.name,
-    )
+        for market in candidates:
+            if market.whale_count >= self.min_whale_count:
+                kept.append(market)
+            else:
+                removed.append(market)
+
+        return FilteredMarkets(
+            markets=sorted(
+                kept,
+                key=lambda market: (market.whale_count, market.total_current_value),
+                reverse=True,
+            ),
+            removed_markets=removed,
+            checked_market_count=len(candidates),
+            generated_at=markets.generated_at,
+            profile_name=self.name,
+        )
 
 
 def build_market_candidates(
