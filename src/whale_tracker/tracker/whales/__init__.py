@@ -11,12 +11,13 @@ from whale_tracker.tracker.whales.domain import (
     WhaleTrackingResult,
     Whales,
 )
-from whale_tracker.tracker.whales.filter import WhaleFilterProfile
-from whale_tracker.tracker.whales.profiles import (
-    WhaleDiscoveryProfile,
-    WhaleSelectionProfile,
+from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
+from whale_tracker.tracker.whales.filter import DefaultWhaleFilterProfile
+from whale_tracker.tracker.whales.scoring import (
+    PercentileWhaleScoringProfile,
+    WhaleScoringProfile,
+    ZScoreWhaleScoringProfile,
 )
-from whale_tracker.tracker.whales.scoring import WhaleScoringProfile
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
 __all__ = [
@@ -26,12 +27,13 @@ __all__ = [
     "ScoredWhales",
     "Whale",
     "WhaleDiscoveryProfile",
-    "WhaleFilterProfile",
+    "DefaultWhaleFilterProfile",
+    "PercentileWhaleScoringProfile",
     "WhaleRunResult",
     "WhaleScoringProfile",
-    "WhaleSelectionProfile",
     "WhaleSelectionRankingResult",
     "WhaleTrackerService",
     "WhaleTrackingResult",
     "Whales",
+    "ZScoreWhaleScoringProfile",
 ]

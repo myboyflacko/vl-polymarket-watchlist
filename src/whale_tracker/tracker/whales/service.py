@@ -9,16 +9,13 @@ from whale_tracker.tracker.whales.domain import (
     WhaleTrackingResult,
     Whales,
 )
-from whale_tracker.tracker.whales.filter import (
-    WhaleFilterProfile,
-    filter_whales,
-)
+from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
+from whale_tracker.tracker.whales.filter import DefaultWhaleFilterProfile
 from whale_tracker.tracker.whales.helpers import (
     collect_whales_from_polymarket,
     fetch_leaderboards_from_polymarket,
     select_leaderboard_candidates,
 )
-from whale_tracker.tracker.whales.profiles import WhaleDiscoveryProfile
 from whale_tracker.tracker.whales.repository import (
     list_discovered_whales,
     list_latest_discovered_whales,
@@ -27,7 +24,10 @@ from whale_tracker.tracker.whales.repository import (
     list_selected_whales,
     persist_whale_run,
 )
-from whale_tracker.tracker.whales.scoring import WhaleScoringProfile, score_whales
+from whale_tracker.tracker.whales.scoring import (
+    WhaleScoringProfile,
+    ZScoreWhaleScoringProfile,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -36,16 +36,16 @@ logger = logging.getLogger(__name__)
 class WhaleTrackerService:
     def __init__(
         self,
-        profile: WhaleDiscoveryProfile | None = None,
+        discovery_profile: WhaleDiscoveryProfile | None = None,
         *,
-        filter_profile: WhaleFilterProfile | None = None,
+        filter_profile: DefaultWhaleFilterProfile | None = None,
         scoring_profile: WhaleScoringProfile | None = None,
     ) -> None:
-        self.profile = profile or WhaleDiscoveryProfile()
-        self.filter_profile = filter_profile or self.profile.filter
-        self.scoring_profile = scoring_profile or self.profile.scoring or WhaleScoringProfile()
+        self.discovery_profile = discovery_profile or WhaleDiscoveryProfile()
+        self.filter_profile = filter_profile or DefaultWhaleFilterProfile()
+        self.scoring_profile = scoring_profile or ZScoreWhaleScoringProfile()
 
-    def register_filter(self, profile: WhaleFilterProfile) -> None:
+    def register_filter(self, profile: DefaultWhaleFilterProfile) -> None:
         self.filter_profile = profile
 
     def register_scoring(self, profile: WhaleScoringProfile | None) -> None:
@@ -57,15 +57,9 @@ class WhaleTrackerService:
 
         try:
             whales = await self.discover(now=started_at)
-            filtered_whales = filter_whales(
-                whales=whales,
-                profile=self.filter_profile,
-            )
+            filtered_whales = self.filter_profile.run(whales)
             scored_whales = (
-                score_whales(
-                    filtered_whales=filtered_whales,
-                    profile=self.scoring_profile,
-                )
+                self.scoring_profile.run(filtered_whales)
                 if self.scoring_profile is not None
                 else None
             )
@@ -94,16 +88,16 @@ class WhaleTrackerService:
         client = get_polymarket_data_client()
         pnl_entries, volume_entries = await fetch_leaderboards_from_polymarket(
             client=client,
-            profile=self.profile,
+            profile=self.discovery_profile,
         )
         candidates = select_leaderboard_candidates(
             pnl_entries=pnl_entries,
             volume_entries=volume_entries,
-            wallet_count=self.profile.wallet_count,
+            wallet_count=self.discovery_profile.wallet_count,
         )
         return await collect_whales_from_polymarket(
             client=client,
-            profile=self.profile,
+            profile=self.discovery_profile,
             candidates=candidates,
             now=generated_at,
         )

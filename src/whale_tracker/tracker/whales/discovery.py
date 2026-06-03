@@ -4,12 +4,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from whale_tracker.tracker.whales.filter import WhaleFilterProfile
-from whale_tracker.tracker.whales.scoring import WhaleScoringProfile
-
-
-WhaleSelectionProfile = WhaleScoringProfile
-
 
 class WhaleDiscoveryProfile(BaseModel):
     profile_version: str = "whale_discovery_trade_first"
@@ -20,7 +14,7 @@ class WhaleDiscoveryProfile(BaseModel):
         "POLITICS",
         "SPORTS",
         "CRYPTO",
-        "CULTURE", 
+        "CULTURE",
         "MENTIONS",
         "WEATHER",
         "ECONOMICS",
@@ -36,5 +30,3 @@ class WhaleDiscoveryProfile(BaseModel):
     taker_only: bool = True
     current_positions_limit: int = Field(default=500, ge=1, le=500)
     current_positions_market_chunk_size: int = Field(default=50, ge=1, le=100)
-    filter: WhaleFilterProfile = Field(default_factory=WhaleFilterProfile)
-    scoring: WhaleScoringProfile | None = None
