@@ -1,10 +1,11 @@
 import asyncio
+import os
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.engine import make_url
 
 from whale_tracker.core.db.base import Base
 from whale_tracker.core.db.engine import create_database_engine, database_session
@@ -59,9 +60,8 @@ class FakeDataClient:
 
 def test_whale_tracker_run_persists_prefilter_and_afterfilter(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
 ) -> None:
-    database_path = _prepare_database(monkeypatch, tmp_path)
+    database_url = _prepare_database(monkeypatch)
     monkeypatch.setattr(
         service_module,
         "get_polymarket_data_client",
@@ -85,7 +85,7 @@ def test_whale_tracker_run_persists_prefilter_and_afterfilter(
         WALLET_TWO
     ]
 
-    with database_session(database_path) as session:
+    with database_session(database_url) as session:
         run = session.scalar(select(WhaleRun))
         whale = session.scalar(select(PolymarketWhale))
         metric = session.scalar(select(WhaleMetric))
@@ -102,9 +102,8 @@ def test_whale_tracker_run_persists_prefilter_and_afterfilter(
 
 def test_whale_tracker_run_without_scoring_persists_filtered_whales(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
 ) -> None:
-    database_path = _prepare_database(monkeypatch, tmp_path)
+    database_url = _prepare_database(monkeypatch)
     monkeypatch.setattr(
         service_module,
         "get_polymarket_data_client",
@@ -128,7 +127,7 @@ def test_whale_tracker_run_without_scoring_persists_filtered_whales(
         WALLET_TWO,
     ]
 
-    with database_session(database_path) as session:
+    with database_session(database_url) as session:
         run = session.scalar(select(WhaleRun))
         metrics = list(session.scalars(select(WhaleMetric)))
 
@@ -141,10 +140,27 @@ def test_whale_tracker_run_without_scoring_persists_filtered_whales(
     assert [metric.score for metric in metrics] == [0.0, 0.0]
 
 
-def _prepare_database(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Path:
-    database_path = tmp_path / "whales.sqlite3"
+def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
+    database_url = os.environ.get("WHALE_TRACKER_TEST_DATABASE_URL")
+    if database_url is None:
+        pytest.skip("WHALE_TRACKER_TEST_DATABASE_URL is required for DB integration tests.")
+
+    parsed_url = make_url(database_url)
+    if "test" not in (parsed_url.database or ""):
+        pytest.fail("WHALE_TRACKER_TEST_DATABASE_URL database name must contain 'test'.")
+
     get_settings.cache_clear()
-    monkeypatch.setenv("WHALE_TRACKER_SQLITE_PATH", str(database_path))
-    engine = create_database_engine(database_path)
+    _set_database_env(monkeypatch, database_url)
+    engine = create_database_engine(database_url)
+    Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
-    return database_path
+    return database_url
+
+
+def _set_database_env(monkeypatch: pytest.MonkeyPatch, database_url: str) -> None:
+    parsed_url = make_url(database_url)
+    monkeypatch.setenv("WHALE_TRACKER_POSTGRES_DB", parsed_url.database or "")
+    monkeypatch.setenv("WHALE_TRACKER_POSTGRES_USER", parsed_url.username or "")
+    monkeypatch.setenv("WHALE_TRACKER_POSTGRES_PASSWORD", parsed_url.password or "")
+    monkeypatch.setenv("WHALE_TRACKER_POSTGRES_HOST", parsed_url.host or "")
+    monkeypatch.setenv("WHALE_TRACKER_POSTGRES_PORT", str(parsed_url.port or 5432))

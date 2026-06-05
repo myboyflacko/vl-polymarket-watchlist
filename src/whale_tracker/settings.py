@@ -1,13 +1,14 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import computed_field
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import URL
 
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_SQLITE_PATH = PROJECT_ROOT / "data/db/whale_tracker.sqlite3"
 DEFAULT_LOG_DIR = PROJECT_ROOT / "logs"
 
 
@@ -71,22 +72,31 @@ class PolymarketDataApiClientSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    sqlite_path: Path = Field(
-        default=DEFAULT_SQLITE_PATH,
-        alias="WHALE_TRACKER_SQLITE_PATH",
+    name: str = Field(default="whale_tracker", alias="WHALE_TRACKER_POSTGRES_DB")
+    user: str = Field(default="whale_tracker", alias="WHALE_TRACKER_POSTGRES_USER")
+    password: str = Field(
+        default="whale_tracker",
+        alias="WHALE_TRACKER_POSTGRES_PASSWORD",
     )
-    url: str | None = Field(default=None, alias="WHALE_TRACKER_DATABASE_URL")
+    host: str = Field(default="postgres", alias="WHALE_TRACKER_POSTGRES_HOST")
+    port: int = Field(default=5432, ge=1, le=65535, alias="WHALE_TRACKER_POSTGRES_PORT")
 
+    @computed_field
     @property
     def database_url(self) -> str:
-        if self.url:
-            return self.url
-
-        return f"sqlite:///{self.sqlite_path}"
+        return URL.create(
+            drivername="postgresql+psycopg",
+            username=self.user,
+            password=self.password,
+            host=self.host,
+            port=self.port,
+            database=self.name,
+        ).render_as_string(hide_password=False)
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
         env_file_encoding="utf-8",
+        populate_by_name=True,
         extra="ignore",
     )
 
@@ -111,8 +121,11 @@ class Settings(BaseSettings):
     polymarket_data_api_client: PolymarketDataApiClientSettings = Field(
         default_factory=PolymarketDataApiClientSettings,
     )
-    database: DatabaseSettings = Field(default_factory=DatabaseSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
+
+    @property
+    def database(self) -> DatabaseSettings:
+        return DatabaseSettings()
 
 
 @lru_cache(maxsize=1)

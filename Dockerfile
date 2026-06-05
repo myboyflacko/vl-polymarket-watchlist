@@ -11,7 +11,7 @@ COPY src ./src
 RUN python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir .
 
-RUN mkdir -p /app/data/db /app/logs
+RUN mkdir -p /app/logs
 
 EXPOSE 8000
 

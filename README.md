@@ -10,8 +10,8 @@ The project is intentionally split into two tracking domains:
 - `whales`: find and rank relevant Polymarket wallets.
 - `markets`: find and rank markets based on the positions held by selected whales.
 
-Data is collected from Polymarket APIs and persisted to a local database through
-SQLAlchemy. SQLite is used by default.
+Data is collected from Polymarket APIs and persisted to PostgreSQL through
+SQLAlchemy.
 
 ## Main Components
 
@@ -76,6 +76,7 @@ exists, the endpoint returns `404`.
 
 The Docker setup uses one image with separate Compose services:
 
+- `postgres`: stores tracker state.
 - `api`: starts the local HTTP API on port `8000`.
 - `scheduler`: runs whale and market tracking continuously.
 - `cli`: tool service for one-off commands.
@@ -111,8 +112,8 @@ Start the scheduler:
 docker compose up scheduler
 ```
 
-The Compose services mount `./data` and `./logs` into the container so the SQLite
-database and logs stay on the host.
+The Compose services use the named `postgres-data` volume for database state and
+mount `./logs` into the container for file logs.
 
 ### `src/whale_tracker/settings.py`
 
@@ -122,13 +123,14 @@ Main settings groups:
 
 - `PolymarketDataApiClientSettings`: Data API base URL, timeout, concurrency,
   request delay, retry/backoff and per-endpoint rate limits.
-- `DatabaseSettings`: SQLite path or explicit database URL.
+- `DatabaseSettings`: PostgreSQL connection fields used to build the internal
+  SQLAlchemy database URL.
 - `LoggingSettings`: log directory, log level and retention period.
 
-Default database path:
+Internal database URL format:
 
 ```text
-data/db/whale_tracker.sqlite3
+postgresql+psycopg://USER:PASSWORD@HOST:PORT/DB
 ```
 
 Default log path:
@@ -139,8 +141,11 @@ logs/whale_tracker.jsonl
 
 Useful environment variables:
 
-- `WHALE_TRACKER_SQLITE_PATH`
-- `WHALE_TRACKER_DATABASE_URL`
+- `WHALE_TRACKER_POSTGRES_DB`
+- `WHALE_TRACKER_POSTGRES_USER`
+- `WHALE_TRACKER_POSTGRES_PASSWORD`
+- `WHALE_TRACKER_POSTGRES_HOST`
+- `WHALE_TRACKER_POSTGRES_PORT`
 - `WHALE_TRACKER_LOG_DIR`
 - `WHALE_TRACKER_LOG_LEVEL`
 - `WHALE_TRACKER_LOG_RETENTION_DAYS`
@@ -446,10 +451,20 @@ Initialize the default database:
 whale-tracker init-db
 ```
 
+`init-db` runs Alembic migrations against the PostgreSQL URL built from
+`WHALE_TRACKER_POSTGRES_*`.
+
 Run tests:
 
 ```bash
 pytest
+```
+
+Database integration tests require a PostgreSQL database URL whose database name
+contains `test`:
+
+```bash
+WHALE_TRACKER_TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/whale_tracker_test pytest
 ```
 
 Run Ruff:

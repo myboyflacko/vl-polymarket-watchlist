@@ -1,4 +1,19 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: whale_tracker
+      POSTGRES_USER: whale_tracker
+      POSTGRES_PASSWORD: whale_tracker
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U whale_tracker -d whale_tracker"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   api:
     build: .
     image: whale-tracker:local
@@ -10,10 +25,18 @@ services:
       - --port
       - "8000"
       - --no-reload
+    environment:
+      WHALE_TRACKER_POSTGRES_DB: whale_tracker
+      WHALE_TRACKER_POSTGRES_USER: whale_tracker
+      WHALE_TRACKER_POSTGRES_PASSWORD: whale_tracker
+      WHALE_TRACKER_POSTGRES_HOST: postgres
+      WHALE_TRACKER_POSTGRES_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
     ports:
       - "8000:8000"
     volumes:
-      - ./data:/app/data
       - ./logs:/app/logs
     restart: unless-stopped
 
@@ -23,8 +46,16 @@ services:
     command:
       - whale-tracker
       - schedule
+    environment:
+      WHALE_TRACKER_POSTGRES_DB: whale_tracker
+      WHALE_TRACKER_POSTGRES_USER: whale_tracker
+      WHALE_TRACKER_POSTGRES_PASSWORD: whale_tracker
+      WHALE_TRACKER_POSTGRES_HOST: postgres
+      WHALE_TRACKER_POSTGRES_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
-      - ./data:/app/data
       - ./logs:/app/logs
     restart: unless-stopped
 
@@ -35,8 +66,19 @@ services:
       - whale-tracker
     command:
       - --help
+    environment:
+      WHALE_TRACKER_POSTGRES_DB: whale_tracker
+      WHALE_TRACKER_POSTGRES_USER: whale_tracker
+      WHALE_TRACKER_POSTGRES_PASSWORD: whale_tracker
+      WHALE_TRACKER_POSTGRES_HOST: postgres
+      WHALE_TRACKER_POSTGRES_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
     profiles:
       - tools
     volumes:
-      - ./data:/app/data
       - ./logs:/app/logs
+
+volumes:
+  postgres-data:

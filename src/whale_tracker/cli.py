@@ -3,10 +3,8 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
-from importlib import import_module
+from pathlib import Path
 
-from whale_tracker.core.db.base import Base
-from whale_tracker.core.db.engine import create_database_engine
 from whale_tracker.core.logging import configure_logging
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.service import WhaleTrackerService
@@ -317,11 +315,13 @@ def build_market_service(*, scoring_enabled: bool) -> MarketTrackerService:
 
 
 def init_db() -> None:
-    import_module("whale_tracker.tracker.whales.models")
-    import_module("whale_tracker.tracker.markets.models")
+    from alembic import command
+    from alembic.config import Config
 
-    engine = create_database_engine()
-    Base.metadata.create_all(engine)
+    migrations_dir = Path(__file__).resolve().parent / "core/db/migrations"
+    config = Config()
+    config.set_main_option("script_location", str(migrations_dir))
+    command.upgrade(config, "head")
 
 
 def positive_int(value: str) -> int:

@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 
 from sqlalchemy import select
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 from whale_tracker.core.db.engine import database_session

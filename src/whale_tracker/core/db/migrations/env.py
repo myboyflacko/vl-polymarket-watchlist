@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from whale_tracker.tracker.whales import models as whale_models
 from whale_tracker.tracker.markets import models as market_models
 from whale_tracker.core.db.base import Base
-from whale_tracker.core.db.engine import build_sqlite_url, ensure_database_parent
+from whale_tracker.core.db.engine import get_database_url
 
 
 _ = (
@@ -30,7 +30,7 @@ target_metadata = Base.metadata
 
 
 def _database_url() -> str:
-    return build_sqlite_url()
+    return get_database_url()
 
 
 def run_migrations_offline() -> None:
@@ -47,7 +47,6 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     database_url = _database_url()
-    ensure_database_parent(database_url)
     config.set_main_option("sqlalchemy.url", database_url)
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
