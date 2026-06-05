@@ -40,6 +40,31 @@ Important options:
 `run all` first runs whale tracking, then passes that whale run id into market
 tracking.
 
+## HTTP API
+
+The FastAPI app exposes compact read endpoints for the latest persisted runs.
+
+Start the API locally:
+
+```bash
+uvicorn whale_tracker.api.main:app --reload
+```
+
+Endpoints:
+
+- `GET /whales`: returns the selected whales for the latest completed whale run.
+- `GET /markets`: returns the qualified markets for the latest completed market run.
+
+Both endpoints accept an optional `run_id` query parameter:
+
+```text
+/whales?run_id=20260101T120000000000Z-whales
+/markets?run_id=20260101T120000000000Z-markets
+```
+
+If no `run_id` is provided, the latest completed run is used. If no matching run
+exists, the endpoint returns `404`.
+
 ### `src/whale_tracker/settings.py`
 
 Settings are Pydantic settings loaded from environment variables and `.env`.
