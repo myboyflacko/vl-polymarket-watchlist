@@ -27,6 +27,7 @@ whale-tracker run whales
 whale-tracker run markets
 whale-tracker run all
 whale-tracker schedule
+whale-tracker api
 ```
 
 Important options:
@@ -47,7 +48,7 @@ The FastAPI app exposes compact read endpoints for the latest persisted runs.
 Start the API locally:
 
 ```bash
-uvicorn whale_tracker.api.main:app --reload
+whale-tracker api
 ```
 
 Endpoints:

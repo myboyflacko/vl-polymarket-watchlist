@@ -1,6 +1,8 @@
 import json
 import logging
+import sys
 from pathlib import Path
+from types import ModuleType
 from types import SimpleNamespace
 
 import pytest
@@ -92,12 +94,50 @@ def test_run_whales_logs_failed_event_once(
     assert "RuntimeError: boom" in failed["exc_info"]
 
 
+def test_api_command_starts_uvicorn_with_local_defaults(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("WHALE_TRACKER_LOG_DIR", str(tmp_path))
+    get_settings.cache_clear()
+    calls = []
+
+    fake_uvicorn = ModuleType("uvicorn")
+
+    def fake_run(app: str, *, host: str, port: int, reload: bool) -> None:
+        calls.append(
+            {
+                "app": app,
+                "host": host,
+                "port": port,
+                "reload": reload,
+            }
+        )
+
+    fake_uvicorn.run = fake_run
+    monkeypatch.setitem(sys.modules, "uvicorn", fake_uvicorn)
+
+    exit_code = cli.main(["api"])
+
+    assert exit_code == 0
+    assert calls == [
+        {
+            "app": "whale_tracker.api.main:app",
+            "host": "127.0.0.1",
+            "port": 8000,
+            "reload": True,
+        }
+    ]
+    assert "Starting API server at http://127.0.0.1:8000" in capsys.readouterr().out
+
+
 def _read_log_payloads(log_dir: Path) -> list[dict[str, object]]:
     return [
         json.loads(line)
-        for line in (log_dir / "whale_tracker.jsonl").read_text(
-            encoding="utf-8"
-        ).splitlines()
+        for line in (log_dir / "whale_tracker.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
     ]
 
 

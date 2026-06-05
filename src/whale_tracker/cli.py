@@ -36,6 +36,10 @@ def main(argv: list[str] | None = None) -> int:
                 print("Scheduler stopped.")
             return 0
 
+        if args.command == "api":
+            run_api(args)
+            return 0
+
         raise ValueError(f"Unknown command: {args.command}")
     except Exception:
         logger.exception(
@@ -82,6 +86,29 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds between market tracking runs.",
     )
     add_service_options(schedule_parser)
+
+    api_parser = subparsers.add_parser(
+        "api",
+        help="Start the local HTTP API server.",
+    )
+    api_parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="API server host.",
+    )
+    api_parser.add_argument(
+        "--port",
+        type=positive_int,
+        default=8000,
+        help="API server port.",
+    )
+    api_parser.add_argument(
+        "--no-reload",
+        action="store_false",
+        dest="reload",
+        default=True,
+        help="Disable local auto-reload.",
+    )
 
     return parser
 
@@ -145,6 +172,18 @@ async def schedule(args: argparse.Namespace) -> None:
         ),
     )
     await asyncio.gather(whales_runner, markets_runner)
+
+
+def run_api(args: argparse.Namespace) -> None:
+    import uvicorn
+
+    print(f"Starting API server at http://{args.host}:{args.port}")
+    uvicorn.run(
+        "whale_tracker.api.main:app",
+        host=args.host,
+        port=args.port,
+        reload=args.reload,
+    )
 
 
 async def scheduled_runner(
@@ -295,6 +334,9 @@ def positive_int(value: str) -> int:
 def _command_failure_event(args: argparse.Namespace) -> str:
     if args.command in {"run", "schedule"}:
         return "service.failed"
+
+    if args.command == "api":
+        return "api.failed"
 
     return "cli.failed"
 

@@ -17,7 +17,8 @@ dependencies = [
     "python-json-logger==4.1.0",
     "pytest==9.0.3",
     "ruff==0.15.14",
-    "fastapi==0.136.3"
+    "fastapi==0.136.3",
+    "uvicorn==0.48.0"
 ]
 
 [project.optional-dependencies]
