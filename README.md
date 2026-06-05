@@ -37,6 +37,9 @@ Important options:
 - `--whales-run-id`: runs market tracking against a specific whale selection run.
 - `--whales-interval`: scheduler interval for whale runs, default `3600` seconds.
 - `--markets-interval`: scheduler interval for market runs, default `900` seconds.
+- `api --host`: API server host, default `127.0.0.1`.
+- `api --port`: API server port, default `8000`.
+- `api --no-reload`: disables local auto-reload.
 
 `run all` first runs whale tracking, then passes that whale run id into market
 tracking.
@@ -50,6 +53,9 @@ Start the API locally:
 ```bash
 whale-tracker api
 ```
+
+This starts a local Uvicorn server for `whale_tracker.api.main:app`. The command
+runs in the foreground until stopped with `Ctrl+C`.
 
 Endpoints:
 
