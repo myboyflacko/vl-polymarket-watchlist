@@ -1,0 +1,40 @@
+services:
+  api:
+    build: .
+    image: void-liquidity:local
+    command:
+      - whale-tracker
+      - api
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --no-reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+  scheduler:
+    build: .
+    image: void-liquidity:local
+    command:
+      - whale-tracker
+      - schedule
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+  cli:
+    build: .
+    image: void-liquidity:local
+    entrypoint:
+      - whale-tracker
+    command:
+      - --help
+    profiles:
+      - tools
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs

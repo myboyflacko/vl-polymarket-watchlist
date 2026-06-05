@@ -72,6 +72,48 @@ Both endpoints accept an optional `run_id` query parameter:
 If no `run_id` is provided, the latest completed run is used. If no matching run
 exists, the endpoint returns `404`.
 
+## Docker
+
+The Docker setup uses one image with separate Compose services:
+
+- `api`: starts the local HTTP API on port `8000`.
+- `scheduler`: runs whale and market tracking continuously.
+- `cli`: tool service for one-off commands.
+
+Build the image:
+
+```bash
+docker compose build
+```
+
+Initialize the database:
+
+```bash
+docker compose run --rm cli init-db
+```
+
+Start the API:
+
+```bash
+docker compose up api
+```
+
+Run one-off tracker commands:
+
+```bash
+docker compose run --rm cli run whales
+docker compose run --rm cli run markets
+```
+
+Start the scheduler:
+
+```bash
+docker compose up scheduler
+```
+
+The Compose services mount `./data` and `./logs` into the container so the SQLite
+database and logs stay on the host.
+
 ### `src/whale_tracker/settings.py`
 
 Settings are Pydantic settings loaded from environment variables and `.env`.
