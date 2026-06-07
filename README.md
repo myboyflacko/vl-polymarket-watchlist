@@ -112,8 +112,10 @@ Start the scheduler:
 docker compose up scheduler
 ```
 
-The Compose services use the named `postgres-data` volume for database state and
-mount `./logs` into the container for file logs.
+The Compose services use the named `postgres-data` volume for database state.
+Application logs are emitted as JSON lines to stdout and can be inspected through
+Docker logs, for example with `docker compose logs api` or
+`docker compose logs scheduler`.
 
 ### `src/whale_tracker/settings.py`
 

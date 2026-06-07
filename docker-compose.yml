@@ -41,8 +41,6 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-    volumes:
-      - ./logs:/app/logs
     restart: unless-stopped
 
   scheduler:
@@ -60,8 +58,6 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
     restart: unless-stopped
 
   cli:
@@ -82,8 +78,6 @@ services:
         condition: service_healthy
     profiles:
       - tools
-    volumes:
-      - ./logs:/app/logs
 
 volumes:
   postgres-data:
