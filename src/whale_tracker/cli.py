@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import logging
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 
 from whale_tracker.core.logging import configure_logging
@@ -155,15 +156,20 @@ async def run_once(args: argparse.Namespace) -> None:
 
 async def schedule(args: argparse.Namespace) -> None:
     scoring_enabled = not args.no_scoring
+    whales_lock = asyncio.Lock()
     whales_runner = scheduled_runner(
         name="whales",
         interval=args.whales_interval,
-        runner=lambda: run_whales(scoring_enabled=scoring_enabled),
+        runner=lambda: run_locked_whales(
+            lock=whales_lock,
+            scoring_enabled=scoring_enabled,
+        ),
     )
     markets_runner = scheduled_runner(
         name="markets",
         interval=args.markets_interval,
-        runner=lambda: run_markets(
+        runner=lambda: run_markets_after_whales(
+            whales_lock=whales_lock,
             scoring_enabled=scoring_enabled,
             limit=args.market_limit,
             whales_run_id=args.whales_run_id,
@@ -188,7 +194,7 @@ async def scheduled_runner(
     *,
     name: str,
     interval: int,
-    runner,
+    runner: Callable[[], Awaitable[object]],
 ) -> None:
     while True:
         try:
@@ -203,6 +209,43 @@ async def scheduled_runner(
             )
 
         await asyncio.sleep(interval)
+
+
+async def run_locked_whales(
+    *,
+    lock: asyncio.Lock,
+    scoring_enabled: bool,
+) -> str:
+    async with lock:
+        return await run_whales(scoring_enabled=scoring_enabled)
+
+
+async def run_markets_after_whales(
+    *,
+    whales_lock: asyncio.Lock,
+    scoring_enabled: bool,
+    limit: int | None,
+    whales_run_id: str | None,
+) -> str:
+    if whales_lock.locked():
+        logger.info(
+            "Waiting for whale service",
+            extra={
+                "event": "service.waiting",
+                "context": {
+                    "service": "markets",
+                    "waiting_for": "whales",
+                },
+            },
+        )
+        async with whales_lock:
+            pass
+
+    return await run_markets(
+        scoring_enabled=scoring_enabled,
+        limit=limit,
+        whales_run_id=whales_run_id,
+    )
 
 
 async def run_whales(*, scoring_enabled: bool) -> str:

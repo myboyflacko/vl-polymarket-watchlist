@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import sys
@@ -126,6 +127,73 @@ def test_api_command_starts_uvicorn_with_local_defaults(
         }
     ]
     assert "Starting API server at http://127.0.0.1:8000" in capsys.readouterr().out
+
+
+def test_run_markets_after_whales_waits_for_active_whale_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_markets(
+        *,
+        scoring_enabled: bool,
+        limit: int | None,
+        whales_run_id: str | None,
+    ) -> str:
+        calls.append(f"{scoring_enabled}:{limit}:{whales_run_id}")
+        return "markets-run-1"
+
+    async def run_test() -> None:
+        lock = asyncio.Lock()
+        await lock.acquire()
+        monkeypatch.setattr(cli, "run_markets", fake_run_markets)
+
+        task = asyncio.create_task(
+            cli.run_markets_after_whales(
+                whales_lock=lock,
+                scoring_enabled=True,
+                limit=7,
+                whales_run_id="whales-run-1",
+            )
+        )
+        await asyncio.sleep(0)
+
+        assert calls == []
+
+        lock.release()
+        result = await task
+
+        assert result == "markets-run-1"
+
+    asyncio.run(run_test())
+    assert calls == ["True:7:whales-run-1"]
+
+
+def test_run_markets_after_whales_runs_immediately_when_whales_are_idle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_markets(
+        *,
+        scoring_enabled: bool,
+        limit: int | None,
+        whales_run_id: str | None,
+    ) -> str:
+        calls.append(f"{scoring_enabled}:{limit}:{whales_run_id}")
+        return "markets-run-1"
+
+    async def run_test() -> str:
+        monkeypatch.setattr(cli, "run_markets", fake_run_markets)
+        return await cli.run_markets_after_whales(
+            whales_lock=asyncio.Lock(),
+            scoring_enabled=False,
+            limit=None,
+            whales_run_id=None,
+        )
+
+    assert asyncio.run(run_test()) == "markets-run-1"
+    assert calls == ["False:None:None"]
 
 
 def _read_log_payloads(stdout: str) -> list[dict[str, object]]:
