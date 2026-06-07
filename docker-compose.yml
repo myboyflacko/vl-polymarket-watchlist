@@ -1,10 +1,12 @@
 services:
   postgres:
+    container_name: postgres
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: whale_tracker
-      POSTGRES_USER: whale_tracker
-      POSTGRES_PASSWORD: whale_tracker
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - POSTGRES_PORT
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U whale_tracker -d whale_tracker"]
       interval: 5s
@@ -13,6 +15,9 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
+    ports:
+      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+      
 
   api:
     build: .
@@ -26,11 +31,11 @@ services:
       - "8000"
       - --no-reload
     environment:
-      WHALE_TRACKER_POSTGRES_DB: whale_tracker
-      WHALE_TRACKER_POSTGRES_USER: whale_tracker
-      WHALE_TRACKER_POSTGRES_PASSWORD: whale_tracker
-      WHALE_TRACKER_POSTGRES_HOST: postgres
-      WHALE_TRACKER_POSTGRES_PORT: "5432"
+      - WHALE_TRACKER_POSTGRES_DB
+      - WHALE_TRACKER_POSTGRES_USER
+      - WHALE_TRACKER_POSTGRES_PASSWORD
+      - WHALE_TRACKER_POSTGRES_HOST
+      - WHALE_TRACKER_POSTGRES_PORT
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,11 +52,11 @@ services:
       - whale-tracker
       - schedule
     environment:
-      WHALE_TRACKER_POSTGRES_DB: whale_tracker
-      WHALE_TRACKER_POSTGRES_USER: whale_tracker
-      WHALE_TRACKER_POSTGRES_PASSWORD: whale_tracker
-      WHALE_TRACKER_POSTGRES_HOST: postgres
-      WHALE_TRACKER_POSTGRES_PORT: "5432"
+      - WHALE_TRACKER_POSTGRES_DB
+      - WHALE_TRACKER_POSTGRES_USER
+      - WHALE_TRACKER_POSTGRES_PASSWORD
+      - WHALE_TRACKER_POSTGRES_HOST
+      - WHALE_TRACKER_POSTGRES_PORT
     depends_on:
       postgres:
         condition: service_healthy
@@ -67,11 +72,11 @@ services:
     command:
       - --help
     environment:
-      WHALE_TRACKER_POSTGRES_DB: whale_tracker
-      WHALE_TRACKER_POSTGRES_USER: whale_tracker
-      WHALE_TRACKER_POSTGRES_PASSWORD: whale_tracker
-      WHALE_TRACKER_POSTGRES_HOST: postgres
-      WHALE_TRACKER_POSTGRES_PORT: "5432"
+      - WHALE_TRACKER_POSTGRES_DB
+      - WHALE_TRACKER_POSTGRES_USER
+      - WHALE_TRACKER_POSTGRES_PASSWORD
+      - WHALE_TRACKER_POSTGRES_HOST
+      - WHALE_TRACKER_POSTGRES_PORT
     depends_on:
       postgres:
         condition: service_healthy
