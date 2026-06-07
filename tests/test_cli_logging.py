@@ -1,7 +1,6 @@
 import json
 import logging
 import sys
-from pathlib import Path
 from types import ModuleType
 from types import SimpleNamespace
 
@@ -29,10 +28,8 @@ def reset_logging() -> None:
 
 def test_run_whales_logs_started_and_completed_events(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("WHALE_TRACKER_LOG_DIR", str(tmp_path))
     get_settings.cache_clear()
 
     class FakeWhaleService:
@@ -54,12 +51,13 @@ def test_run_whales_logs_started_and_completed_events(
     exit_code = cli.main(["run", "whales"])
 
     assert exit_code == 0
-    assert "Whales completed: run_id=run-1" in capsys.readouterr().out
+    stdout = capsys.readouterr().out
+    assert "Whales completed: run_id=run-1" in stdout
 
-    events = _read_log_events(tmp_path)
+    events = _read_log_events(stdout)
     assert events == ["service.started", "service.completed"]
 
-    completed = _read_log_payloads(tmp_path)[1]
+    completed = _read_log_payloads(stdout)[1]
     assert completed["context"]["service"] == "whales"
     assert completed["context"]["run_id"] == "run-1"
     assert completed["context"]["selected"] == 3
@@ -67,9 +65,8 @@ def test_run_whales_logs_started_and_completed_events(
 
 def test_run_whales_logs_failed_event_once(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("WHALE_TRACKER_LOG_DIR", str(tmp_path))
     get_settings.cache_clear()
 
     class FailingWhaleService:
@@ -85,9 +82,10 @@ def test_run_whales_logs_failed_event_once(
     exit_code = cli.main(["run", "whales"])
 
     assert exit_code == 1
-    assert _read_log_events(tmp_path) == ["service.started", "service.failed"]
+    stdout = capsys.readouterr().out
+    assert _read_log_events(stdout) == ["service.started", "service.failed"]
 
-    failed = _read_log_payloads(tmp_path)[1]
+    failed = _read_log_payloads(stdout)[1]
     assert failed["levelname"] == "ERROR"
     assert failed["context"]["command"] == "run"
     assert failed["context"]["service"] == "whales"
@@ -96,10 +94,8 @@ def test_run_whales_logs_failed_event_once(
 
 def test_api_command_starts_uvicorn_with_local_defaults(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("WHALE_TRACKER_LOG_DIR", str(tmp_path))
     get_settings.cache_clear()
     calls = []
 
@@ -132,14 +128,13 @@ def test_api_command_starts_uvicorn_with_local_defaults(
     assert "Starting API server at http://127.0.0.1:8000" in capsys.readouterr().out
 
 
-def _read_log_payloads(log_dir: Path) -> list[dict[str, object]]:
+def _read_log_payloads(stdout: str) -> list[dict[str, object]]:
     return [
         json.loads(line)
-        for line in (log_dir / "whale_tracker.jsonl")
-        .read_text(encoding="utf-8")
-        .splitlines()
+        for line in stdout.splitlines()
+        if line.startswith("{")
     ]
 
 
-def _read_log_events(log_dir: Path) -> list[str]:
-    return [str(payload["event"]) for payload in _read_log_payloads(log_dir)]
+def _read_log_events(stdout: str) -> list[str]:
+    return [str(payload["event"]) for payload in _read_log_payloads(stdout)]

@@ -9,7 +9,6 @@ from sqlalchemy.engine import URL
 
 ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_LOG_DIR = PROJECT_ROOT / "logs"
 
 
 class PolymarketDataApiClientSettings(BaseSettings):
@@ -102,13 +101,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class LoggingSettings(BaseSettings):
-    log_dir: Path = Field(default=DEFAULT_LOG_DIR, alias="WHALE_TRACKER_LOG_DIR")
     level: str = Field(default="INFO", alias="WHALE_TRACKER_LOG_LEVEL")
-    retention_days: int = Field(
-        default=14,
-        ge=0,
-        alias="WHALE_TRACKER_LOG_RETENTION_DAYS",
-    )
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,

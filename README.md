@@ -125,18 +125,12 @@ Main settings groups:
   request delay, retry/backoff and per-endpoint rate limits.
 - `DatabaseSettings`: PostgreSQL connection fields used to build the internal
   SQLAlchemy database URL.
-- `LoggingSettings`: log directory, log level and retention period.
+- `LoggingSettings`: JSON stdout log level.
 
 Internal database URL format:
 
 ```text
 postgresql+psycopg://USER:PASSWORD@HOST:PORT/DB
-```
-
-Default log path:
-
-```text
-logs/whale_tracker.jsonl
 ```
 
 Useful environment variables:
@@ -146,9 +140,7 @@ Useful environment variables:
 - `WHALE_TRACKER_POSTGRES_PASSWORD`
 - `WHALE_TRACKER_POSTGRES_HOST`
 - `WHALE_TRACKER_POSTGRES_PORT`
-- `WHALE_TRACKER_LOG_DIR`
 - `WHALE_TRACKER_LOG_LEVEL`
-- `WHALE_TRACKER_LOG_RETENTION_DAYS`
 - `POLYMARKET_DATA_API_BASE_URL`
 - `POLYMARKET_DATA_API_TIMEOUT_SECONDS`
 - `POLYMARKET_DATA_API_MAX_CONCURRENT_REQUESTS`
@@ -162,20 +154,14 @@ Useful environment variables:
 
 ### `src/whale_tracker/core/logging.py`
 
-Logging is configured by `configure_logging()` and uses JSON lines for both
-stdout and a rotating file handler.
+Logging is configured by `configure_logging()` and emits JSON lines to stdout.
 
 Current behavior:
 
-- writes to stdout and `logs/whale_tracker.jsonl` by default
-- rotates the file log at midnight
-- keeps rotated logs for `WHALE_TRACKER_LOG_RETENTION_DAYS`, default `14`
+- writes one JSON object per line to stdout
 - supports `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`
 - reduces `httpx` and `httpcore` log noise to `WARNING`
-- is idempotent for the same log path, retention and level
-
-If `WHALE_TRACKER_LOG_DIR` is relative, it is resolved relative to the project
-root.
+- is idempotent for the same level
 
 ### `src/whale_tracker/tracker/whales`
 

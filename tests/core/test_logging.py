@@ -1,6 +1,5 @@
 import json
 import logging
-from pathlib import Path
 
 import pytest
 
@@ -24,14 +23,11 @@ def reset_logging() -> None:
     get_settings.cache_clear()
 
 
-def test_configure_logging_writes_jsonl_to_stdout_and_file(
+def test_configure_logging_writes_jsonl_to_stdout(
     monkeypatch: pytest.MonkeyPatch,
-    tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("WHALE_TRACKER_LOG_DIR", str(tmp_path))
     monkeypatch.setenv("WHALE_TRACKER_LOG_LEVEL", "INFO")
-    monkeypatch.setenv("WHALE_TRACKER_LOG_RETENTION_DAYS", "7")
     get_settings.cache_clear()
 
     configure_logging()
@@ -44,7 +40,7 @@ def test_configure_logging_writes_jsonl_to_stdout_and_file(
         if handler.name and handler.name.startswith("whale_tracker_jsonl_")
     ]
 
-    assert len(handlers) == 2
+    assert len(handlers) == 1
 
     logging.getLogger("tests.logging").info(
         "Test event",
@@ -52,18 +48,7 @@ def test_configure_logging_writes_jsonl_to_stdout_and_file(
     )
 
     stdout_line = capsys.readouterr().out.strip()
-    file_line = (tmp_path / "whale_tracker.jsonl").read_text(
-        encoding="utf-8"
-    ).strip()
-
     stdout_payload = json.loads(stdout_line)
-    file_payload = json.loads(file_line)
 
     assert stdout_payload["event"] == "test.event"
     assert stdout_payload["context"] == {"ok": True}
-    assert file_payload["event"] == "test.event"
-
-    file_handler = next(
-        handler for handler in handlers if hasattr(handler, "baseFilename")
-    )
-    assert file_handler.backupCount == 7
