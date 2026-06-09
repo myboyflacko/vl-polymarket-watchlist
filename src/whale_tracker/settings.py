@@ -70,6 +70,45 @@ class PolymarketDataApiClientSettings(BaseSettings):
     )
 
 
+class PolymarketClobApiClientSettings(BaseSettings):
+    base_url: str = Field(
+        default="https://clob.polymarket.com",
+        alias="POLYMARKET_CLOB_API_BASE_URL",
+    )
+    timeout_seconds: float = Field(
+        default=10.0,
+        ge=0,
+        alias="POLYMARKET_CLOB_API_TIMEOUT_SECONDS",
+    )
+    request_delay_seconds: float = Field(
+        default=0,
+        ge=0,
+        alias="POLYMARKET_CLOB_API_REQUEST_DELAY_SECONDS",
+    )
+    rate_limit_retry_attempts: int = Field(
+        default=5,
+        ge=0,
+        alias="POLYMARKET_CLOB_API_RATE_LIMIT_RETRY_ATTEMPTS",
+    )
+    rate_limit_backoff_seconds: float = Field(
+        default=10.0,
+        ge=0,
+        alias="POLYMARKET_CLOB_API_RATE_LIMIT_BACKOFF_SECONDS",
+    )
+    orderbook_requests_per_second: float = Field(
+        default=5,
+        gt=0,
+        alias="POLYMARKET_ORDERBOOK_REQUESTS_PER_SECOND",
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=ENV_FILE,
+        env_file_encoding="utf-8",
+        populate_by_name=True,
+        extra="ignore",
+    )
+
+
 class DatabaseSettings(BaseSettings):
     name: str = Field(default="whale_tracker", alias="WHALE_TRACKER_POSTGRES_DB")
     user: str = Field(default="whale_tracker", alias="WHALE_TRACKER_POSTGRES_USER")
@@ -113,6 +152,9 @@ class LoggingSettings(BaseSettings):
 class Settings(BaseSettings):
     polymarket_data_api_client: PolymarketDataApiClientSettings = Field(
         default_factory=PolymarketDataApiClientSettings,
+    )
+    polymarket_clob_api_client: PolymarketClobApiClientSettings = Field(
+        default_factory=PolymarketClobApiClientSettings,
     )
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
 

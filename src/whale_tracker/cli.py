@@ -8,6 +8,7 @@ from pathlib import Path
 
 from whale_tracker.core.logging import configure_logging
 from whale_tracker.tracker.markets.service import MarketTrackerService
+from whale_tracker.tracker.orderbooks.service import OrderBookTrackerService
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
 
@@ -63,13 +64,24 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run one service once.")
     run_parser.add_argument(
         "service",
-        choices=("whales", "markets", "all"),
+        choices=("whales", "markets", "orderbooks", "all"),
         help="Service to run.",
     )
     run_parser.add_argument(
         "--whales-run-id",
         default=None,
         help="Whale run id to use for market tracking.",
+    )
+    run_parser.add_argument(
+        "--market-run-id",
+        default=None,
+        help="Market run id to use for orderbook tracking.",
+    )
+    run_parser.add_argument(
+        "--orderbook-depth",
+        type=positive_int,
+        default=5,
+        help="Number of bid and ask levels to store.",
     )
 
     schedule_parser = subparsers.add_parser(
@@ -89,9 +101,26 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds between market tracking runs.",
     )
     schedule_parser.add_argument(
+        "--orderbooks-interval",
+        type=positive_int,
+        default=300,
+        help="Seconds between orderbook tracking runs.",
+    )
+    schedule_parser.add_argument(
         "--whales-run-id",
         default=None,
         help="Whale run id to use for market tracking.",
+    )
+    schedule_parser.add_argument(
+        "--market-run-id",
+        default=None,
+        help="Market run id to use for orderbook tracking.",
+    )
+    schedule_parser.add_argument(
+        "--orderbook-depth",
+        type=positive_int,
+        default=5,
+        help="Number of bid and ask levels to store.",
     )
 
     api_parser = subparsers.add_parser(
@@ -129,8 +158,16 @@ async def run_once(args: argparse.Namespace) -> None:
         await run_markets(whales_run_id=args.whales_run_id)
         return
 
+    if args.service == "orderbooks":
+        await run_orderbooks(
+            market_run_id=args.market_run_id,
+            depth=args.orderbook_depth,
+        )
+        return
+
     whale_run_id = await run_whales()
-    await run_markets(whales_run_id=whale_run_id)
+    market_run_id = await run_markets(whales_run_id=whale_run_id)
+    await run_orderbooks(market_run_id=market_run_id, depth=args.orderbook_depth)
 
 
 async def schedule(args: argparse.Namespace) -> None:
@@ -148,7 +185,15 @@ async def schedule(args: argparse.Namespace) -> None:
             whales_run_id=args.whales_run_id,
         ),
     )
-    await asyncio.gather(whales_runner, markets_runner)
+    orderbooks_runner = scheduled_runner(
+        name="orderbooks",
+        interval=args.orderbooks_interval,
+        runner=lambda: run_orderbooks(
+            market_run_id=args.market_run_id,
+            depth=args.orderbook_depth,
+        ),
+    )
+    await asyncio.gather(whales_runner, markets_runner, orderbooks_runner)
 
 
 def run_api(args: argparse.Namespace) -> None:
@@ -290,12 +335,58 @@ async def run_markets(*, whales_run_id: str | None) -> str:
     return result.run_id
 
 
+async def run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
+    logger.info(
+        "Service started",
+        extra={
+            "event": "service.started",
+            "context": {
+                "service": "orderbooks",
+                "market_run_id": market_run_id,
+                "depth": depth,
+            },
+        },
+    )
+    service = build_orderbook_service()
+    result = await service.run(market_run_id=market_run_id, depth=depth)
+    error_count = len(result.errors)
+
+    logger.info(
+        "Service completed",
+        extra={
+            "event": "service.completed",
+            "context": {
+                "service": "orderbooks",
+                "run_id": result.run_id,
+                "market_run_id": result.market_run_id,
+                "checked": result.collected_orderbooks.checked_market_count,
+                "stored": result.tracked_orderbooks.orderbook_count,
+                "errors": error_count,
+            },
+        },
+    )
+
+    print(
+        "Orderbooks completed: "
+        f"run_id={result.run_id} "
+        f"market_run_id={result.market_run_id} "
+        f"checked={result.collected_orderbooks.checked_market_count} "
+        f"stored={result.tracked_orderbooks.orderbook_count} "
+        f"errors={error_count}"
+    )
+    return result.run_id
+
+
 def build_whale_service() -> WhaleTrackerService:
     return WhaleTrackerService()
 
 
 def build_market_service() -> MarketTrackerService:
     return MarketTrackerService()
+
+
+def build_orderbook_service() -> OrderBookTrackerService:
+    return OrderBookTrackerService()
 
 
 def init_db() -> None:

@@ -15,6 +15,7 @@ from whale_tracker.providers.polymarket.params.base import BaseParams
 from whale_tracker.providers.polymarket.params.leaderboard.leaderboard import (
     LeaderboardParams,
 )
+from whale_tracker.providers.polymarket.params.orderbook import OrderBooksParams
 from whale_tracker.providers.polymarket.params.profile.activity import ActivityParams
 from whale_tracker.providers.polymarket.params.profile.closed_positions import (
     ClosedPositionsParams,
@@ -23,13 +24,18 @@ from whale_tracker.providers.polymarket.params.profile.current_positions import 
     CurrentPositionsParams,
 )
 from whale_tracker.providers.polymarket.params.profile.trades import TradesParams
-from whale_tracker.settings import PolymarketDataApiClientSettings, get_settings
+from whale_tracker.settings import (
+    PolymarketClobApiClientSettings,
+    PolymarketDataApiClientSettings,
+    get_settings,
+)
 
 
 class PolymarketDataEndpoint(StrEnum):
     TRADES = "trades"
     POSITIONS = "positions"
     LEADERBOARD = "leaderboard"
+    ORDERBOOKS = "orderbooks"
 
 
 class AsyncRateLimiter(Protocol):
@@ -42,13 +48,15 @@ class PolymarketDataClient:
         self,
         *,
         settings: PolymarketDataApiClientSettings | None = None,
+        clob_settings: PolymarketClobApiClientSettings | None = None,
         async_client: httpx.AsyncClient | None = None,
         limiter_factory: Callable[[float], AsyncRateLimiter] = StrictLimiter,
         semaphore: asyncio.Semaphore | None = None,
     ) -> None:
         self.settings = settings or get_settings().polymarket_data_api_client
+        self.clob_settings = clob_settings or get_settings().polymarket_clob_api_client
         self._client = async_client or httpx.AsyncClient(
-            timeout=self.settings.timeout_seconds,
+            timeout=max(self.settings.timeout_seconds, self.clob_settings.timeout_seconds),
         )
         self._owns_client = async_client is None
         self._semaphore = semaphore or asyncio.Semaphore(
@@ -64,6 +72,9 @@ class PolymarketDataClient:
             ),
             PolymarketDataEndpoint.LEADERBOARD: limiter_factory(
                 self.settings.leaderboard_requests_per_second,
+            ),
+            PolymarketDataEndpoint.ORDERBOOKS: limiter_factory(
+                self.clob_settings.orderbook_requests_per_second,
             ),
         }
 
@@ -123,6 +134,16 @@ class PolymarketDataClient:
             rate_limit_endpoint=PolymarketDataEndpoint.LEADERBOARD,
         )
 
+    async def get_order_books(
+        self,
+        params: OrderBooksParams,
+    ) -> dict[str, Any] | list[Any]:
+        return await self._post_clob_endpoint(
+            endpoint="/books",
+            json=params.output_body(),
+            rate_limit_endpoint=PolymarketDataEndpoint.ORDERBOOKS,
+        )
+
     async def close(self) -> None:
         if self._owns_client:
             await self._client.aclose()
@@ -157,6 +178,44 @@ class PolymarketDataClient:
 
                 if is_rate_limited and attempt < max_attempts:
                     wait_seconds = self.settings.rate_limit_backoff_seconds * attempt
+                    await asyncio.sleep(wait_seconds)
+                    continue
+
+                if is_rate_limited:
+                    raise PolymarketRateLimitError(
+                        f"Rate limited for {endpoint} after {attempt} attempts"
+                    ) from exc
+
+                raise
+
+        raise RuntimeError(f"Request attempts exhausted for {endpoint}")
+
+    async def _post_clob_endpoint(
+        self,
+        *,
+        endpoint: str,
+        json: list[dict[str, Any]],
+        rate_limit_endpoint: PolymarketDataEndpoint,
+    ) -> dict[str, Any] | list[Any]:
+        max_attempts = self.clob_settings.rate_limit_retry_attempts + 1
+        url = urljoin(self.clob_settings.base_url, endpoint)
+
+        for attempt in range(1, max_attempts + 1):
+            try:
+                await self._wait_for_rate_limit(rate_limit_endpoint)
+                async with self._semaphore:
+                    if self.clob_settings.request_delay_seconds:
+                        await asyncio.sleep(self.clob_settings.request_delay_seconds)
+
+                    response = await self._client.post(url=url, json=json)
+                    response.raise_for_status()
+                    return response.json()
+
+            except Exception as exc:
+                is_rate_limited = _is_rate_limited(exc)
+
+                if is_rate_limited and attempt < max_attempts:
+                    wait_seconds = self.clob_settings.rate_limit_backoff_seconds * attempt
                     await asyncio.sleep(wait_seconds)
                     continue
 
