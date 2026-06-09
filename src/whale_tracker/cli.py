@@ -262,6 +262,8 @@ async def run_whales(*, scoring_enabled: bool) -> str:
     service = build_whale_service(scoring_enabled=scoring_enabled)
     result = await service.run()
     selected_count = result.result_whales.wallet_count
+    tracked_whales = getattr(result, "tracked_whales", None)
+    tracked_count = tracked_whales.wallet_count if tracked_whales else 0
     error_count = len(result.collection_errors)
 
     logger.info(
@@ -274,6 +276,7 @@ async def run_whales(*, scoring_enabled: bool) -> str:
                 "checked": result.whales.checked_wallet_count,
                 "filtered": result.filtered_whales.wallet_count,
                 "selected": selected_count,
+                "tracked": tracked_count,
                 "errors": error_count,
             },
         },
@@ -285,6 +288,7 @@ async def run_whales(*, scoring_enabled: bool) -> str:
         f"checked={result.whales.checked_wallet_count} "
         f"filtered={result.filtered_whales.wallet_count} "
         f"selected={selected_count} "
+        f"tracked={tracked_count} "
         f"errors={error_count}"
     )
     return result.run_id
@@ -311,6 +315,8 @@ async def run_markets(
     service = build_market_service(scoring_enabled=scoring_enabled)
     result = await service.run(whales_run_id=whales_run_id, limit=limit)
     selected_count = result.result_markets.market_count
+    tracked_markets = getattr(result, "tracked_markets", None)
+    tracked_count = tracked_markets.market_count if tracked_markets else 0
     error_count = len(result.errors)
 
     logger.info(
@@ -324,6 +330,7 @@ async def run_markets(
                 "checked": result.filtered_markets.checked_market_count,
                 "filtered": result.filtered_markets.market_count,
                 "selected": selected_count,
+                "tracked": tracked_count,
                 "errors": error_count,
             },
         },
@@ -336,6 +343,7 @@ async def run_markets(
         f"checked={result.filtered_markets.checked_market_count} "
         f"filtered={result.filtered_markets.market_count} "
         f"selected={selected_count} "
+        f"tracked={tracked_count} "
         f"errors={error_count}"
     )
     return result.run_id

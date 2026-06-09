@@ -1,6 +1,6 @@
 import asyncio
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -12,7 +12,12 @@ from whale_tracker.core.db.engine import create_database_engine, database_sessio
 from whale_tracker.settings import get_settings
 from whale_tracker.tracker.whales import service as service_module
 from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
-from whale_tracker.tracker.whales.models import PolymarketWhale, WhaleMetric, WhaleRun
+from whale_tracker.tracker.whales.models import (
+    PolymarketWhale,
+    TrackedWhaleMetric,
+    WhaleMetric,
+    WhaleRun,
+)
 from whale_tracker.tracker.whales.scoring import ZScoreWhaleScoringProfile
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
@@ -20,7 +25,6 @@ from whale_tracker.tracker.whales.service import WhaleTrackerService
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 WALLET_TWO = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-CONDITION_ID = "0x" + "1" * 64
 
 
 class FakeDataClient:
@@ -42,20 +46,10 @@ class FakeDataClient:
         ]
 
     async def get_trades(self, params: Any) -> list[dict[str, Any]]:
-        return [
-            {
-                "timestamp": NOW.isoformat(),
-                "conditionId": CONDITION_ID,
-                "price": 0.5,
-                "size": 10,
-                "side": "BUY",
-                "name": "Trader",
-            }
-        ]
+        raise AssertionError("whale discovery must not fetch trades")
 
     async def get_current_positions(self, params: Any) -> list[dict[str, Any]]:
-        value = 100 if params.user == WALLET_ONE else 50
-        return [{"currentValue": value}]
+        raise AssertionError("whale discovery must not fetch current positions")
 
 
 def test_whale_tracker_run_persists_prefilter_and_afterfilter(
@@ -138,6 +132,42 @@ def test_whale_tracker_run_without_scoring_persists_filtered_whales(
     assert run.scored_wallet_count == 2
     assert run.removed_wallet_count == 0
     assert [metric.score for metric in metrics] == [0.0, 0.0]
+
+
+def test_whale_tracker_tracks_wallets_after_three_consecutive_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database_url = _prepare_database(monkeypatch)
+    monkeypatch.setattr(
+        service_module,
+        "get_polymarket_data_client",
+        lambda: FakeDataClient(),
+    )
+    service = WhaleTrackerService(
+        discovery_profile=WhaleDiscoveryProfile(
+            wallet_count=2,
+            leaderboard_limit=2,
+            wallet_batch_size=2,
+        )
+    )
+
+    first = asyncio.run(service.run(now=NOW))
+    second = asyncio.run(service.run(now=NOW + timedelta(hours=1)))
+    third = asyncio.run(service.run(now=NOW + timedelta(hours=2)))
+
+    assert first.tracked_whales is not None
+    assert first.tracked_whales.wallet_count == 0
+    assert second.tracked_whales is not None
+    assert second.tracked_whales.wallet_count == 0
+    assert third.tracked_whales is not None
+    assert third.tracked_whales.proxy_wallets() == [WALLET_ONE, WALLET_TWO]
+
+    with database_session(database_url) as session:
+        tracked = list(session.scalars(select(TrackedWhaleMetric)))
+
+    assert len(tracked) == 2
+    assert {entry.run_id for entry in tracked} == {third.run_id}
+    assert {entry.consecutive_runs for entry in tracked} == {3}
 
 
 def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:

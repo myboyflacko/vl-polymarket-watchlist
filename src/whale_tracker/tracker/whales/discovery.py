@@ -6,8 +6,8 @@ from pydantic import BaseModel, Field
 
 
 class WhaleDiscoveryProfile(BaseModel):
-    profile_version: str = "whale_discovery_trade_first"
-    wallet_count: int = Field(default=250, ge=1)
+    profile_version: str = "whale_leaderboard_only_v1"
+    wallet_count: int = Field(default=50, ge=1)
     wallet_batch_size: int = Field(default=4, ge=1)
     leaderboard_category: Literal[
         "OVERALL",

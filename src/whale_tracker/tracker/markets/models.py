@@ -107,3 +107,33 @@ class MarketMetricSnapshot(Base):
     @property
     def token_id(self) -> str:
         return self.market.token_id
+
+
+class TrackedMarketMetric(Base):
+    __tablename__ = "polymarket_tracked_markets"
+    __table_args__ = (
+        Index(
+            "ux_polymarket_tracked_markets_run_market_filter",
+            "run_id",
+            "market_id",
+            "filter_profile",
+            unique=True,
+        ),
+        Index("ix_polymarket_tracked_markets_run_id", "run_id"),
+        Index("ix_polymarket_tracked_markets_market_id", "market_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("polymarket_market_runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    market_id: Mapped[int] = mapped_column(
+        ForeignKey("polymarket_markets.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    filter_profile: Mapped[str] = mapped_column(String, nullable=False)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    market: Mapped[MarketIdentity] = relationship(lazy="joined")

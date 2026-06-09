@@ -92,3 +92,34 @@ class WhaleMetric(Base):
     @property
     def proxy_wallet(self) -> str:
         return self.whale.proxy_wallet
+
+
+class TrackedWhaleMetric(Base):
+    __tablename__ = "polymarket_tracked_whales"
+    __table_args__ = (
+        Index(
+            "ux_polymarket_tracked_whales_run_whale_filter",
+            "run_id",
+            "whale_id",
+            "filter_profile",
+            unique=True,
+        ),
+        Index("ix_polymarket_tracked_whales_run_id", "run_id"),
+        Index("ix_polymarket_tracked_whales_whale_id", "whale_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("polymarket_whale_runs.run_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    whale_id: Mapped[int] = mapped_column(
+        ForeignKey("polymarket_whales.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    filter_profile: Mapped[str] = mapped_column(String, nullable=False)
+    consecutive_runs: Mapped[int] = mapped_column(Integer, nullable=False)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    whale: Mapped[PolymarketWhale] = relationship(lazy="joined")

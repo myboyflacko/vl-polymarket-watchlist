@@ -96,6 +96,25 @@ class FilteredMarkets(BaseModel):
         return len(self.removed_markets)
 
 
+class TrackedMarket(Market):
+    run_id: str
+    whales_run_id: str | None = None
+    generated_at: datetime
+    filter_profile: str
+
+
+class TrackedMarkets(BaseModel):
+    markets: list[TrackedMarket] = Field(default_factory=list)
+    run_id: str
+    whales_run_id: str | None = None
+    generated_at: datetime
+    filter_profile: str
+
+    @property
+    def market_count(self) -> int:
+        return len(self.markets)
+
+
 class ScoredMarket(BaseModel):
     market: Market
     score: float
@@ -126,6 +145,7 @@ class MarketRunResult(BaseModel):
     collected_markets: Markets
     filtered_markets: FilteredMarkets
     scored_markets: ScoredMarkets | None = None
+    tracked_markets: TrackedMarkets | None = None
     limit: int | None = None
 
     @property

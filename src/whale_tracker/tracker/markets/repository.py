@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 
 from whale_tracker.core.db.engine import database_session
+from whale_tracker.core.time import ensure_utc
 from whale_tracker.tracker.markets.domain import (
     FilteredMarkets,
     Market,
@@ -13,12 +14,19 @@ from whale_tracker.tracker.markets.domain import (
     MarketSnapshot,
     ScoredMarket,
     ScoredMarkets,
+    TrackedMarket,
+    TrackedMarkets,
 )
+from whale_tracker.tracker.markets.filter import DefaultTrackedMarketFilterProfile
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
     MarketMetricSnapshot,
     MarketRun,
+    TrackedMarketMetric,
 )
+
+
+DEFAULT_TRACKED_MARKET_FILTER_PROFILE = "same_side_3_whales_unique_condition_v1"
 
 
 def get_latest_market_run() -> MarketRunSummary | None:
@@ -42,6 +50,7 @@ def persist_market_run(
     scored_markets: ScoredMarkets | None,
     limit: int | None = None,
 ) -> None:
+    generated_at = ensure_utc(generated_at)
     snapshot_entries = _snapshot_entries(
         filtered_markets=filtered_markets,
         scored_markets=scored_markets,
@@ -82,6 +91,118 @@ def persist_market_run(
             market_ids=market_ids,
         )
         session.commit()
+
+
+def get_latest_tracked_market_run_id() -> str | None:
+    with database_session() as session:
+        run_id = session.scalar(
+            select(TrackedMarketMetric.run_id)
+            .join(MarketRun, MarketRun.run_id == TrackedMarketMetric.run_id)
+            .order_by(MarketRun.generated_at.desc(), TrackedMarketMetric.run_id.desc())
+            .limit(1)
+        )
+
+    return run_id
+
+
+def list_tracked_markets(run_id: str | None = None) -> TrackedMarkets:
+    actual_run_id = run_id or get_latest_tracked_market_run_id()
+    if actual_run_id is None:
+        return _empty_tracked_markets(run_id="")
+
+    with database_session() as session:
+        run = session.get(MarketRun, actual_run_id)
+        if run is None:
+            return _empty_tracked_markets(run_id=actual_run_id)
+
+        rows = list(
+            session.execute(
+                select(MarketIdentity, TrackedMarketMetric)
+                .join(
+                    TrackedMarketMetric,
+                    TrackedMarketMetric.market_id == MarketIdentity.id,
+                )
+                .where(TrackedMarketMetric.run_id == actual_run_id)
+                .order_by(TrackedMarketMetric.id)
+            )
+        )
+
+        markets = [
+            _tracked_market_from_snapshot(run=run, market=market, snapshot=snapshot)
+            for market, snapshot in rows
+        ]
+        filter_profile = (
+            markets[0].filter_profile
+            if markets
+            else DEFAULT_TRACKED_MARKET_FILTER_PROFILE
+        )
+        return TrackedMarkets(
+            markets=markets,
+            run_id=actual_run_id,
+            whales_run_id=run.whales_run_id,
+            generated_at=run.generated_at,
+            filter_profile=filter_profile,
+        )
+
+
+def persist_tracked_markets(
+    *,
+    run_id: str,
+    filter_profile: DefaultTrackedMarketFilterProfile | None = None,
+) -> TrackedMarkets:
+    profile = filter_profile or DefaultTrackedMarketFilterProfile()
+    with database_session() as session:
+        run = session.get(MarketRun, run_id)
+        if run is None:
+            raise ValueError(f"Market run not found: {run_id}")
+
+        rows = list(
+            session.execute(
+                select(MarketIdentity, MarketMetricSnapshot)
+                .join(
+                    MarketMetricSnapshot,
+                    MarketMetricSnapshot.market_id == MarketIdentity.id,
+                )
+                .where(MarketMetricSnapshot.run_id == run_id)
+                .order_by(MarketMetricSnapshot.id)
+            )
+        )
+        candidates = [
+            _market_from_snapshot(market=market, snapshot=snapshot)
+            for market, snapshot in rows
+        ]
+        tracked_markets = profile.run(candidates)
+        market_ids = {market.token_id: market.id for market, _snapshot in rows}
+        insert_rows = [
+            {
+                "run_id": run_id,
+                "market_id": market_ids[market.token_id],
+                "filter_profile": profile.name,
+                "metrics": _metrics_payload(market),
+                "generated_at": ensure_utc(run.generated_at),
+            }
+            for market in tracked_markets
+            if market.token_id in market_ids
+        ]
+        if insert_rows:
+            statement = insert(TrackedMarketMetric).values(insert_rows)
+            session.execute(
+                statement.on_conflict_do_update(
+                    index_elements=[
+                        TrackedMarketMetric.run_id,
+                        TrackedMarketMetric.market_id,
+                        TrackedMarketMetric.filter_profile,
+                    ],
+                    set_={
+                        "metrics": statement.excluded.metrics,
+                        "generated_at": statement.excluded.generated_at,
+                    },
+                )
+            )
+
+        session.commit()
+
+    return list_tracked_markets(run_id)
 
 
 def list_markets(
@@ -185,6 +306,15 @@ def _run_summary(run: MarketRun) -> MarketRunSummary:
         scored_market_count=run.scored_market_count,
         removed_market_count=run.removed_market_count,
         limit=run.limit,
+    )
+
+
+def _empty_tracked_markets(*, run_id: str) -> TrackedMarkets:
+    return TrackedMarkets(
+        markets=[],
+        run_id=run_id,
+        generated_at=datetime.min.replace(tzinfo=UTC),
+        filter_profile=DEFAULT_TRACKED_MARKET_FILTER_PROFILE,
     )
 
 
@@ -315,4 +445,41 @@ def _market_from_snapshot(
         price_delta=metrics.get("price_delta", 0.0),
         price_delta_pct=metrics.get("price_delta_pct"),
         value_per_wallet=metrics.get("value_per_wallet", 0.0),
+    )
+
+
+def _tracked_market_from_snapshot(
+    *,
+    run: MarketRun,
+    market: MarketIdentity,
+    snapshot: TrackedMarketMetric,
+) -> TrackedMarket:
+    metrics = dict(snapshot.metrics)
+    return TrackedMarket(
+        token_id=market.token_id,
+        condition_id=market.condition_id,
+        title=market.title,
+        slug=market.slug,
+        outcome=market.outcome,
+        whale_count=metrics.get("whale_count", 0),
+        wallets=list(metrics.get("wallets", [])),
+        total_size=metrics.get("total_size", 0.0),
+        total_current_value=metrics.get("total_current_value", 0.0),
+        weighted_avg_price=metrics.get("weighted_avg_price", 0.0),
+        cur_price=metrics.get("cur_price", 0.0),
+        opposite_token_id=market.opposite_token_id,
+        opposite_outcome=market.opposite_outcome,
+        end_date=market.end_date,
+        negative_risk=metrics.get("negative_risk", False),
+        qualified=bool(metrics.get("qualified", False)),
+        categories=list(metrics.get("categories", [])),
+        category_scores=dict(metrics.get("category_scores", {})),
+        score=0.0,
+        price_delta=metrics.get("price_delta", 0.0),
+        price_delta_pct=metrics.get("price_delta_pct"),
+        value_per_wallet=metrics.get("value_per_wallet", 0.0),
+        run_id=run.run_id,
+        whales_run_id=run.whales_run_id,
+        generated_at=snapshot.generated_at,
+        filter_profile=snapshot.filter_profile,
     )

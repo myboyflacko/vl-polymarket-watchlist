@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from whale_tracker.providers.polymarket.client import PolymarketDataClient
 from whale_tracker.tracker.markets.domain import Markets
 from whale_tracker.tracker.markets.helpers import collect_wallet_positions
-from whale_tracker.tracker.whales.repository import list_selected_whale_wallets
+from whale_tracker.tracker.whales.repository import list_tracked_whale_wallets
 
 
 class DefaultMarketDiscoveryProfile(BaseModel):
@@ -21,9 +21,9 @@ class DefaultMarketDiscoveryProfile(BaseModel):
         generated_at: datetime,
     ) -> Markets:
         wallets = (
-            list_selected_whale_wallets(whales_run_id)
+            list_tracked_whale_wallets(whales_run_id)
             if whales_run_id is not None
-            else []
+            else list_tracked_whale_wallets()
         )
         if not wallets:
             return Markets(generated_at=generated_at)

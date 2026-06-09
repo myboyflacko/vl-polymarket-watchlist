@@ -41,6 +41,32 @@ class DefaultMarketFilterProfile(BaseModel):
         )
 
 
+class DefaultTrackedMarketFilterProfile(BaseModel):
+    name: str = "same_side_3_whales_unique_condition_v1"
+    min_whale_count: int = Field(default=3, ge=1)
+
+    def run(self, markets: Iterable[Market]) -> list[Market]:
+        qualified = [
+            market
+            for market in markets
+            if market.whale_count >= self.min_whale_count
+        ]
+        grouped: dict[str, list[Market]] = defaultdict(list)
+        for market in qualified:
+            grouped[market.condition_id].append(market)
+
+        tracked = [
+            group_markets[0]
+            for group_markets in grouped.values()
+            if len(group_markets) == 1
+        ]
+        return sorted(
+            tracked,
+            key=lambda market: (market.whale_count, market.total_current_value),
+            reverse=True,
+        )
+
+
 def build_market_candidates(
     positions: Iterable[WhalePosition],
     *,

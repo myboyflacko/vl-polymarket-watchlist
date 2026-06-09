@@ -150,6 +150,33 @@ class FilteredWhales(BaseModel):
         return [whale.proxy_wallet for whale in self.whales]
 
 
+class TrackedWhale(BaseModel):
+    proxy_wallet: str
+    run_id: str
+    generated_at: datetime
+    filter_profile: str
+    consecutive_runs: int
+    pnl_rank: int | None = None
+    volume_rank: int | None = None
+    candidate_source: CandidateSource
+    identity: WhaleIdentity
+    metrics: WhaleMetrics
+
+
+class TrackedWhales(BaseModel):
+    whales: list[TrackedWhale] = Field(default_factory=list)
+    run_id: str
+    generated_at: datetime
+    filter_profile: str
+
+    @property
+    def wallet_count(self) -> int:
+        return len(self.whales)
+
+    def proxy_wallets(self) -> list[str]:
+        return [whale.proxy_wallet for whale in self.whales]
+
+
 class ScoredWhale(BaseModel):
     whale: Whale
     score: float
@@ -200,6 +227,7 @@ class WhaleRunResult(BaseModel):
     whales: Whales
     filtered_whales: FilteredWhales
     scored_whales: ScoredWhales | None = None
+    tracked_whales: TrackedWhales | None = None
     collection_errors: list[WalletCollectionError] = Field(default_factory=list)
 
     @property

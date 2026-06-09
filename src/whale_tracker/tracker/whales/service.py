@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from whale_tracker.core.time import ensure_utc
 from whale_tracker.providers.polymarket.client import get_polymarket_data_client
 from whale_tracker.tracker.whales.domain import (
     WhaleRunResult,
@@ -11,7 +12,7 @@ from whale_tracker.tracker.whales.domain import (
 from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
 from whale_tracker.tracker.whales.filter import DefaultWhaleFilterProfile
 from whale_tracker.tracker.whales.helpers import (
-    collect_whales_from_polymarket,
+    collect_leaderboard_whales,
     fetch_leaderboards_from_polymarket,
     select_leaderboard_candidates,
 )
@@ -22,10 +23,10 @@ from whale_tracker.tracker.whales.repository import (
     list_selected_whale_wallets,
     list_selected_whales,
     persist_whale_run,
+    persist_tracked_whales,
 )
 from whale_tracker.tracker.whales.scoring import (
     WhaleScoringProfile,
-    ZScoreWhaleScoringProfile,
 )
 
 
@@ -39,7 +40,7 @@ class WhaleTrackerService:
     ) -> None:
         self.discovery_profile = discovery_profile or WhaleDiscoveryProfile()
         self.filter_profile = filter_profile or DefaultWhaleFilterProfile()
-        self.scoring_profile = scoring_profile or ZScoreWhaleScoringProfile()
+        self.scoring_profile = scoring_profile
 
     def register_filter(self, profile: DefaultWhaleFilterProfile) -> None:
         self.filter_profile = profile
@@ -48,7 +49,7 @@ class WhaleTrackerService:
         self.scoring_profile = profile
 
     async def run(self, *, now: datetime | None = None) -> WhaleRunResult:
-        started_at = now or datetime.now(UTC)
+        started_at = ensure_utc(now or datetime.now(UTC))
         run_id = _build_run_id(started_at, suffix="whales")
 
         whales = await self.discover(now=started_at)
@@ -66,17 +67,19 @@ class WhaleTrackerService:
             filtered_whales=filtered_whales,
             scored_whales=scored_whales,
         )
+        tracked_whales = persist_tracked_whales(run_id=run_id)
 
         return WhaleTrackingResult(
             run_id=run_id,
             whales=whales,
             filtered_whales=filtered_whales,
             scored_whales=scored_whales,
+            tracked_whales=tracked_whales,
             collection_errors=whales.collection_errors,
         )
 
     async def discover(self, *, now: datetime | None = None) -> Whales:
-        generated_at = now or datetime.now(UTC)
+        generated_at = ensure_utc(now or datetime.now(UTC))
         client = get_polymarket_data_client()
         pnl_entries, volume_entries = await fetch_leaderboards_from_polymarket(
             client=client,
@@ -87,8 +90,7 @@ class WhaleTrackerService:
             volume_entries=volume_entries,
             wallet_count=self.discovery_profile.wallet_count,
         )
-        return await collect_whales_from_polymarket(
-            client=client,
+        return collect_leaderboard_whales(
             profile=self.discovery_profile,
             candidates=candidates,
             now=generated_at,

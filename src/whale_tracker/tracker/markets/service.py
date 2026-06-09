@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from whale_tracker.core.time import ensure_utc
 from whale_tracker.providers.polymarket.client import get_polymarket_data_client
 from whale_tracker.tracker.markets.domain import (
     Market,
@@ -15,9 +16,11 @@ from whale_tracker.tracker.markets.repository import (
     list_markets,
     list_qualified_markets,
     persist_market_run,
+    persist_tracked_markets,
 )
 from whale_tracker.tracker.markets.scoring import MarketScoringProfile
 from whale_tracker.tracker.whales.repository import (
+    get_latest_discovery_run_id,
     get_latest_selection_run_id,
 )
 
@@ -47,9 +50,13 @@ class MarketTrackerService:
         limit: int | None = None,
         now: datetime | None = None,
     ) -> MarketRunResult:
-        generated_at = now or datetime.now(UTC)
+        generated_at = ensure_utc(now or datetime.now(UTC))
         run_id = _build_run_id(generated_at)
-        actual_whales_run_id = whales_run_id or get_latest_selection_run_id()
+        actual_whales_run_id = (
+            whales_run_id
+            or get_latest_discovery_run_id()
+            or get_latest_selection_run_id()
+        )
 
         markets = await self._collect_markets(
             whales_run_id=actual_whales_run_id,
@@ -69,6 +76,7 @@ class MarketTrackerService:
             scored_markets=scored_markets,
             limit=limit,
         )
+        tracked_markets = persist_tracked_markets(run_id=run_id)
 
         return MarketTrackingResult(
             run_id=run_id,
@@ -76,6 +84,7 @@ class MarketTrackerService:
             collected_markets=markets,
             filtered_markets=filtered_markets,
             scored_markets=scored_markets,
+            tracked_markets=tracked_markets,
             limit=limit,
         )
 

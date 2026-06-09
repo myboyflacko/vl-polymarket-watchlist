@@ -305,6 +305,21 @@ async def collect_whales_from_polymarket(
     )
 
 
+def collect_leaderboard_whales(
+    *,
+    profile: WhaleDiscoveryProfile,
+    candidates: list[WhaleCandidate],
+    now: datetime,
+) -> Whales:
+    return Whales(
+        whales=[_leaderboard_whale(candidate) for candidate in candidates],
+        candidate_wallet_count=len(candidates),
+        checked_wallet_count=len(candidates),
+        generated_at=now,
+        profile_version=profile.profile_version,
+    )
+
+
 async def fetch_leaderboards_from_polymarket(
     *,
     client: PolymarketDataClient,
@@ -486,6 +501,21 @@ async def _collect_whale(
             markets=market_metrics,
             exposure=exposure_metrics,
             collection_quality=quality,
+        ),
+    )
+
+
+def _leaderboard_whale(candidate: WhaleCandidate) -> Whale:
+    return Whale(
+        identity=_identity(candidate=candidate, trades=[]),
+        metrics=WhaleMetrics(
+            leaderboard=_leaderboard_metrics(candidate),
+            trades=TradeMetrics(),
+            markets=MarketMetrics(),
+            exposure=ExposureMetrics(),
+            collection_quality=CollectionQuality(
+                candidate_collection_complete=candidate.candidate_collection_complete,
+            ),
         ),
     )
 

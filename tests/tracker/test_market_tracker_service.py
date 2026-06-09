@@ -19,12 +19,14 @@ from whale_tracker.tracker.markets.domain import (
 )
 from whale_tracker.tracker.markets.filter import (
     DefaultMarketFilterProfile,
+    DefaultTrackedMarketFilterProfile,
     build_market_candidates,
 )
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
     MarketMetricSnapshot,
     MarketRun,
+    TrackedMarketMetric,
 )
 from whale_tracker.tracker.markets.repository import (
     list_markets,
@@ -33,6 +35,7 @@ from whale_tracker.tracker.markets.scoring import ZScoreMarketScoringProfile
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
+    TrackedWhaleMetric,
     WhaleMetric,
     WhaleRun,
 )
@@ -41,6 +44,7 @@ from whale_tracker.tracker.whales.models import (
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 WALLET_TWO = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+WALLET_THREE = "0xcccccccccccccccccccccccccccccccccccccccc"
 CONDITION_ID = "0x" + "1" * 64
 YES_TOKEN = "111"
 NO_TOKEN = "222"
@@ -50,6 +54,9 @@ class FakeDataClient:
     async def get_current_positions(self, params: Any) -> list[dict[str, Any]]:
         if params.user == WALLET_ONE:
             return [_position(asset=YES_TOKEN, current_value=100, size=10)]
+
+        if params.user == WALLET_THREE:
+            return [_position(asset=YES_TOKEN, current_value=75, size=7.5)]
 
         return [
             _position(asset=YES_TOKEN, current_value=50, size=5),
@@ -90,6 +97,44 @@ def test_default_market_filter_profile_filters_by_whale_count() -> None:
     assert [market.token_id for market in result.markets] == [YES_TOKEN]
     assert [market.token_id for market in result.removed_markets] == [NO_TOKEN]
     assert result.profile_name == "default_market_filter"
+
+
+def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:
+    result = DefaultTrackedMarketFilterProfile(min_whale_count=3).run(
+        [
+            _market(
+                token_id=YES_TOKEN,
+                whale_count=3,
+                total_current_value=300,
+            ),
+            _market(
+                token_id=NO_TOKEN,
+                whale_count=2,
+                total_current_value=200,
+            ),
+        ]
+    )
+
+    assert [market.token_id for market in result] == [YES_TOKEN]
+
+
+def test_tracked_market_filter_rejects_condition_with_two_qualified_directions() -> None:
+    result = DefaultTrackedMarketFilterProfile(min_whale_count=3).run(
+        [
+            _market(
+                token_id=YES_TOKEN,
+                whale_count=3,
+                total_current_value=300,
+            ),
+            _market(
+                token_id=NO_TOKEN,
+                whale_count=3,
+                total_current_value=200,
+            ),
+        ]
+    )
+
+    assert result == []
 
 
 def test_z_score_market_scoring_remains_registerable() -> None:
@@ -136,6 +181,8 @@ def test_market_tracker_run_persists_filtered_markets(
 
     assert result.run_id.endswith("-markets")
     assert [market.token_id for market in result.markets] == [YES_TOKEN]
+    assert result.tracked_markets is not None
+    assert [market.token_id for market in result.tracked_markets.markets] == [YES_TOKEN]
     assert result.qualified_markets == []
     assert result.scored_markets is None
 
@@ -143,6 +190,7 @@ def test_market_tracker_run_persists_filtered_markets(
         run = session.scalar(select(MarketRun))
         identity = session.scalar(select(MarketIdentity))
         snapshot = session.scalar(select(MarketMetricSnapshot))
+        tracked_snapshot = session.scalar(select(TrackedMarketMetric))
 
     assert run is not None
     assert run.whales_run_id == "selection-run-1"
@@ -156,8 +204,10 @@ def test_market_tracker_run_persists_filtered_markets(
     assert identity.token_id == YES_TOKEN
     assert snapshot is not None
     assert snapshot.score == 0
-    assert snapshot.metrics["whale_count"] == 2
-    assert snapshot.metrics["total_current_value"] == 150
+    assert snapshot.metrics["whale_count"] == 3
+    assert snapshot.metrics["total_current_value"] == 225
+    assert tracked_snapshot is not None
+    assert tracked_snapshot.metrics["whale_count"] == 3
 
     listed_markets = list_markets(run_id=result.run_id)
 
@@ -257,7 +307,7 @@ def test_market_tracker_run_without_scoring_persists_filtered_markets(
     assert run.scored_market_count == 1
     assert snapshot is not None
     assert snapshot.score == 0.0
-    assert snapshot.metrics["whale_count"] == 2
+    assert snapshot.metrics["whale_count"] == 3
 
 
 def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
@@ -289,9 +339,9 @@ def _insert_selection_run(database_url: str) -> None:
                 generated_at=NOW,
                 filter_profile="test_filter",
                 scoring_profile="test_scoring",
-                checked_wallet_count=2,
-                filtered_wallet_count=2,
-                scored_wallet_count=2,
+                checked_wallet_count=3,
+                filtered_wallet_count=3,
+                scored_wallet_count=3,
                 removed_wallet_count=0,
             )
         )
@@ -307,7 +357,13 @@ def _insert_selection_run(database_url: str) -> None:
             first_seen_at=NOW,
             last_seen_at=NOW,
         )
-        session.add_all([one, two])
+        three = PolymarketWhale(
+            proxy_wallet=WALLET_THREE,
+            identity={"proxy_wallet": WALLET_THREE},
+            first_seen_at=NOW,
+            last_seen_at=NOW,
+        )
+        session.add_all([one, two, three])
         session.flush()
         session.add_all(
             [
@@ -322,6 +378,37 @@ def _insert_selection_run(database_url: str) -> None:
                     run_id="selection-run-1",
                     whale_id=two.id,
                     score=0.5,
+                    metrics={},
+                    generated_at=NOW,
+                ),
+                WhaleMetric(
+                    run_id="selection-run-1",
+                    whale_id=three.id,
+                    score=0.25,
+                    metrics={},
+                    generated_at=NOW,
+                ),
+                TrackedWhaleMetric(
+                    run_id="selection-run-1",
+                    whale_id=one.id,
+                    filter_profile="test_tracked_filter",
+                    consecutive_runs=3,
+                    metrics={},
+                    generated_at=NOW,
+                ),
+                TrackedWhaleMetric(
+                    run_id="selection-run-1",
+                    whale_id=two.id,
+                    filter_profile="test_tracked_filter",
+                    consecutive_runs=3,
+                    metrics={},
+                    generated_at=NOW,
+                ),
+                TrackedWhaleMetric(
+                    run_id="selection-run-1",
+                    whale_id=three.id,
+                    filter_profile="test_tracked_filter",
+                    consecutive_runs=3,
                     metrics={},
                     generated_at=NOW,
                 ),
