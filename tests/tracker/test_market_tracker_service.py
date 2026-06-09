@@ -11,32 +11,20 @@ from whale_tracker.core.db.base import Base
 from whale_tracker.core.db.engine import create_database_engine, database_session
 from whale_tracker.settings import get_settings
 from whale_tracker.tracker.markets import service as service_module
-from whale_tracker.tracker.markets.domain import (
-    FilteredMarkets,
-    Market,
-    Markets,
-    WhalePosition,
-)
+from whale_tracker.tracker.markets.domain import Market, WhalePosition
 from whale_tracker.tracker.markets.filter import (
-    DefaultMarketFilterProfile,
-    DefaultTrackedMarketFilterProfile,
+    TrackedMarketFilterProfile,
     build_market_candidates,
 )
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
-    MarketMetricSnapshot,
     MarketRun,
-    TrackedMarketMetric,
+    TrackedMarket,
 )
-from whale_tracker.tracker.markets.repository import (
-    list_markets,
-)
-from whale_tracker.tracker.markets.scoring import ZScoreMarketScoringProfile
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
-    TrackedWhaleMetric,
-    WhaleMetric,
+    TrackedWhale,
     WhaleRun,
 )
 
@@ -64,43 +52,24 @@ class FakeDataClient:
         ]
 
 
-def test_build_market_candidates_groups_and_filters() -> None:
+def test_build_market_candidates_groups_positions_by_token() -> None:
     candidates = build_market_candidates(
         [
             _whale_position(WALLET_ONE, token_id=YES_TOKEN, current_value=100, size=10),
             _whale_position(WALLET_TWO, token_id=YES_TOKEN, current_value=50, size=5),
             _whale_position(WALLET_ONE, token_id=NO_TOKEN, current_value=75, size=15),
         ],
-        min_whale_count=2,
     )
 
-    assert [candidate.token_id for candidate in candidates] == [YES_TOKEN]
+    assert [candidate.token_id for candidate in candidates] == [YES_TOKEN, NO_TOKEN]
     assert candidates[0].whale_count == 2
     assert candidates[0].wallets == [WALLET_ONE, WALLET_TWO]
     assert candidates[0].total_current_value == 150
     assert candidates[0].weighted_avg_price == 0.4
 
 
-def test_default_market_filter_profile_filters_by_whale_count() -> None:
-    result = DefaultMarketFilterProfile(min_whale_count=2).run(
-        Markets(
-            positions=[
-                _whale_position(WALLET_ONE, token_id=YES_TOKEN),
-                _whale_position(WALLET_TWO, token_id=YES_TOKEN),
-                _whale_position(WALLET_ONE, token_id=NO_TOKEN),
-            ],
-            checked_market_count=3,
-            generated_at=NOW,
-        )
-    )
-
-    assert [market.token_id for market in result.markets] == [YES_TOKEN]
-    assert [market.token_id for market in result.removed_markets] == [NO_TOKEN]
-    assert result.profile_name == "default_market_filter"
-
-
 def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:
-    result = DefaultTrackedMarketFilterProfile(min_whale_count=3).run(
+    result = TrackedMarketFilterProfile(min_whale_count=3).run(
         [
             _market(
                 token_id=YES_TOKEN,
@@ -118,8 +87,8 @@ def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:
     assert [market.token_id for market in result] == [YES_TOKEN]
 
 
-def test_tracked_market_filter_rejects_condition_with_two_qualified_directions() -> None:
-    result = DefaultTrackedMarketFilterProfile(min_whale_count=3).run(
+def test_tracked_market_filter_rejects_condition_with_two_tracked_directions() -> None:
+    result = TrackedMarketFilterProfile(min_whale_count=3).run(
         [
             _market(
                 token_id=YES_TOKEN,
@@ -137,177 +106,39 @@ def test_tracked_market_filter_rejects_condition_with_two_qualified_directions()
     assert result == []
 
 
-def test_z_score_market_scoring_remains_registerable() -> None:
-    result = ZScoreMarketScoringProfile(bottom_cut_percentile=0.5).run(
-        FilteredMarkets(
-            markets=[
-                _market(
-                    token_id="strong",
-                    total_current_value=300,
-                    whale_count=3,
-                ),
-                _market(
-                    token_id="weak",
-                    total_current_value=30,
-                    whale_count=3,
-                ),
-            ],
-            checked_market_count=2,
-            generated_at=NOW,
-            profile_name="test_filter",
-        )
-    )
-
-    assert [entry.market.token_id for entry in result.markets] == ["strong"]
-    assert [entry.market.token_id for entry in result.removed_markets] == ["weak"]
-    assert result.markets[0].market.qualified is True
-
-
-def test_market_tracker_run_persists_filtered_markets(
+def test_market_tracker_run_persists_only_tracked_markets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = _prepare_database(monkeypatch)
-    _insert_selection_run(database_url)
+    _insert_tracked_whale_run(database_url)
     monkeypatch.setattr(
         service_module,
         "get_polymarket_data_client",
         lambda: FakeDataClient(),
     )
     service = MarketTrackerService(
-        filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
+        filter_profile=TrackedMarketFilterProfile(min_whale_count=3),
     )
 
-    result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
+    result = asyncio.run(service.run(whales_run_id="whales-run-1", now=NOW))
 
     assert result.run_id.endswith("-markets")
     assert [market.token_id for market in result.markets] == [YES_TOKEN]
-    assert result.tracked_markets is not None
-    assert [market.token_id for market in result.tracked_markets.markets] == [YES_TOKEN]
-    assert result.qualified_markets == []
-    assert result.scored_markets is None
 
     with database_session(database_url) as session:
         run = session.scalar(select(MarketRun))
         identity = session.scalar(select(MarketIdentity))
-        snapshot = session.scalar(select(MarketMetricSnapshot))
-        tracked_snapshot = session.scalar(select(TrackedMarketMetric))
+        tracked = session.scalar(select(TrackedMarket))
 
     assert run is not None
-    assert run.whales_run_id == "selection-run-1"
-    assert run.filter_profile == "default_market_filter"
-    assert run.scoring_profile == ""
+    assert run.whales_run_id == "whales-run-1"
     assert run.checked_market_count == 2
-    assert run.filtered_market_count == 1
-    assert run.scored_market_count == 1
-    assert run.removed_market_count == 1
+    assert run.tracked_market_count == 1
     assert identity is not None
     assert identity.token_id == YES_TOKEN
-    assert snapshot is not None
-    assert snapshot.score == 0
-    assert snapshot.metrics["whale_count"] == 3
-    assert snapshot.metrics["total_current_value"] == 225
-    assert tracked_snapshot is not None
-    assert tracked_snapshot.metrics["whale_count"] == 3
-
-    listed_markets = list_markets(run_id=result.run_id)
-
-    assert [market.token_id for market in listed_markets] == [YES_TOKEN]
-
-
-def test_market_tracker_run_with_registered_scoring_persists_scored_markets(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    database_url = _prepare_database(monkeypatch)
-    _insert_selection_run(database_url)
-    monkeypatch.setattr(
-        service_module,
-        "get_polymarket_data_client",
-        lambda: FakeDataClient(),
-    )
-    service = MarketTrackerService(
-        filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
-        scoring_profile=ZScoreMarketScoringProfile(bottom_cut_percentile=0),
-    )
-
-    result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
-
-    assert result.scored_markets is not None
-    assert [market.token_id for market in result.qualified_markets] == [YES_TOKEN]
-
-    with database_session(database_url) as session:
-        run = session.scalar(select(MarketRun))
-        snapshot = session.scalar(select(MarketMetricSnapshot))
-
-    assert run is not None
-    assert run.scoring_profile == "market_zscore_v1"
-    assert snapshot is not None
-    assert snapshot.score == 50
-
-
-def test_market_repository_upserts_identity_and_appends_snapshots(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    database_url = _prepare_database(monkeypatch)
-    _insert_selection_run(database_url)
-    service = MarketTrackerService(
-        filter_profile=DefaultMarketFilterProfile(min_whale_count=1),
-    )
-    monkeypatch.setattr(
-        service_module,
-        "get_polymarket_data_client",
-        lambda: FakeDataClient(),
-    )
-
-    first = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
-    later = datetime(2026, 6, 2, tzinfo=UTC)
-    second = asyncio.run(service.run(whales_run_id="selection-run-1", now=later))
-
-    with database_session(database_url) as session:
-        identities = session.scalars(select(MarketIdentity)).all()
-        snapshots = session.scalars(
-            select(MarketMetricSnapshot)
-            .where(MarketMetricSnapshot.market.has(token_id=YES_TOKEN))
-            .order_by(MarketMetricSnapshot.run_id)
-        ).all()
-
-    assert len([item for item in identities if item.token_id == YES_TOKEN]) == 1
-    assert [snapshot.run_id for snapshot in snapshots] == [
-        first.run_id,
-        second.run_id,
-    ]
-
-
-def test_market_tracker_run_without_scoring_persists_filtered_markets(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    database_url = _prepare_database(monkeypatch)
-    _insert_selection_run(database_url)
-    monkeypatch.setattr(
-        service_module,
-        "get_polymarket_data_client",
-        lambda: FakeDataClient(),
-    )
-    service = MarketTrackerService(
-        filter_profile=DefaultMarketFilterProfile(min_whale_count=2),
-    )
-
-    result = asyncio.run(service.run(whales_run_id="selection-run-1", now=NOW))
-
-    assert result.scored_markets is None
-    assert [market.token_id for market in result.markets] == [YES_TOKEN]
-    assert result.qualified_markets == []
-
-    with database_session(database_url) as session:
-        run = session.scalar(select(MarketRun))
-        snapshot = session.scalar(select(MarketMetricSnapshot))
-
-    assert run is not None
-    assert run.scoring_profile == ""
-    assert run.filtered_market_count == 1
-    assert run.scored_market_count == 1
-    assert snapshot is not None
-    assert snapshot.score == 0.0
-    assert snapshot.metrics["whale_count"] == 3
+    assert tracked is not None
+    assert tracked.whale_count == 3
+    assert tracked.total_current_value == 225
 
 
 def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
@@ -327,22 +158,19 @@ def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
     return database_url
 
 
-def _insert_selection_run(database_url: str) -> None:
+def _insert_tracked_whale_run(database_url: str) -> None:
     with database_session(database_url) as session:
         session.add(
             WhaleRun(
-                run_id="selection-run-1",
+                run_id="whales-run-1",
                 status="completed",
                 profile_version="test",
                 started_at=NOW,
                 finished_at=NOW,
                 generated_at=NOW,
-                filter_profile="test_filter",
-                scoring_profile="test_scoring",
                 checked_wallet_count=3,
-                filtered_wallet_count=3,
-                scored_wallet_count=3,
-                removed_wallet_count=0,
+                observed_wallet_count=3,
+                tracked_wallet_count=3,
             )
         )
         one = PolymarketWhale(
@@ -367,49 +195,40 @@ def _insert_selection_run(database_url: str) -> None:
         session.flush()
         session.add_all(
             [
-                WhaleMetric(
-                    run_id="selection-run-1",
-                    whale_id=one.id,
-                    score=1.0,
-                    metrics={},
-                    generated_at=NOW,
-                ),
-                WhaleMetric(
-                    run_id="selection-run-1",
-                    whale_id=two.id,
-                    score=0.5,
-                    metrics={},
-                    generated_at=NOW,
-                ),
-                WhaleMetric(
-                    run_id="selection-run-1",
-                    whale_id=three.id,
-                    score=0.25,
-                    metrics={},
-                    generated_at=NOW,
-                ),
-                TrackedWhaleMetric(
-                    run_id="selection-run-1",
+                TrackedWhale(
+                    run_id="whales-run-1",
                     whale_id=one.id,
                     filter_profile="test_tracked_filter",
                     consecutive_runs=3,
-                    metrics={},
+                    candidate_source="both",
+                    pnl_rank=1,
+                    volume_rank=1,
+                    leaderboard_pnl=100,
+                    leaderboard_volume=100,
                     generated_at=NOW,
                 ),
-                TrackedWhaleMetric(
-                    run_id="selection-run-1",
+                TrackedWhale(
+                    run_id="whales-run-1",
                     whale_id=two.id,
                     filter_profile="test_tracked_filter",
                     consecutive_runs=3,
-                    metrics={},
+                    candidate_source="both",
+                    pnl_rank=2,
+                    volume_rank=2,
+                    leaderboard_pnl=50,
+                    leaderboard_volume=50,
                     generated_at=NOW,
                 ),
-                TrackedWhaleMetric(
-                    run_id="selection-run-1",
+                TrackedWhale(
+                    run_id="whales-run-1",
                     whale_id=three.id,
                     filter_profile="test_tracked_filter",
                     consecutive_runs=3,
-                    metrics={},
+                    candidate_source="both",
+                    pnl_rank=3,
+                    volume_rank=3,
+                    leaderboard_pnl=25,
+                    leaderboard_volume=25,
                     generated_at=NOW,
                 ),
             ]
@@ -466,7 +285,7 @@ def _market(
         slug="will-this-happen",
         outcome="Yes",
         whale_count=whale_count,
-        wallets=[WALLET_ONE, WALLET_TWO],
+        wallets=[WALLET_ONE, WALLET_TWO, WALLET_THREE],
         total_size=10,
         total_current_value=total_current_value,
         weighted_avg_price=weighted_avg_price,

@@ -18,19 +18,14 @@ class WhaleRun(Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     finished_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
-
-    filter_profile: Mapped[str] = mapped_column(String, nullable=False)
-    scoring_profile: Mapped[str] = mapped_column(String, nullable=False)
-
     checked_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    filtered_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    scored_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    removed_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    observed_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    tracked_wallet_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-    metrics: Mapped[list["WhaleMetric"]] = relationship(
+    observations: Mapped[list["WhaleObservation"]] = relationship(
         back_populates="run",
         cascade="all, delete-orphan",
-        order_by="WhaleMetric.id",
+        order_by="WhaleObservation.id",
     )
 
 
@@ -54,23 +49,23 @@ class PolymarketWhale(Base):
         server_default=func.now(),
     )
 
-    metrics: Mapped[list["WhaleMetric"]] = relationship(
+    observations: Mapped[list["WhaleObservation"]] = relationship(
         back_populates="whale",
         cascade="all, delete-orphan",
-        order_by="WhaleMetric.id",
+        order_by="WhaleObservation.id",
     )
 
 
-class WhaleMetric(Base):
-    __tablename__ = "polymarket_whale_metrics"
+class WhaleObservation(Base):
+    __tablename__ = "polymarket_whale_observations"
     __table_args__ = (
         Index(
-            "ux_polymarket_whale_metrics_run_whale",
+            "ux_polymarket_whale_observations_run_whale",
             "run_id",
             "whale_id",
             unique=True,
         ),
-        Index("ix_polymarket_whale_metrics_whale_id", "whale_id"),
+        Index("ix_polymarket_whale_observations_whale_id", "whale_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -82,19 +77,25 @@ class WhaleMetric(Base):
         ForeignKey("polymarket_whales.id", ondelete="CASCADE"),
         nullable=False,
     )
-    score: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    candidate_source: Mapped[str] = mapped_column(String, nullable=False)
+    pnl_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    volume_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    leaderboard_pnl: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    leaderboard_volume: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    run: Mapped[WhaleRun] = relationship(back_populates="metrics")
-    whale: Mapped[PolymarketWhale] = relationship(back_populates="metrics", lazy="joined")
+    run: Mapped[WhaleRun] = relationship(back_populates="observations")
+    whale: Mapped[PolymarketWhale] = relationship(
+        back_populates="observations",
+        lazy="joined",
+    )
 
     @property
     def proxy_wallet(self) -> str:
         return self.whale.proxy_wallet
 
 
-class TrackedWhaleMetric(Base):
+class TrackedWhale(Base):
     __tablename__ = "polymarket_tracked_whales"
     __table_args__ = (
         Index(
@@ -119,7 +120,11 @@ class TrackedWhaleMetric(Base):
     )
     filter_profile: Mapped[str] = mapped_column(String, nullable=False)
     consecutive_runs: Mapped[int] = mapped_column(Integer, nullable=False)
-    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    candidate_source: Mapped[str] = mapped_column(String, nullable=False)
+    pnl_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    volume_rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    leaderboard_pnl: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    leaderboard_volume: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     whale: Mapped[PolymarketWhale] = relationship(lazy="joined")

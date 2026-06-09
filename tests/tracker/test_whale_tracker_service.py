@@ -14,11 +14,10 @@ from whale_tracker.tracker.whales import service as service_module
 from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
-    TrackedWhaleMetric,
-    WhaleMetric,
+    TrackedWhale,
+    WhaleObservation,
     WhaleRun,
 )
-from whale_tracker.tracker.whales.scoring import ZScoreWhaleScoringProfile
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
 
@@ -52,49 +51,7 @@ class FakeDataClient:
         raise AssertionError("whale discovery must not fetch current positions")
 
 
-def test_whale_tracker_run_persists_prefilter_and_afterfilter(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    database_url = _prepare_database(monkeypatch)
-    monkeypatch.setattr(
-        service_module,
-        "get_polymarket_data_client",
-        lambda: FakeDataClient(),
-    )
-    service = WhaleTrackerService(
-        discovery_profile=WhaleDiscoveryProfile(
-            wallet_count=2,
-            leaderboard_limit=2,
-            wallet_batch_size=2,
-        ),
-        scoring_profile=ZScoreWhaleScoringProfile(),
-    )
-
-    result = asyncio.run(service.run(now=NOW))
-
-    assert result.filtered_whales.wallet_count == 2
-    assert result.scored_whales is not None
-    assert [whale.proxy_wallet for whale in result.selected_whales] == [WALLET_ONE]
-    assert [ranked.whale.proxy_wallet for ranked in result.removed_whales] == [
-        WALLET_TWO
-    ]
-
-    with database_session(database_url) as session:
-        run = session.scalar(select(WhaleRun))
-        whale = session.scalar(select(PolymarketWhale))
-        metric = session.scalar(select(WhaleMetric))
-
-    assert run is not None
-    assert run.filtered_wallet_count == 2
-    assert run.scored_wallet_count == 1
-    assert run.removed_wallet_count == 1
-    assert whale is not None
-    assert whale.proxy_wallet == WALLET_ONE
-    assert metric is not None
-    assert metric.score > 0
-
-
-def test_whale_tracker_run_without_scoring_persists_filtered_whales(
+def test_whale_tracker_run_persists_leaderboard_observations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = _prepare_database(monkeypatch)
@@ -110,28 +67,24 @@ def test_whale_tracker_run_without_scoring_persists_filtered_whales(
             wallet_batch_size=2,
         )
     )
-    service.register_scoring(None)
 
     result = asyncio.run(service.run(now=NOW))
 
-    assert result.filtered_whales.wallet_count == 2
-    assert result.scored_whales is None
-    assert [whale.proxy_wallet for whale in result.selected_whales] == [
-        WALLET_ONE,
-        WALLET_TWO,
-    ]
+    assert result.whales.wallet_count == 2
+    assert result.tracked_whales.wallet_count == 0
 
     with database_session(database_url) as session:
         run = session.scalar(select(WhaleRun))
-        metrics = list(session.scalars(select(WhaleMetric)))
+        whales = list(session.scalars(select(PolymarketWhale)))
+        observations = list(session.scalars(select(WhaleObservation)))
 
     assert run is not None
-    assert run.filter_profile == "default_whale_filter"
-    assert run.scoring_profile == ""
-    assert run.filtered_wallet_count == 2
-    assert run.scored_wallet_count == 2
-    assert run.removed_wallet_count == 0
-    assert [metric.score for metric in metrics] == [0.0, 0.0]
+    assert run.checked_wallet_count == 2
+    assert run.observed_wallet_count == 2
+    assert run.tracked_wallet_count == 0
+    assert [whale.proxy_wallet for whale in whales] == [WALLET_ONE, WALLET_TWO]
+    assert len(observations) == 2
+    assert {observation.candidate_source for observation in observations} == {"both"}
 
 
 def test_whale_tracker_tracks_wallets_after_three_consecutive_runs(
@@ -155,16 +108,16 @@ def test_whale_tracker_tracks_wallets_after_three_consecutive_runs(
     second = asyncio.run(service.run(now=NOW + timedelta(hours=1)))
     third = asyncio.run(service.run(now=NOW + timedelta(hours=2)))
 
-    assert first.tracked_whales is not None
     assert first.tracked_whales.wallet_count == 0
-    assert second.tracked_whales is not None
     assert second.tracked_whales.wallet_count == 0
-    assert third.tracked_whales is not None
     assert third.tracked_whales.proxy_wallets() == [WALLET_ONE, WALLET_TWO]
 
     with database_session(database_url) as session:
-        tracked = list(session.scalars(select(TrackedWhaleMetric)))
+        run = session.get(WhaleRun, third.run_id)
+        tracked = list(session.scalars(select(TrackedWhale)))
 
+    assert run is not None
+    assert run.tracked_wallet_count == 2
     assert len(tracked) == 2
     assert {entry.run_id for entry in tracked} == {third.run_id}
     assert {entry.consecutive_runs for entry in tracked} == {3}

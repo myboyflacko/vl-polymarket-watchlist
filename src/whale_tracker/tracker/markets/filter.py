@@ -6,53 +6,23 @@ from collections.abc import Iterable
 from pydantic import BaseModel, Field
 
 from whale_tracker.tracker.markets.domain import (
-    FilteredMarkets,
     Market,
-    Markets,
     WhalePosition,
 )
 
 
-class DefaultMarketFilterProfile(BaseModel):
-    name: str = "default_market_filter"
-    min_whale_count: int = Field(default=3, ge=1)
-
-    def run(self, markets: Markets) -> FilteredMarkets:
-        candidates = _build_market_candidates(markets.positions)
-        kept: list[Market] = []
-        removed: list[Market] = []
-
-        for market in candidates:
-            if market.whale_count >= self.min_whale_count:
-                kept.append(market)
-            else:
-                removed.append(market)
-
-        return FilteredMarkets(
-            markets=sorted(
-                kept,
-                key=lambda market: (market.whale_count, market.total_current_value),
-                reverse=True,
-            ),
-            removed_markets=removed,
-            checked_market_count=len(candidates),
-            generated_at=markets.generated_at,
-            profile_name=self.name,
-        )
-
-
-class DefaultTrackedMarketFilterProfile(BaseModel):
+class TrackedMarketFilterProfile(BaseModel):
     name: str = "same_side_3_whales_unique_condition_v1"
     min_whale_count: int = Field(default=3, ge=1)
 
     def run(self, markets: Iterable[Market]) -> list[Market]:
-        qualified = [
+        same_side_candidates = [
             market
             for market in markets
             if market.whale_count >= self.min_whale_count
         ]
         grouped: dict[str, list[Market]] = defaultdict(list)
-        for market in qualified:
+        for market in same_side_candidates:
             grouped[market.condition_id].append(market)
 
         tracked = [
@@ -67,20 +37,7 @@ class DefaultTrackedMarketFilterProfile(BaseModel):
         )
 
 
-def build_market_candidates(
-    positions: Iterable[WhalePosition],
-    *,
-    min_whale_count: int,
-) -> list[Market]:
-    markets = _build_market_candidates(positions)
-    return [
-        market
-        for market in markets
-        if market.whale_count >= min_whale_count
-    ]
-
-
-def _build_market_candidates(positions: Iterable[WhalePosition]) -> list[Market]:
+def build_market_candidates(positions: Iterable[WhalePosition]) -> list[Market]:
     grouped: dict[str, list[WhalePosition]] = defaultdict(list)
     for position in positions:
         grouped[position.token_id].append(position)

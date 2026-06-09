@@ -5,24 +5,22 @@ from datetime import UTC, datetime
 from whale_tracker.core.time import ensure_utc
 from whale_tracker.providers.polymarket.client import get_polymarket_data_client
 from whale_tracker.tracker.markets.domain import (
-    Market,
     MarketRunResult,
     MarketTrackingResult,
     Markets,
+    TrackedMarkets,
 )
 from whale_tracker.tracker.markets.discovery import DefaultMarketDiscoveryProfile
-from whale_tracker.tracker.markets.filter import DefaultMarketFilterProfile
+from whale_tracker.tracker.markets.filter import (
+    TrackedMarketFilterProfile,
+    build_market_candidates,
+)
 from whale_tracker.tracker.markets.repository import (
-    list_markets,
-    list_qualified_markets,
+    list_tracked_markets,
     persist_market_run,
     persist_tracked_markets,
 )
-from whale_tracker.tracker.markets.scoring import MarketScoringProfile
-from whale_tracker.tracker.whales.repository import (
-    get_latest_discovery_run_id,
-    get_latest_selection_run_id,
-)
+from whale_tracker.tracker.whales.repository import get_latest_discovery_run_id
 
 
 class MarketTrackerService:
@@ -30,79 +28,53 @@ class MarketTrackerService:
         self,
         *,
         discovery_profile: DefaultMarketDiscoveryProfile | None = None,
-        filter_profile: DefaultMarketFilterProfile | None = None,
-        scoring_profile: MarketScoringProfile | None = None,
+        filter_profile: TrackedMarketFilterProfile | None = None,
     ) -> None:
         self.discovery_profile = discovery_profile or DefaultMarketDiscoveryProfile()
-        self.filter_profile = filter_profile or DefaultMarketFilterProfile()
-        self.scoring_profile = scoring_profile
+        self.filter_profile = filter_profile or TrackedMarketFilterProfile()
 
-    def register_filter(self, profile: DefaultMarketFilterProfile) -> None:
+    def register_filter(self, profile: TrackedMarketFilterProfile) -> None:
         self.filter_profile = profile
-
-    def register_scoring(self, profile: MarketScoringProfile | None) -> None:
-        self.scoring_profile = profile
 
     async def run(
         self,
         *,
         whales_run_id: str | None = None,
-        limit: int | None = None,
         now: datetime | None = None,
     ) -> MarketRunResult:
         generated_at = ensure_utc(now or datetime.now(UTC))
         run_id = _build_run_id(generated_at)
-        actual_whales_run_id = (
-            whales_run_id
-            or get_latest_discovery_run_id()
-            or get_latest_selection_run_id()
-        )
+        actual_whales_run_id = whales_run_id or get_latest_discovery_run_id()
 
         markets = await self._collect_markets(
             whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
         )
-        filtered_markets = self.filter_profile.run(markets)
-        scored_markets = (
-            self.scoring_profile.run(filtered_markets, limit=limit)
-            if self.scoring_profile is not None
-            else None
-        )
+        candidates = build_market_candidates(markets.positions)
+        tracked_candidates = self.filter_profile.run(candidates)
         persist_market_run(
             run_id=run_id,
             whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
-            filtered_markets=filtered_markets,
-            scored_markets=scored_markets,
-            limit=limit,
+            checked_market_count=len(candidates),
         )
-        tracked_markets = persist_tracked_markets(run_id=run_id)
+        tracked_markets = persist_tracked_markets(
+            run_id=run_id,
+            whales_run_id=actual_whales_run_id,
+            generated_at=generated_at,
+            markets=tracked_candidates,
+            filter_profile=self.filter_profile.name,
+        )
 
         return MarketTrackingResult(
             run_id=run_id,
             whales_run_id=actual_whales_run_id,
             collected_markets=markets,
-            filtered_markets=filtered_markets,
-            scored_markets=scored_markets,
             tracked_markets=tracked_markets,
-            limit=limit,
         )
 
-    def list_markets(
-        self,
-        *,
-        run_id: str | None = None,
-        limit: int | None = None,
-    ) -> list[Market]:
-        return list_markets(run_id=run_id, limit=limit)
-
-    def list_qualified_markets(
-        self,
-        *,
-        run_id: str | None = None,
-        limit: int | None = None,
-    ) -> list[Market]:
-        return list_qualified_markets(run_id=run_id, limit=limit)
+    def list_tracked(self, *, run_id: str | None = None) -> TrackedMarkets:
+        return list_tracked_markets(run_id=run_id)
 
     async def _collect_markets(
         self,

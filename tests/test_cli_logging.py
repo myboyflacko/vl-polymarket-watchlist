@@ -2,8 +2,7 @@ import asyncio
 import json
 import logging
 import sys
-from types import ModuleType
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 import pytest
 
@@ -37,17 +36,11 @@ def test_run_whales_logs_started_and_completed_events(
         async def run(self) -> SimpleNamespace:
             return SimpleNamespace(
                 run_id="run-1",
-                result_whales=SimpleNamespace(wallet_count=3),
-                whales=SimpleNamespace(checked_wallet_count=5),
-                filtered_whales=SimpleNamespace(wallet_count=4),
-                collection_errors=[],
+                whales=SimpleNamespace(checked_wallet_count=5, wallet_count=4),
+                tracked_whales=SimpleNamespace(wallet_count=3),
             )
 
-    monkeypatch.setattr(
-        cli,
-        "build_whale_service",
-        lambda *, scoring_enabled: FakeWhaleService(),
-    )
+    monkeypatch.setattr(cli, "build_whale_service", lambda: FakeWhaleService())
 
     exit_code = cli.main(["run", "whales"])
 
@@ -61,7 +54,8 @@ def test_run_whales_logs_started_and_completed_events(
     completed = _read_log_payloads(stdout)[1]
     assert completed["context"]["service"] == "whales"
     assert completed["context"]["run_id"] == "run-1"
-    assert completed["context"]["selected"] == 3
+    assert completed["context"]["observed"] == 4
+    assert completed["context"]["tracked"] == 3
 
 
 def test_run_whales_logs_failed_event_once(
@@ -74,11 +68,7 @@ def test_run_whales_logs_failed_event_once(
         async def run(self) -> None:
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(
-        cli,
-        "build_whale_service",
-        lambda *, scoring_enabled: FailingWhaleService(),
-    )
+    monkeypatch.setattr(cli, "build_whale_service", lambda: FailingWhaleService())
 
     exit_code = cli.main(["run", "whales"])
 
@@ -134,13 +124,8 @@ def test_run_markets_after_whales_waits_for_active_whale_run(
 ) -> None:
     calls: list[str] = []
 
-    async def fake_run_markets(
-        *,
-        scoring_enabled: bool,
-        limit: int | None,
-        whales_run_id: str | None,
-    ) -> str:
-        calls.append(f"{scoring_enabled}:{limit}:{whales_run_id}")
+    async def fake_run_markets(*, whales_run_id: str | None) -> str:
+        calls.append(str(whales_run_id))
         return "markets-run-1"
 
     async def run_test() -> None:
@@ -151,8 +136,6 @@ def test_run_markets_after_whales_waits_for_active_whale_run(
         task = asyncio.create_task(
             cli.run_markets_after_whales(
                 whales_lock=lock,
-                scoring_enabled=True,
-                limit=7,
                 whales_run_id="whales-run-1",
             )
         )
@@ -166,7 +149,7 @@ def test_run_markets_after_whales_waits_for_active_whale_run(
         assert result == "markets-run-1"
 
     asyncio.run(run_test())
-    assert calls == ["True:7:whales-run-1"]
+    assert calls == ["whales-run-1"]
 
 
 def test_run_markets_after_whales_runs_immediately_when_whales_are_idle(
@@ -174,26 +157,19 @@ def test_run_markets_after_whales_runs_immediately_when_whales_are_idle(
 ) -> None:
     calls: list[str] = []
 
-    async def fake_run_markets(
-        *,
-        scoring_enabled: bool,
-        limit: int | None,
-        whales_run_id: str | None,
-    ) -> str:
-        calls.append(f"{scoring_enabled}:{limit}:{whales_run_id}")
+    async def fake_run_markets(*, whales_run_id: str | None) -> str:
+        calls.append(str(whales_run_id))
         return "markets-run-1"
 
     async def run_test() -> str:
         monkeypatch.setattr(cli, "run_markets", fake_run_markets)
         return await cli.run_markets_after_whales(
             whales_lock=asyncio.Lock(),
-            scoring_enabled=False,
-            limit=None,
             whales_run_id=None,
         )
 
     assert asyncio.run(run_test()) == "markets-run-1"
-    assert calls == ["False:None:None"]
+    assert calls == ["None"]
 
 
 def _read_log_payloads(stdout: str) -> list[dict[str, object]]:
