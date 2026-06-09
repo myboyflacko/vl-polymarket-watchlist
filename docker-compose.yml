@@ -21,7 +21,7 @@ services:
 
   api:
     build: .
-    image: whale-tracker:local
+    image: whale-tracker:latest
     command:
       - whale-tracker
       - api
@@ -45,7 +45,7 @@ services:
 
   scheduler:
     build: .
-    image: whale-tracker:local
+    image: whale-tracker:latest
     command:
       - whale-tracker
       - schedule
@@ -62,7 +62,7 @@ services:
 
   cli:
     build: .
-    image: whale-tracker:local
+    image: whale-tracker:latest
     entrypoint:
       - whale-tracker
     command:
