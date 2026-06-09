@@ -26,9 +26,6 @@ from whale_tracker.tracker.whales.models import (
 
 
 DEFAULT_TRACKED_WHALE_FILTER_PROFILE = "leaderboard_streak_3_v1"
-DEFAULT_TRACKED_WHALE_STREAK_RUNS = 3
-
-
 def get_latest_discovery_run_id() -> str | None:
     return _latest_completed_run_id()
 
@@ -175,66 +172,33 @@ def persist_whale_run(
 
 def persist_tracked_whales(
     *,
-    run_id: str,
-    filter_profile: str = DEFAULT_TRACKED_WHALE_FILTER_PROFILE,
-    required_consecutive_runs: int = DEFAULT_TRACKED_WHALE_STREAK_RUNS,
+    tracked_whales: TrackedWhales,
 ) -> TrackedWhales:
+    run_id = tracked_whales.run_id
     with database_session() as session:
         run = session.get(WhaleRun, run_id)
         if run is None:
             raise ValueError(f"Whale run not found: {run_id}")
 
-        recent_runs = list(
-            session.scalars(
-                select(WhaleRun)
-                .where(
-                    WhaleRun.status == "completed",
-                    WhaleRun.generated_at <= run.generated_at,
-                )
-                .order_by(WhaleRun.generated_at.desc(), WhaleRun.run_id.desc())
-                .limit(required_consecutive_runs)
-            )
+        whale_ids = _wallet_ids(
+            session=session,
+            wallets=tracked_whales.proxy_wallets(),
         )
-        recent_run_ids = [entry.run_id for entry in recent_runs]
-        tracked_entries: list[tuple[WhaleObservation, PolymarketWhale]] = []
-
-        if len(recent_run_ids) == required_consecutive_runs and run_id in recent_run_ids:
-            wallet_run_counts = _wallet_run_counts(
-                session=session,
-                run_ids=recent_run_ids,
-            )
-            current_rows = list(
-                session.execute(
-                    select(WhaleObservation, PolymarketWhale)
-                    .join(
-                        PolymarketWhale,
-                        WhaleObservation.whale_id == PolymarketWhale.id,
-                    )
-                    .where(WhaleObservation.run_id == run_id)
-                    .order_by(WhaleObservation.id)
-                )
-            )
-            tracked_entries = [
-                (observation, identity)
-                for observation, identity in current_rows
-                if wallet_run_counts.get(identity.proxy_wallet, 0)
-                == required_consecutive_runs
-            ]
-
         rows = [
             {
                 "run_id": run_id,
-                "whale_id": observation.whale_id,
-                "filter_profile": filter_profile,
-                "consecutive_runs": required_consecutive_runs,
-                "candidate_source": observation.candidate_source,
-                "pnl_rank": observation.pnl_rank,
-                "volume_rank": observation.volume_rank,
-                "leaderboard_pnl": observation.leaderboard_pnl,
-                "leaderboard_volume": observation.leaderboard_volume,
-                "generated_at": ensure_utc(run.generated_at),
+                "whale_id": whale_ids[whale.proxy_wallet],
+                "filter_profile": whale.filter_profile,
+                "consecutive_runs": whale.consecutive_runs,
+                "candidate_source": whale.candidate_source,
+                "pnl_rank": whale.pnl_rank,
+                "volume_rank": whale.volume_rank,
+                "leaderboard_pnl": whale.leaderboard_pnl,
+                "leaderboard_volume": whale.leaderboard_volume,
+                "generated_at": ensure_utc(whale.generated_at),
             }
-            for observation, _identity in tracked_entries
+            for whale in tracked_whales.whales
+            if whale.proxy_wallet in whale_ids
         ]
         if rows:
             statement = insert(TrackedWhaleRow).values(rows)
@@ -265,6 +229,43 @@ def persist_tracked_whales(
         session.commit()
 
     return list_tracked_whales(run_id)
+
+
+def list_recent_observed_wallets(
+    *,
+    generated_at: datetime,
+    limit: int,
+) -> list[list[str]]:
+    with database_session() as session:
+        runs = list(
+            session.scalars(
+                select(WhaleRun)
+                .where(
+                    WhaleRun.status == "completed",
+                    WhaleRun.generated_at <= generated_at,
+                )
+                .order_by(WhaleRun.generated_at.desc(), WhaleRun.run_id.desc())
+                .limit(limit)
+            )
+        )
+        run_ids = [run.run_id for run in runs]
+        if not run_ids:
+            return []
+
+        rows = list(
+            session.execute(
+                select(WhaleObservation.run_id, PolymarketWhale.proxy_wallet)
+                .join(PolymarketWhale, WhaleObservation.whale_id == PolymarketWhale.id)
+                .where(WhaleObservation.run_id.in_(run_ids))
+                .order_by(WhaleObservation.id)
+            )
+        )
+
+    wallets_by_run = {run_id: [] for run_id in run_ids}
+    for run_id, wallet in rows:
+        wallets_by_run.setdefault(run_id, []).append(wallet)
+
+    return [wallets_by_run[run_id] for run_id in run_ids]
 
 
 def _latest_completed_run_id() -> str | None:
@@ -376,20 +377,17 @@ def _upsert_whale_observations(
     )
 
 
-def _wallet_run_counts(*, session: Session, run_ids: list[str]) -> dict[str, int]:
-    rows = session.execute(
-        select(PolymarketWhale.proxy_wallet, WhaleObservation.run_id)
-        .join(WhaleObservation, WhaleObservation.whale_id == PolymarketWhale.id)
-        .where(WhaleObservation.run_id.in_(run_ids))
-    )
-    wallet_run_ids: dict[str, set[str]] = {}
-    for wallet, seen_run_id in rows:
-        wallet_run_ids.setdefault(wallet, set()).add(seen_run_id)
+def _wallet_ids(*, session: Session, wallets: list[str]) -> dict[str, int]:
+    if not wallets:
+        return {}
 
-    return {
-        wallet: len(seen_run_ids)
-        for wallet, seen_run_ids in wallet_run_ids.items()
-    }
+    return dict(
+        session.execute(
+            select(PolymarketWhale.proxy_wallet, PolymarketWhale.id).where(
+                PolymarketWhale.proxy_wallet.in_(wallets)
+            )
+        ).all()
+    )
 
 
 def _whale_from_observation(

@@ -11,6 +11,7 @@ from whale_tracker.tracker.whales.domain import (
     Whales,
 )
 from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
+from whale_tracker.tracker.whales.filter import TrackedWhaleFilterProfile
 from whale_tracker.tracker.whales.helpers import (
     collect_leaderboard_whales,
     fetch_leaderboards_from_polymarket,
@@ -18,6 +19,7 @@ from whale_tracker.tracker.whales.helpers import (
 )
 from whale_tracker.tracker.whales.repository import (
     list_tracked_whales,
+    list_recent_observed_wallets,
     list_whale_observations,
     persist_tracked_whales,
     persist_whale_run,
@@ -28,8 +30,14 @@ class WhaleTrackerService:
     def __init__(
         self,
         discovery_profile: WhaleDiscoveryProfile | None = None,
+        *,
+        filter_profile: TrackedWhaleFilterProfile | None = None,
     ) -> None:
         self.discovery_profile = discovery_profile or WhaleDiscoveryProfile()
+        self.filter_profile = filter_profile or TrackedWhaleFilterProfile()
+
+    def register_filter(self, profile: TrackedWhaleFilterProfile) -> None:
+        self.filter_profile = profile
 
     async def run(self, *, now: datetime | None = None) -> WhaleRunResult:
         started_at = ensure_utc(now or datetime.now(UTC))
@@ -42,7 +50,16 @@ class WhaleTrackerService:
             finished_at=datetime.now(UTC),
             whales=whales,
         )
-        tracked_whales = persist_tracked_whales(run_id=run_id)
+        recent_run_wallets = list_recent_observed_wallets(
+            generated_at=started_at,
+            limit=self.filter_profile.required_consecutive_runs,
+        )
+        tracked_whales = self.filter_profile.run(
+            run_id=run_id,
+            whales=whales,
+            recent_run_wallets=recent_run_wallets,
+        )
+        persist_tracked_whales(tracked_whales=tracked_whales)
 
         return WhaleTrackingResult(
             run_id=run_id,

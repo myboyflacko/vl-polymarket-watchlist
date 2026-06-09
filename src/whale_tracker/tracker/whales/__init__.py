@@ -10,6 +10,7 @@ from whale_tracker.tracker.whales.domain import (
     Whales,
 )
 from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
+from whale_tracker.tracker.whales.filter import TrackedWhaleFilterProfile
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
 __all__ = [
@@ -22,4 +23,5 @@ __all__ = [
     "WhaleTrackerService",
     "WhaleTrackingResult",
     "Whales",
+    "TrackedWhaleFilterProfile",
 ]
