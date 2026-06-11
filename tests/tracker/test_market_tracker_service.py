@@ -24,7 +24,7 @@ from whale_tracker.tracker.markets.models import (
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
-    TrackedWhale,
+    WhaleObservation,
     WhaleRun,
 )
 
@@ -110,7 +110,7 @@ def test_market_tracker_run_persists_only_tracked_markets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = _prepare_database(monkeypatch)
-    _insert_tracked_whale_run(database_url)
+    _insert_whale_observation_runs(database_url)
     monkeypatch.setattr(
         service_module,
         "get_polymarket_data_client",
@@ -158,21 +158,8 @@ def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
     return database_url
 
 
-def _insert_tracked_whale_run(database_url: str) -> None:
+def _insert_whale_observation_runs(database_url: str) -> None:
     with database_session(database_url) as session:
-        session.add(
-            WhaleRun(
-                run_id="whales-run-1",
-                status="completed",
-                profile_version="test",
-                started_at=NOW,
-                finished_at=NOW,
-                generated_at=NOW,
-                checked_wallet_count=3,
-                observed_wallet_count=3,
-                tracked_wallet_count=3,
-            )
-        )
         one = PolymarketWhale(
             proxy_wallet=WALLET_ONE,
             identity={"proxy_wallet": WALLET_ONE},
@@ -193,46 +180,36 @@ def _insert_tracked_whale_run(database_url: str) -> None:
         )
         session.add_all([one, two, three])
         session.flush()
-        session.add_all(
-            [
-                TrackedWhale(
-                    run_id="whales-run-1",
-                    whale_id=one.id,
-                    filter_profile="test_tracked_filter",
-                    consecutive_runs=3,
-                    candidate_source="both",
-                    pnl_rank=1,
-                    volume_rank=1,
-                    leaderboard_pnl=100,
-                    leaderboard_volume=100,
-                    generated_at=NOW,
-                ),
-                TrackedWhale(
-                    run_id="whales-run-1",
-                    whale_id=two.id,
-                    filter_profile="test_tracked_filter",
-                    consecutive_runs=3,
-                    candidate_source="both",
-                    pnl_rank=2,
-                    volume_rank=2,
-                    leaderboard_pnl=50,
-                    leaderboard_volume=50,
-                    generated_at=NOW,
-                ),
-                TrackedWhale(
-                    run_id="whales-run-1",
-                    whale_id=three.id,
-                    filter_profile="test_tracked_filter",
-                    consecutive_runs=3,
-                    candidate_source="both",
-                    pnl_rank=3,
-                    volume_rank=3,
-                    leaderboard_pnl=25,
-                    leaderboard_volume=25,
-                    generated_at=NOW,
-                ),
-            ]
-        )
+
+        whales = [one, two, three]
+        for index in range(3):
+            generated_at = NOW.replace(hour=NOW.hour + index)
+            run_id = f"whales-run-{index + 1}"
+            session.add(
+                WhaleRun(
+                    run_id=run_id,
+                    status="completed",
+                    profile_version="test",
+                    started_at=generated_at,
+                    finished_at=generated_at,
+                    generated_at=generated_at,
+                    checked_wallet_count=len(whales),
+                    observed_wallet_count=len(whales),
+                )
+            )
+            session.flush()
+            session.add_all(
+                [
+                    WhaleObservation(
+                        run_id=run_id,
+                        whale_id=whale.id,
+                        metrics={"candidate_source": "both"},
+                        generated_at=generated_at,
+                    )
+                    for whale in whales
+                ]
+            )
+
         session.commit()
 
 

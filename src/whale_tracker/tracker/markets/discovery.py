@@ -20,11 +20,7 @@ class DefaultMarketDiscoveryProfile(BaseModel):
         whales_run_id: str | None,
         generated_at: datetime,
     ) -> Markets:
-        wallets = (
-            list_tracked_whale_wallets(whales_run_id)
-            if whales_run_id is not None
-            else list_tracked_whale_wallets()
-        )
+        wallets = list_tracked_whale_wallets()
         if not wallets:
             return Markets(generated_at=generated_at)
 

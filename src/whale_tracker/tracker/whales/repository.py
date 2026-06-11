@@ -21,6 +21,7 @@ from whale_tracker.tracker.whales.models import (
     WhaleObservation,
     WhaleRun,
 )
+from whale_tracker.tracker.whales.selection import ObservedInLastRunsProfile
 
 
 def get_latest_discovery_run_id() -> str | None:
@@ -56,6 +57,16 @@ def list_whale_observations(run_id: str | None = None) -> Whales:
         generated_at=run.generated_at,
         profile_version=run.profile_version,
     )
+
+
+def list_tracked_whale_wallets(
+    *,
+    profile: ObservedInLastRunsProfile | None = None,
+) -> list[str]:
+    selection_profile = profile or ObservedInLastRunsProfile()
+
+    with database_session() as session:
+        return list(session.scalars(selection_profile.wallet_statement()))
 
 
 def persist_whale_run(
