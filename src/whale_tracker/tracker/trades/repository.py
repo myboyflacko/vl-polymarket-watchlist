@@ -7,9 +7,9 @@ from sqlalchemy.dialects.postgresql import insert
 
 from whale_tracker.core.db.engine import database_session
 from whale_tracker.core.time import ensure_utc
+from whale_tracker.tracker.markets.repository import list_tracked_markets
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
-    MarketPosition,
 )
 from whale_tracker.tracker.trades.domain import (
     Trade,
@@ -41,24 +41,38 @@ def get_latest_trade_run_id() -> str | None:
 
 
 def list_trade_sources(*, market_run_id: str) -> list[TradeSource]:
+    selected_markets = list_tracked_markets(run_id=market_run_id).markets
+    token_ids = [
+        token_id
+        for market in selected_markets
+        for token_id in (market.token_id, market.opposite_token_id)
+        if token_id is not None
+    ]
+    if not token_ids:
+        return []
+
     with database_session() as session:
-        rows = list(
-            session.execute(
-                select(MarketPosition, MarketIdentity)
-                .join(MarketIdentity, MarketPosition.market_id == MarketIdentity.id)
-                .where(MarketPosition.run_id == market_run_id)
-                .order_by(MarketPosition.id)
+        identities = {
+            market.token_id: market
+            for market in session.scalars(
+                select(MarketIdentity)
+                .where(MarketIdentity.token_id.in_(token_ids))
+                .order_by(MarketIdentity.id)
             )
-        )
+        }
 
     sources_by_key: dict[tuple[str, str], TradeSource] = {}
-    for position, market in rows:
-        key = (position.wallet, market.condition_id)
-        source = sources_by_key.setdefault(
-            key,
-            TradeSource(proxy_wallet=position.wallet, condition_id=market.condition_id),
-        )
-        source.market_ids_by_token[market.token_id] = market.id
+    for market in selected_markets:
+        for wallet in market.wallets:
+            key = (wallet, market.condition_id)
+            source = sources_by_key.setdefault(
+                key,
+                TradeSource(proxy_wallet=wallet, condition_id=market.condition_id),
+            )
+            for token_id in (market.token_id, market.opposite_token_id):
+                identity = identities.get(token_id or "")
+                if identity is not None:
+                    source.market_ids_by_token[token_id or ""] = identity.id
 
     return list(sources_by_key.values())
 
@@ -98,15 +112,17 @@ def persist_trades(
             raise ValueError(f"Trade run not found: {run_id}")
 
         trade_ids = _upsert_trade_facts(session=session, trades=trades)
-        item_rows = [
-            {
-                "run_id": run_id,
-                "trade_id": trade_ids[trade.trade_key],
-                "generated_at": ensure_utc(trade.generated_at),
-            }
-            for trade in trades
-            if trade.trade_key in trade_ids
-        ]
+        item_rows = _deduplicate_run_item_rows(
+            [
+                {
+                    "run_id": run_id,
+                    "trade_id": trade_ids[trade.trade_key],
+                    "generated_at": ensure_utc(trade.generated_at),
+                }
+                for trade in trades
+                if trade.trade_key in trade_ids
+            ]
+        )
         if item_rows:
             for batch in _batches(item_rows, MAX_INSERT_ROWS_PER_BATCH):
                 statement = insert(TradeRunItem).values(batch)
@@ -247,6 +263,15 @@ def _tracked_trade_from_row(*, run: TradeRun, row: TradeFact) -> TrackedTrade:
         transaction_hash=row.transaction_hash,
         raw_payload=dict(row.raw_payload),
         generated_at=row.last_seen_at,
+    )
+
+
+def _deduplicate_run_item_rows(rows: list[dict]) -> list[dict]:
+    return list(
+        {
+            (row["run_id"], row["trade_id"]): row
+            for row in rows
+        }.values()
     )
 
 

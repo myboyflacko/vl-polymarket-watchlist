@@ -27,6 +27,11 @@ from whale_tracker.tracker.trades.repository import (
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
 WALLET_ONE = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+WALLET_TWO = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+WALLET_THREE = "0xcccccccccccccccccccccccccccccccccccccccc"
+WALLET_FOUR = "0xdddddddddddddddddddddddddddddddddddddddd"
+WALLET_FIVE = "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+WALLET_SIX = "0xffffffffffffffffffffffffffffffffffffffff"
 CONDITION_ID = "0x" + "1" * 64
 YES_TOKEN = "111"
 NO_TOKEN = "222"
@@ -89,7 +94,7 @@ def test_trade_discovery_fetches_trades_for_wallet_condition() -> None:
     assert trade.trade_timestamp == datetime(2026, 6, 1, tzinfo=UTC)
 
 
-def test_trade_sources_deduplicate_wallet_condition(
+def test_trade_sources_use_selected_markets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = _prepare_database(monkeypatch)
@@ -97,13 +102,18 @@ def test_trade_sources_deduplicate_wallet_condition(
 
     sources = list_trade_sources(market_run_id="markets-run-1")
 
-    assert sources == [
-        TradeSource(
-            proxy_wallet=WALLET_ONE,
-            condition_id=CONDITION_ID,
-            market_ids_by_token={YES_TOKEN: 1, NO_TOKEN: 2},
-        )
-    ]
+    assert {source.proxy_wallet for source in sources} == {
+        WALLET_ONE,
+        WALLET_TWO,
+        WALLET_THREE,
+        WALLET_FOUR,
+        WALLET_FIVE,
+    }
+    assert all(source.condition_id == CONDITION_ID for source in sources)
+    assert all(
+        source.market_ids_by_token == {YES_TOKEN: 1, NO_TOKEN: 2}
+        for source in sources
+    )
 
 
 def test_trade_persistence_deduplicates_trade_facts(
@@ -189,6 +199,8 @@ def _insert_market_run_with_positions(database_url: str) -> None:
             title="Title",
             slug="slug",
             outcome="Yes",
+            opposite_token_id=NO_TOKEN,
+            opposite_outcome="No",
             first_seen_at=NOW,
             last_seen_at=NOW,
         )
@@ -199,6 +211,8 @@ def _insert_market_run_with_positions(database_url: str) -> None:
             title="Title",
             slug="slug",
             outcome="No",
+            opposite_token_id=YES_TOKEN,
+            opposite_outcome="Yes",
             first_seen_at=NOW,
             last_seen_at=NOW,
         )
@@ -209,26 +223,35 @@ def _insert_market_run_with_positions(database_url: str) -> None:
                 MarketPosition(
                     run_id="markets-run-1",
                     market_id=yes.id,
-                    wallet=WALLET_ONE,
+                    wallet=wallet,
                     size=10,
                     current_value=4.2,
                     avg_price=0.4,
                     cur_price=0.42,
                     negative_risk=False,
                     generated_at=NOW,
-                ),
-                MarketPosition(
-                    run_id="markets-run-1",
-                    market_id=no.id,
-                    wallet=WALLET_ONE,
-                    size=5,
-                    current_value=2.5,
-                    avg_price=0.5,
-                    cur_price=0.5,
-                    negative_risk=False,
-                    generated_at=NOW,
-                ),
+                )
+                for wallet in [
+                    WALLET_ONE,
+                    WALLET_TWO,
+                    WALLET_THREE,
+                    WALLET_FOUR,
+                    WALLET_FIVE,
+                ]
             ]
+        )
+        session.add(
+            MarketPosition(
+                run_id="markets-run-1",
+                market_id=no.id,
+                wallet=WALLET_SIX,
+                size=5,
+                current_value=2.5,
+                avg_price=0.5,
+                cur_price=0.5,
+                negative_risk=False,
+                generated_at=NOW,
+            )
         )
         session.commit()
 
