@@ -5,11 +5,14 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from whale_tracker.core.logging import configure_logging
-from whale_tracker.tracker.markets.service import MarketTrackerService
-from whale_tracker.tracker.orderbooks.service import OrderBookTrackerService
 from whale_tracker.tracker.whales.service import WhaleTrackerService
+
+if TYPE_CHECKING:
+    from whale_tracker.tracker.markets.service import MarketTrackerService
+    from whale_tracker.tracker.orderbooks.service import OrderBookTrackerService
 
 
 logger = logging.getLogger(__name__)
@@ -277,7 +280,6 @@ async def run_whales() -> str:
                 "run_id": result.run_id,
                 "checked": result.whales.checked_wallet_count,
                 "observed": result.whales.wallet_count,
-                "tracked": result.tracked_whales.wallet_count,
                 "errors": error_count,
             },
         },
@@ -288,7 +290,6 @@ async def run_whales() -> str:
         f"run_id={result.run_id} "
         f"checked={result.whales.checked_wallet_count} "
         f"observed={result.whales.wallet_count} "
-        f"tracked={result.tracked_whales.wallet_count} "
         f"errors={error_count}"
     )
     return result.run_id
@@ -382,10 +383,14 @@ def build_whale_service() -> WhaleTrackerService:
 
 
 def build_market_service() -> MarketTrackerService:
+    from whale_tracker.tracker.markets.service import MarketTrackerService
+
     return MarketTrackerService()
 
 
 def build_orderbook_service() -> OrderBookTrackerService:
+    from whale_tracker.tracker.orderbooks.service import OrderBookTrackerService
+
     return OrderBookTrackerService()
 
 

@@ -2,26 +2,22 @@
 
 from whale_tracker.tracker.whales.domain import (
     LeaderboardObservation,
-    TrackedWhale,
-    TrackedWhales,
+    LeaderboardObservationMetrics,
     Whale,
     WhaleRunResult,
     WhaleTrackingResult,
     Whales,
 )
 from whale_tracker.tracker.whales.discovery import WhaleDiscoveryProfile
-from whale_tracker.tracker.whales.filter import TrackedWhaleFilterProfile
 from whale_tracker.tracker.whales.service import WhaleTrackerService
 
 __all__ = [
     "LeaderboardObservation",
-    "TrackedWhale",
-    "TrackedWhales",
+    "LeaderboardObservationMetrics",
     "Whale",
     "WhaleDiscoveryProfile",
     "WhaleRunResult",
     "WhaleTrackerService",
     "WhaleTrackingResult",
     "Whales",
-    "TrackedWhaleFilterProfile",
 ]

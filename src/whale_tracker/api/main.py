@@ -13,21 +13,8 @@ from whale_tracker.tracker.orderbooks.repository import (
 )
 from whale_tracker.tracker.whales.repository import (
     get_latest_discovery_run_id,
-    list_tracked_whales,
     list_whale_observations,
 )
-
-
-class WhalesResponse(BaseModel):
-    whales: list
-    run_id: str
-    filter_profile: str
-    generated_at: datetime
-
-    @computed_field
-    @property
-    def whales_count(self) -> int:
-        return len(self.whales)
 
 
 class WhaleObservationsResponse(BaseModel):
@@ -105,20 +92,6 @@ def get_latest_orderbooks(run_id: str | None = None):
         generated_at=orderbooks.generated_at,
         depth=orderbooks.depth,
         orderbooks=orderbooks.orderbooks,
-    )
-
-
-@app.get("/whales")
-def get_latest_whales(run_id: str | None = None):
-    whales = list_tracked_whales(run_id=run_id)
-    if not whales.run_id:
-        raise HTTPException(status_code=404, detail="No tracked whale run found")
-
-    return WhalesResponse(
-        run_id=whales.run_id,
-        filter_profile=whales.filter_profile,
-        generated_at=whales.generated_at,
-        whales=whales.whales,
     )
 
 

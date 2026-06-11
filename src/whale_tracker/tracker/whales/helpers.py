@@ -10,6 +10,7 @@ from whale_tracker.providers.polymarket.params.leaderboard.leaderboard import (
 from whale_tracker.tracker.whales.domain import (
     LeaderboardEntry,
     LeaderboardObservation,
+    LeaderboardObservationMetrics,
     Whale,
     WhaleCandidate,
     WhaleIdentity,
@@ -48,7 +49,10 @@ def collect_leaderboard_whales(
     now,
 ) -> Whales:
     return Whales(
-        whales=[_leaderboard_whale(candidate=candidate, generated_at=now) for candidate in candidates],
+        whales=[
+            _leaderboard_whale(candidate=candidate, generated_at=now)
+            for candidate in candidates
+        ],
         candidate_wallet_count=len(candidates),
         checked_wallet_count=len(candidates),
         generated_at=now,
@@ -166,11 +170,10 @@ def _identity(candidate: WhaleCandidate) -> WhaleIdentity:
     )
 
 
-def _leaderboard_observation(
+def _leaderboard_observation_metrics(
     *,
     candidate: WhaleCandidate,
-    generated_at,
-) -> LeaderboardObservation:
+) -> LeaderboardObservationMetrics:
     pnl_entry = candidate.pnl_entry or {}
     volume_entry = candidate.volume_entry or {}
 
@@ -180,13 +183,22 @@ def _leaderboard_observation(
         candidate_source = "pnl"
     else:
         candidate_source = "volume"
-
-    return LeaderboardObservation(
-        proxy_wallet=candidate.proxy_wallet,
+    return LeaderboardObservationMetrics(
         candidate_source=candidate_source,
         pnl_rank=to_int(pnl_entry.get("rank")),
         volume_rank=to_int(volume_entry.get("rank")),
         leaderboard_pnl=to_float(pnl_entry.get("pnl")),
         leaderboard_volume=to_float(volume_entry.get("vol")),
+    )
+
+
+def _leaderboard_observation(
+    *,
+    candidate: WhaleCandidate,
+    generated_at,
+) -> LeaderboardObservation:
+    return LeaderboardObservation(
+        proxy_wallet=candidate.proxy_wallet,
+        metrics=_leaderboard_observation_metrics(candidate=candidate),
         generated_at=generated_at,
     )

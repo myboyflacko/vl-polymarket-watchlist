@@ -37,7 +37,6 @@ def test_run_whales_logs_started_and_completed_events(
             return SimpleNamespace(
                 run_id="run-1",
                 whales=SimpleNamespace(checked_wallet_count=5, wallet_count=4),
-                tracked_whales=SimpleNamespace(wallet_count=3),
             )
 
     monkeypatch.setattr(cli, "build_whale_service", lambda: FakeWhaleService())
@@ -55,7 +54,7 @@ def test_run_whales_logs_started_and_completed_events(
     assert completed["context"]["service"] == "whales"
     assert completed["context"]["run_id"] == "run-1"
     assert completed["context"]["observed"] == 4
-    assert completed["context"]["tracked"] == 3
+    assert "tracked" not in completed["context"]
 
 
 def test_run_whales_logs_failed_event_once(
