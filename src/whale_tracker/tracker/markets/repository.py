@@ -79,21 +79,23 @@ def persist_market_positions(
             seen_at=generated_at,
             session=session,
         )
-        rows = [
-            {
-                "run_id": run_id,
-                "market_id": market_ids[position.token_id],
-                "wallet": position.proxy_wallet,
-                "size": position.size,
-                "current_value": position.current_value,
-                "avg_price": position.avg_price,
-                "cur_price": position.cur_price,
-                "negative_risk": position.negative_risk,
-                "generated_at": generated_at,
-            }
-            for position in positions
-            if position.token_id in market_ids
-        ]
+        rows = _deduplicate_position_rows(
+            [
+                {
+                    "run_id": run_id,
+                    "market_id": market_ids[position.token_id],
+                    "wallet": position.proxy_wallet,
+                    "size": position.size,
+                    "current_value": position.current_value,
+                    "avg_price": position.avg_price,
+                    "cur_price": position.cur_price,
+                    "negative_risk": position.negative_risk,
+                    "generated_at": generated_at,
+                }
+                for position in positions
+                if position.token_id in market_ids
+            ]
+        )
         if rows:
             for batch in _batches(rows, MAX_INSERT_ROWS_PER_BATCH):
                 statement = insert(MarketPositionRow).values(batch)
@@ -250,6 +252,15 @@ def _market_row(*, position: MarketPosition, seen_at: datetime) -> dict:
         "first_seen_at": seen_at,
         "last_seen_at": seen_at,
     }
+
+
+def _deduplicate_position_rows(rows: list[dict]) -> list[dict]:
+    return list(
+        {
+            (row["run_id"], row["wallet"], row["market_id"]): row
+            for row in rows
+        }.values()
+    )
 
 
 def _position_from_row(

@@ -21,7 +21,7 @@ from whale_tracker.tracker.markets.models import (
     MarketPosition,
     MarketRun,
 )
-from whale_tracker.tracker.markets.repository import _batches
+from whale_tracker.tracker.markets.repository import _batches, _deduplicate_position_rows
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
@@ -71,6 +71,25 @@ def test_build_market_candidates_groups_positions_by_token() -> None:
 
 def test_batches_splits_large_payloads() -> None:
     assert _batches([1, 2, 3, 4, 5], 2) == [[1, 2], [3, 4], [5]]
+
+
+def test_deduplicate_position_rows_keeps_latest_row_for_unique_position() -> None:
+    rows = [
+        {
+            "run_id": "run-1",
+            "wallet": WALLET_ONE,
+            "market_id": 1,
+            "current_value": 100,
+        },
+        {
+            "run_id": "run-1",
+            "wallet": WALLET_ONE,
+            "market_id": 1,
+            "current_value": 125,
+        },
+    ]
+
+    assert _deduplicate_position_rows(rows) == [rows[1]]
 
 
 def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:
