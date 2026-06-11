@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, tuple_, update
 from sqlalchemy.dialects.postgresql import insert
 
 from whale_tracker.core.db.engine import database_session
@@ -75,7 +75,10 @@ def list_trade_sources(*, market_run_id: str) -> list[TradeSource]:
                 if identity is not None:
                     source.market_ids_by_token[token_id or ""] = identity.id
 
-    return list(sources_by_key.values())
+        sources = list(sources_by_key.values())
+        _attach_trade_sync_state(session=session, sources=sources)
+
+    return sources
 
 
 def persist_trade_run(
@@ -265,6 +268,63 @@ def _tracked_trade_from_row(*, run: TradeRun, row: TradeFact) -> TrackedTrade:
         raw_payload=dict(row.raw_payload),
         generated_at=row.last_seen_at,
     )
+
+
+def _attach_trade_sync_state(*, session, sources: list[TradeSource]) -> None:
+    if not sources:
+        return
+
+    source_keys = [
+        (source.proxy_wallet, source.condition_id)
+        for source in sources
+    ]
+    latest_rows = session.execute(
+        select(
+            TradeFact.wallet,
+            TradeFact.condition_id,
+            func.max(TradeFact.trade_timestamp),
+        )
+        .where(
+            tuple_(TradeFact.wallet, TradeFact.condition_id).in_(source_keys),
+            TradeFact.trade_timestamp.is_not(None),
+        )
+        .group_by(TradeFact.wallet, TradeFact.condition_id)
+    ).all()
+    latest_by_source = {
+        (wallet, condition_id): latest_timestamp
+        for wallet, condition_id, latest_timestamp in latest_rows
+        if latest_timestamp is not None
+    }
+    if not latest_by_source:
+        return
+
+    known_key_rows = session.execute(
+        select(
+            TradeFact.wallet,
+            TradeFact.condition_id,
+            TradeFact.trade_key,
+        ).where(
+            tuple_(
+                TradeFact.wallet,
+                TradeFact.condition_id,
+                TradeFact.trade_timestamp,
+            ).in_(
+                [
+                    (wallet, condition_id, latest_timestamp)
+                    for (wallet, condition_id), latest_timestamp
+                    in latest_by_source.items()
+                ]
+            )
+        )
+    ).all()
+    known_keys_by_source: dict[tuple[str, str], set[str]] = {}
+    for wallet, condition_id, trade_key in known_key_rows:
+        known_keys_by_source.setdefault((wallet, condition_id), set()).add(trade_key)
+
+    for source in sources:
+        key = (source.proxy_wallet, source.condition_id)
+        source.latest_trade_timestamp = latest_by_source.get(key)
+        source.known_trade_keys = known_keys_by_source.get(key, set())
 
 
 def _deduplicate_run_item_rows(rows: list[dict]) -> list[dict]:

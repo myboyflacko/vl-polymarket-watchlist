@@ -55,8 +55,8 @@ async def _collect_source_trades(
     source: TradeSource,
     generated_at: datetime,
 ) -> SourceTradeResult:
-    rows: list[dict[str, Any]] = []
     errors: list[TradeCollectionError] = []
+    trades: list[Trade] = []
     offset = 0
 
     try:
@@ -71,7 +71,39 @@ async def _collect_source_trades(
             if not isinstance(page, list) or not page:
                 break
 
-            rows.extend(row for row in page if isinstance(row, dict))
+            reached_sync_boundary = False
+            for row in page:
+                if not isinstance(row, dict):
+                    continue
+
+                try:
+                    trade = normalize_trade(
+                        source=source,
+                        row=row,
+                        generated_at=generated_at,
+                    )
+                except ValueError as exc:
+                    errors.append(
+                        TradeCollectionError(
+                            proxy_wallet=source.proxy_wallet,
+                            condition_id=source.condition_id,
+                            message=str(exc),
+                        )
+                    )
+                    continue
+
+                if _is_known_trade(source=source, trade=trade):
+                    continue
+
+                if _is_older_than_sync_boundary(source=source, trade=trade):
+                    reached_sync_boundary = True
+                    break
+
+                trades.append(trade)
+
+            if reached_sync_boundary:
+                break
+
             if len(page) < params.limit:
                 break
 
@@ -88,25 +120,6 @@ async def _collect_source_trades(
                 )
             ],
         )
-
-    trades: list[Trade] = []
-    for row in rows:
-        try:
-            trades.append(
-                normalize_trade(
-                    source=source,
-                    row=row,
-                    generated_at=generated_at,
-                )
-            )
-        except ValueError as exc:
-            errors.append(
-                TradeCollectionError(
-                    proxy_wallet=source.proxy_wallet,
-                    condition_id=source.condition_id,
-                    message=str(exc),
-                )
-            )
 
     return SourceTradeResult(trades=trades, errors=errors)
 
@@ -162,6 +175,17 @@ def normalize_trade(
         raw_payload=row,
         generated_at=ensure_utc(generated_at),
     )
+
+
+def _is_known_trade(*, source: TradeSource, trade: Trade) -> bool:
+    return trade.trade_key in source.known_trade_keys
+
+
+def _is_older_than_sync_boundary(*, source: TradeSource, trade: Trade) -> bool:
+    if source.latest_trade_timestamp is None or trade.trade_timestamp is None:
+        return False
+
+    return trade.trade_timestamp < source.latest_trade_timestamp
 
 
 def build_trade_key(

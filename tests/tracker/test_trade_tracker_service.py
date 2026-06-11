@@ -61,6 +61,19 @@ class FakeTradeClient:
         ]
 
 
+class FakeIncrementalTradeClient:
+    def __init__(self) -> None:
+        self.requests: list[dict[str, Any]] = []
+
+    async def get_trades(self, params: Any) -> list[dict[str, Any]]:
+        self.requests.append(params.output_params())
+        return [
+            _trade_row(trade_id="new", timestamp="1780272060"),
+            _trade_row(trade_id="known", timestamp="1780272000"),
+            _trade_row(trade_id="old", timestamp="1780271940"),
+        ]
+
+
 def test_trade_discovery_fetches_trades_for_wallet_condition() -> None:
     client = FakeTradeClient()
     profile = DefaultTradeDiscoveryProfile()
@@ -93,6 +106,33 @@ def test_trade_discovery_fetches_trades_for_wallet_condition() -> None:
     assert trade.size == 10
     assert trade.value == 4.2
     assert trade.trade_timestamp == datetime(2026, 6, 1, tzinfo=UTC)
+
+
+def test_trade_discovery_stops_at_sync_boundary() -> None:
+    client = FakeIncrementalTradeClient()
+    profile = DefaultTradeDiscoveryProfile()
+    source = TradeSource(
+        proxy_wallet=WALLET_ONE,
+        condition_id=CONDITION_ID,
+        market_ids_by_token={YES_TOKEN: 123},
+        known_trade_keys={"api:known"},
+        latest_trade_timestamp=datetime(2026, 6, 1, tzinfo=UTC),
+    )
+
+    result = asyncio.run(
+        profile.run(client=client, sources=[source], generated_at=NOW)
+    )
+
+    assert client.requests == [
+        {
+            "limit": 10000,
+            "offset": 0,
+            "takerOnly": True,
+            "market": CONDITION_ID,
+            "user": WALLET_ONE,
+        }
+    ]
+    assert [trade.trade_key for trade in result.trades] == ["api:new"]
 
 
 def test_trade_fact_batches_stay_below_large_statement_size() -> None:
@@ -268,3 +308,16 @@ def _set_database_env(monkeypatch: pytest.MonkeyPatch, database_url: str) -> Non
     monkeypatch.setenv("WHALE_TRACKER_POSTGRES_PASSWORD", parsed_url.password or "")
     monkeypatch.setenv("WHALE_TRACKER_POSTGRES_HOST", parsed_url.host or "")
     monkeypatch.setenv("WHALE_TRACKER_POSTGRES_PORT", str(parsed_url.port or 5432))
+
+
+def _trade_row(*, trade_id: str, timestamp: str) -> dict[str, str]:
+    return {
+        "id": trade_id,
+        "asset": YES_TOKEN,
+        "side": "buy",
+        "outcome": "Yes",
+        "price": "0.42",
+        "size": "10",
+        "timestamp": timestamp,
+        "transactionHash": f"0x{trade_id}",
+    }

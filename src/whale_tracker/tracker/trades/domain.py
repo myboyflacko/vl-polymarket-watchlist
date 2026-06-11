@@ -10,6 +10,8 @@ class TradeSource(BaseModel):
     proxy_wallet: str
     condition_id: str
     market_ids_by_token: dict[str, int] = Field(default_factory=dict)
+    known_trade_keys: set[str] = Field(default_factory=set)
+    latest_trade_timestamp: datetime | None = None
 
 
 class Trade(BaseModel):
