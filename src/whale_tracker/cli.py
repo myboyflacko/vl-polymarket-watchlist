@@ -13,6 +13,7 @@ from whale_tracker.tracker.whales.service import WhaleTrackerService
 if TYPE_CHECKING:
     from whale_tracker.tracker.markets.service import MarketTrackerService
     from whale_tracker.tracker.orderbooks.service import OrderBookTrackerService
+    from whale_tracker.tracker.trades.service import TradeTrackerService
 
 
 logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run one service once.")
     run_parser.add_argument(
         "service",
-        choices=("whales", "markets", "orderbooks", "all"),
+        choices=("whales", "markets", "trades", "orderbooks", "all"),
         help="Service to run.",
     )
     run_parser.add_argument(
@@ -78,7 +79,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser.add_argument(
         "--market-run-id",
         default=None,
-        help="Market run id to use for orderbook tracking.",
+        help="Market run id to use for trade and orderbook tracking.",
     )
     run_parser.add_argument(
         "--orderbook-depth",
@@ -168,8 +169,13 @@ async def run_once(args: argparse.Namespace) -> None:
         )
         return
 
+    if args.service == "trades":
+        await run_trades(market_run_id=args.market_run_id)
+        return
+
     whale_run_id = await run_whales()
     market_run_id = await run_markets(whales_run_id=whale_run_id)
+    await run_trades(market_run_id=market_run_id)
     await run_orderbooks(market_run_id=market_run_id, depth=args.orderbook_depth)
 
 
@@ -378,6 +384,47 @@ async def run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
     return result.run_id
 
 
+async def run_trades(*, market_run_id: str | None) -> str:
+    logger.info(
+        "Service started",
+        extra={
+            "event": "service.started",
+            "context": {
+                "service": "trades",
+                "market_run_id": market_run_id,
+            },
+        },
+    )
+    service = build_trade_service()
+    result = await service.run(market_run_id=market_run_id)
+    error_count = len(result.errors)
+
+    logger.info(
+        "Service completed",
+        extra={
+            "event": "service.completed",
+            "context": {
+                "service": "trades",
+                "run_id": result.run_id,
+                "market_run_id": result.market_run_id,
+                "checked": result.collected_trades.checked_source_count,
+                "stored": result.tracked_trades.trade_count,
+                "errors": error_count,
+            },
+        },
+    )
+
+    print(
+        "Trades completed: "
+        f"run_id={result.run_id} "
+        f"market_run_id={result.market_run_id} "
+        f"checked={result.collected_trades.checked_source_count} "
+        f"stored={result.tracked_trades.trade_count} "
+        f"errors={error_count}"
+    )
+    return result.run_id
+
+
 def build_whale_service() -> WhaleTrackerService:
     return WhaleTrackerService()
 
@@ -392,6 +439,12 @@ def build_orderbook_service() -> OrderBookTrackerService:
     from whale_tracker.tracker.orderbooks.service import OrderBookTrackerService
 
     return OrderBookTrackerService()
+
+
+def build_trade_service() -> TradeTrackerService:
+    from whale_tracker.tracker.trades.service import TradeTrackerService
+
+    return TradeTrackerService()
 
 
 def init_db() -> None:

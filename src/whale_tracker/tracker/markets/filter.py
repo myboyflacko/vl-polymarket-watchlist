@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from whale_tracker.tracker.markets.domain import (
     Market,
-    MarketObservation,
+    MarketPosition,
     WhalePosition,
 )
 
@@ -48,11 +48,11 @@ class TrackedMarketFilterProfile(BaseModel):
             reverse=True,
         )
 
-    def run_observations(
+    def run_positions(
         self,
-        observations: Iterable[MarketObservation],
+        positions: Iterable[MarketPosition],
     ) -> list[Market]:
-        return self.run(build_market_candidates_from_observations(observations))
+        return self.run(build_market_candidates_from_positions(positions))
 
 
 def build_market_candidates(positions: Iterable[WhalePosition]) -> list[Market]:
@@ -66,13 +66,13 @@ def build_market_candidates(positions: Iterable[WhalePosition]) -> list[Market]:
     ]
 
 
-def build_market_observations(
+def build_market_positions(
     *,
     positions: Iterable[WhalePosition],
     generated_at: datetime,
-) -> list[MarketObservation]:
+) -> list[MarketPosition]:
     return [
-        MarketObservation(
+        MarketPosition(
             proxy_wallet=position.proxy_wallet,
             token_id=position.token_id,
             condition_id=position.condition_id,
@@ -93,19 +93,19 @@ def build_market_observations(
     ]
 
 
-def build_market_candidates_from_observations(
-    observations: Iterable[MarketObservation],
+def build_market_candidates_from_positions(
+    positions: Iterable[MarketPosition],
 ) -> list[Market]:
-    grouped: dict[str, list[MarketObservation]] = defaultdict(list)
-    for observation in observations:
-        grouped[observation.token_id].append(observation)
+    grouped: dict[str, list[MarketPosition]] = defaultdict(list)
+    for position in positions:
+        grouped[position.token_id].append(position)
 
     return [
-        build_market_candidate_from_observations(
+        build_market_candidate_from_positions(
             token_id=token_id,
-            observations=group_observations,
+            positions=group_positions,
         )
-        for token_id, group_observations in grouped.items()
+        for token_id, group_positions in grouped.items()
     ]
 
 
@@ -139,17 +139,17 @@ def build_market_candidate(*, token_id: str, positions: list[WhalePosition]) -> 
     )
 
 
-def build_market_candidate_from_observations(
+def build_market_candidate_from_positions(
     *,
     token_id: str,
-    observations: list[MarketObservation],
+    positions: list[MarketPosition],
 ) -> Market:
-    first_observation = observations[0]
-    total_size = sum(observation.size for observation in observations)
-    total_current_value = sum(observation.current_value for observation in observations)
-    wallets = list(dict.fromkeys(observation.proxy_wallet for observation in observations))
+    first_position = positions[0]
+    total_size = sum(position.size for position in positions)
+    total_current_value = sum(position.current_value for position in positions)
+    wallets = list(dict.fromkeys(position.proxy_wallet for position in positions))
     weighted_avg_price = (
-        sum(observation.avg_price * observation.size for observation in observations)
+        sum(position.avg_price * position.size for position in positions)
         / total_size
         if total_size
         else 0.0
@@ -157,18 +157,18 @@ def build_market_candidate_from_observations(
 
     return Market(
         token_id=token_id,
-        condition_id=first_observation.condition_id,
-        title=first_observation.title,
-        slug=first_observation.slug,
-        outcome=first_observation.outcome,
+        condition_id=first_position.condition_id,
+        title=first_position.title,
+        slug=first_position.slug,
+        outcome=first_position.outcome,
         whale_count=len(wallets),
         wallets=wallets,
         total_size=total_size,
         total_current_value=total_current_value,
         weighted_avg_price=weighted_avg_price,
-        cur_price=first_observation.cur_price,
-        opposite_token_id=first_observation.opposite_token_id,
-        opposite_outcome=first_observation.opposite_outcome,
-        end_date=first_observation.end_date,
-        negative_risk=first_observation.negative_risk,
+        cur_price=first_position.cur_price,
+        opposite_token_id=first_position.opposite_token_id,
+        opposite_outcome=first_position.opposite_outcome,
+        end_date=first_position.end_date,
+        negative_risk=first_position.negative_risk,
     )

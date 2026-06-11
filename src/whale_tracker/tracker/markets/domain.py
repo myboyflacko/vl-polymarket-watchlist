@@ -67,7 +67,7 @@ class MarketRunSummary(BaseModel):
     checked_market_count: int
 
 
-class MarketObservation(BaseModel):
+class MarketPosition(BaseModel):
     proxy_wallet: str
     token_id: str
     condition_id: str

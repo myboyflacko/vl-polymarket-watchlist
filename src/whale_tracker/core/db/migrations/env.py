@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 from whale_tracker.tracker.whales import models as whale_models
 from whale_tracker.tracker.markets import models as market_models
 from whale_tracker.tracker.orderbooks import models as orderbook_models
+from whale_tracker.tracker.trades import models as trade_models
 from whale_tracker.core.db.base import Base
 from whale_tracker.core.db.engine import get_database_url
 
@@ -20,6 +21,7 @@ _ = (
     whale_models,
     market_models,
     orderbook_models,
+    trade_models,
 )
 
 

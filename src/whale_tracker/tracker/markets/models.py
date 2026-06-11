@@ -54,18 +54,18 @@ class MarketIdentity(Base):
     )
 
 
-class MarketObservation(Base):
-    __tablename__ = "polymarket_market_observations"
+class MarketPosition(Base):
+    __tablename__ = "polymarket_market_positions"
     __table_args__ = (
         Index(
-            "ux_polymarket_market_observations_run_wallet_market",
+            "ux_polymarket_market_positions_run_wallet_market",
             "run_id",
             "wallet",
             "market_id",
             unique=True,
         ),
-        Index("ix_polymarket_market_observations_run_id", "run_id"),
-        Index("ix_polymarket_market_observations_market_id", "market_id"),
+        Index("ix_polymarket_market_positions_run_id", "run_id"),
+        Index("ix_polymarket_market_positions_market_id", "market_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

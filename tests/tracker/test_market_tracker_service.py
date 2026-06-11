@@ -18,7 +18,7 @@ from whale_tracker.tracker.markets.filter import (
 )
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
-    MarketObservation,
+    MarketPosition,
     MarketRun,
 )
 from whale_tracker.tracker.markets.repository import _batches
@@ -168,17 +168,17 @@ def test_market_tracker_run_persists_only_tracked_markets(
     with database_session(database_url) as session:
         run = session.scalar(select(MarketRun))
         identities = list(session.scalars(select(MarketIdentity)))
-        observations = list(session.scalars(select(MarketObservation)))
+        positions = list(session.scalars(select(MarketPosition)))
 
     assert run is not None
     assert run.whales_run_id == "whales-run-1"
     assert run.checked_market_count == 2
     assert {identity.token_id for identity in identities} == {YES_TOKEN, NO_TOKEN}
-    assert len(observations) == 4
+    assert len(positions) == 4
     assert sum(
-        observation.current_value
-        for observation in observations
-        if observation.market.token_id == YES_TOKEN
+        position.current_value
+        for position in positions
+        if position.market.token_id == YES_TOKEN
     ) == 225
 
 

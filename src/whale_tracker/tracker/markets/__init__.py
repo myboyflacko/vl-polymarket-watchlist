@@ -2,6 +2,7 @@
 
 from whale_tracker.tracker.markets.domain import (
     Market,
+    MarketPosition,
     MarketRunResult,
     MarketTrackingResult,
     Markets,
@@ -12,6 +13,7 @@ from whale_tracker.tracker.markets.domain import (
 
 __all__ = [
     "Market",
+    "MarketPosition",
     "MarketRunResult",
     "MarketTrackingResult",
     "Markets",

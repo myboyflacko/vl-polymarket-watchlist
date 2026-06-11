@@ -13,11 +13,11 @@ from whale_tracker.tracker.markets.domain import (
 from whale_tracker.tracker.markets.discovery import DefaultMarketDiscoveryProfile
 from whale_tracker.tracker.markets.filter import (
     TrackedMarketFilterProfile,
-    build_market_observations,
+    build_market_positions,
 )
 from whale_tracker.tracker.markets.repository import (
     list_tracked_markets,
-    persist_market_observations,
+    persist_market_positions,
     persist_market_run,
 )
 from whale_tracker.tracker.whales.repository import get_latest_discovery_run_id
@@ -50,7 +50,7 @@ class MarketTrackerService:
             whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
         )
-        observations = build_market_observations(
+        positions = build_market_positions(
             positions=markets.positions,
             generated_at=generated_at,
         )
@@ -58,12 +58,12 @@ class MarketTrackerService:
             run_id=run_id,
             whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
-            checked_market_count=len({observation.token_id for observation in observations}),
+            checked_market_count=len({position.token_id for position in positions}),
         )
-        tracked_markets = persist_market_observations(
+        tracked_markets = persist_market_positions(
             run_id=run_id,
             generated_at=generated_at,
-            observations=observations,
+            positions=positions,
             filter_profile=self.filter_profile,
         )
 

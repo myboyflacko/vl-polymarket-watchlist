@@ -8,7 +8,7 @@ from sqlalchemy.dialects.postgresql import insert
 from whale_tracker.core.db.engine import database_session
 from whale_tracker.core.time import ensure_utc
 from whale_tracker.tracker.markets.domain import (
-    MarketObservation,
+    MarketPosition,
     MarketRunSummary,
     TrackedMarket,
     TrackedMarkets,
@@ -16,7 +16,7 @@ from whale_tracker.tracker.markets.domain import (
 from whale_tracker.tracker.markets.filter import TrackedMarketFilterProfile
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
-    MarketObservation as MarketObservationRow,
+    MarketPosition as MarketPositionRow,
     MarketRun,
 )
 
@@ -60,11 +60,11 @@ def persist_market_run(
         session.commit()
 
 
-def persist_market_observations(
+def persist_market_positions(
     *,
     run_id: str,
     generated_at: datetime,
-    observations: list[MarketObservation],
+    positions: list[MarketPosition],
     filter_profile: TrackedMarketFilterProfile | None = None,
 ) -> TrackedMarkets:
     generated_at = ensure_utc(generated_at)
@@ -75,34 +75,34 @@ def persist_market_observations(
             raise ValueError(f"Market run not found: {run_id}")
 
         market_ids = _upsert_markets(
-            observations=observations,
+            positions=positions,
             seen_at=generated_at,
             session=session,
         )
         rows = [
             {
                 "run_id": run_id,
-                "market_id": market_ids[observation.token_id],
-                "wallet": observation.proxy_wallet,
-                "size": observation.size,
-                "current_value": observation.current_value,
-                "avg_price": observation.avg_price,
-                "cur_price": observation.cur_price,
-                "negative_risk": observation.negative_risk,
+                "market_id": market_ids[position.token_id],
+                "wallet": position.proxy_wallet,
+                "size": position.size,
+                "current_value": position.current_value,
+                "avg_price": position.avg_price,
+                "cur_price": position.cur_price,
+                "negative_risk": position.negative_risk,
                 "generated_at": generated_at,
             }
-            for observation in observations
-            if observation.token_id in market_ids
+            for position in positions
+            if position.token_id in market_ids
         ]
         if rows:
             for batch in _batches(rows, MAX_INSERT_ROWS_PER_BATCH):
-                statement = insert(MarketObservationRow).values(batch)
+                statement = insert(MarketPositionRow).values(batch)
                 session.execute(
                     statement.on_conflict_do_update(
                         index_elements=[
-                            MarketObservationRow.run_id,
-                            MarketObservationRow.wallet,
-                            MarketObservationRow.market_id,
+                            MarketPositionRow.run_id,
+                            MarketPositionRow.wallet,
+                            MarketPositionRow.market_id,
                         ],
                         set_={
                             "size": statement.excluded.size,
@@ -135,15 +135,15 @@ def list_tracked_markets(
             return _empty_tracked_markets(run_id=actual_run_id)
 
         rows = [
-            _observation_from_row(row=row, market=market)
+            _position_from_row(row=row, market=market)
             for row, market in session.execute(
-                select(MarketObservationRow, MarketIdentity)
+                select(MarketPositionRow, MarketIdentity)
                 .join(
                     MarketIdentity,
-                    MarketObservationRow.market_id == MarketIdentity.id,
+                    MarketPositionRow.market_id == MarketIdentity.id,
                 )
-                .where(MarketObservationRow.run_id == actual_run_id)
-                .order_by(MarketObservationRow.id)
+                .where(MarketPositionRow.run_id == actual_run_id)
+                .order_by(MarketPositionRow.id)
             )
         ]
 
@@ -155,7 +155,7 @@ def list_tracked_markets(
             generated_at=run.generated_at,
             filter_profile=actual_filter_profile.name,
         )
-        for market in actual_filter_profile.run_observations(rows)
+        for market in actual_filter_profile.run_positions(rows)
     ]
     return TrackedMarkets(
         markets=markets,
@@ -198,13 +198,13 @@ def _empty_tracked_markets(*, run_id: str) -> TrackedMarkets:
 
 def _upsert_markets(
     *,
-    observations: list[MarketObservation],
+    positions: list[MarketPosition],
     seen_at: datetime,
     session,
 ) -> dict[str, int]:
     rows_by_token = {
-        observation.token_id: _market_row(observation=observation, seen_at=seen_at)
-        for observation in observations
+        position.token_id: _market_row(position=position, seen_at=seen_at)
+        for position in positions
     }
     rows = list(rows_by_token.values())
     if not rows:
@@ -237,27 +237,27 @@ def _upsert_markets(
     return market_ids
 
 
-def _market_row(*, observation: MarketObservation, seen_at: datetime) -> dict:
+def _market_row(*, position: MarketPosition, seen_at: datetime) -> dict:
     return {
-        "token_id": observation.token_id,
-        "condition_id": observation.condition_id,
-        "title": observation.title,
-        "slug": observation.slug,
-        "outcome": observation.outcome,
-        "opposite_token_id": observation.opposite_token_id,
-        "opposite_outcome": observation.opposite_outcome,
-        "end_date": observation.end_date,
+        "token_id": position.token_id,
+        "condition_id": position.condition_id,
+        "title": position.title,
+        "slug": position.slug,
+        "outcome": position.outcome,
+        "opposite_token_id": position.opposite_token_id,
+        "opposite_outcome": position.opposite_outcome,
+        "end_date": position.end_date,
         "first_seen_at": seen_at,
         "last_seen_at": seen_at,
     }
 
 
-def _observation_from_row(
+def _position_from_row(
     *,
-    row: MarketObservationRow,
+    row: MarketPositionRow,
     market: MarketIdentity,
-) -> MarketObservation:
-    return MarketObservation(
+) -> MarketPosition:
+    return MarketPosition(
         proxy_wallet=row.wallet,
         token_id=market.token_id,
         condition_id=market.condition_id,

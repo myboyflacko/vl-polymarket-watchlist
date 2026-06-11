@@ -16,7 +16,7 @@ from whale_tracker.providers.polymarket.params.orderbook import (
 from whale_tracker.settings import get_settings
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
-    MarketObservation,
+    MarketPosition,
     MarketRun,
 )
 from whale_tracker.tracker.orderbooks import service as service_module
@@ -95,7 +95,7 @@ def test_orderbook_tracker_run_persists_metrics_for_tracked_markets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = _prepare_database(monkeypatch)
-    market_id = _insert_market_observation_run(database_url)
+    market_id = _insert_market_position_run(database_url)
     client = FakeOrderBookClient()
     monkeypatch.setattr(
         service_module,
@@ -142,7 +142,7 @@ def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
     return database_url
 
 
-def _insert_market_observation_run(database_url: str) -> int:
+def _insert_market_position_run(database_url: str) -> int:
     with database_session(database_url) as session:
         session.add(
             MarketRun(
@@ -167,7 +167,7 @@ def _insert_market_observation_run(database_url: str) -> int:
         market_id = market.id
         session.add_all(
             [
-                MarketObservation(
+                MarketPosition(
                     run_id="markets-run-1",
                     market_id=market_id,
                     wallet=f"0x{index}",
