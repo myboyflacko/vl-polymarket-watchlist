@@ -7,9 +7,9 @@ from sqlalchemy.dialects.postgresql import insert
 
 from whale_tracker.core.db.engine import database_session
 from whale_tracker.core.time import ensure_utc
+from whale_tracker.tracker.markets.repository import list_tracked_markets
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
-    TrackedMarket as TrackedMarketRow,
 )
 from whale_tracker.tracker.orderbooks.domain import (
     OrderBookLevel,
@@ -37,26 +37,32 @@ def get_latest_orderbook_run_id() -> str | None:
 
 
 def list_tracked_market_sources(*, market_run_id: str) -> list[TrackedMarketOrderBookSource]:
+    selected_markets = list_tracked_markets(run_id=market_run_id).markets
+    token_ids = [market.token_id for market in selected_markets]
+    if not token_ids:
+        return []
+
     with database_session() as session:
-        rows = list(
-            session.execute(
-                select(TrackedMarketRow, MarketIdentity)
-                .join(MarketIdentity, TrackedMarketRow.market_id == MarketIdentity.id)
-                .where(TrackedMarketRow.run_id == market_run_id)
-                .order_by(TrackedMarketRow.id)
+        identities = {
+            market.token_id: market
+            for market in session.scalars(
+                select(MarketIdentity)
+                .where(MarketIdentity.token_id.in_(token_ids))
+                .order_by(MarketIdentity.id)
             )
-        )
+        }
 
     return [
         TrackedMarketOrderBookSource(
-            tracked_market_id=tracked.id,
+            market_id=identities[market.token_id].id,
             token_id=market.token_id,
             condition_id=market.condition_id,
             title=market.title,
             slug=market.slug,
             outcome=market.outcome,
         )
-        for tracked, market in rows
+        for market in selected_markets
+        if market.token_id in identities
     ]
 
 
@@ -103,7 +109,7 @@ def persist_orderbook_metrics(
                 statement.on_conflict_do_update(
                     index_elements=[
                         OrderBookMetric.run_id,
-                        OrderBookMetric.tracked_market_id,
+                        OrderBookMetric.market_id,
                     ],
                     set_={
                         "exchange_timestamp": statement.excluded.exchange_timestamp,
@@ -149,12 +155,8 @@ def list_tracked_orderbooks(*, run_id: str | None = None) -> TrackedOrderBooks:
 
         rows = list(
             session.execute(
-                select(OrderBookMetric, TrackedMarketRow, MarketIdentity)
-                .join(
-                    TrackedMarketRow,
-                    OrderBookMetric.tracked_market_id == TrackedMarketRow.id,
-                )
-                .join(MarketIdentity, TrackedMarketRow.market_id == MarketIdentity.id)
+                select(OrderBookMetric, MarketIdentity)
+                .join(MarketIdentity, OrderBookMetric.market_id == MarketIdentity.id)
                 .where(OrderBookMetric.run_id == actual_run_id)
                 .order_by(OrderBookMetric.id)
             )
@@ -162,7 +164,7 @@ def list_tracked_orderbooks(*, run_id: str | None = None) -> TrackedOrderBooks:
 
     orderbooks = [
         _tracked_orderbook_from_row(run=run, row=row, market=market)
-        for row, _tracked, market in rows
+        for row, market in rows
     ]
     return TrackedOrderBooks(
         orderbooks=orderbooks,
@@ -186,7 +188,7 @@ def _empty_tracked_orderbooks(*, run_id: str, market_run_id: str) -> TrackedOrde
 def _metric_row(*, run_id: str, snapshot: OrderBookSnapshot) -> dict:
     return {
         "run_id": run_id,
-        "tracked_market_id": snapshot.tracked_market_id,
+        "market_id": snapshot.market_id,
         "exchange_timestamp": snapshot.exchange_timestamp,
         "exchange_timestamp_raw": snapshot.exchange_timestamp_raw,
         "book_hash": snapshot.book_hash,
@@ -215,7 +217,7 @@ def _tracked_orderbook_from_row(
     return TrackedOrderBook(
         run_id=run.run_id,
         market_run_id=run.market_run_id,
-        tracked_market_id=row.tracked_market_id,
+        market_id=row.market_id,
         token_id=market.token_id,
         condition_id=market.condition_id,
         market=market.condition_id,

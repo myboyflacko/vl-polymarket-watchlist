@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from sqlalchemy import ARRAY, Date, DateTime, Float, ForeignKey, Index, Integer, String, func
+from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from whale_tracker.core.db.base import Base
@@ -23,7 +23,6 @@ class MarketRun(Base):
     status: Mapped[str] = mapped_column(String, nullable=False, default="completed")
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     checked_market_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    tracked_market_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class MarketIdentity(Base):
@@ -55,18 +54,18 @@ class MarketIdentity(Base):
     )
 
 
-class TrackedMarket(Base):
-    __tablename__ = "polymarket_tracked_markets"
+class MarketObservation(Base):
+    __tablename__ = "polymarket_market_observations"
     __table_args__ = (
         Index(
-            "ux_polymarket_tracked_markets_run_market_filter",
+            "ux_polymarket_market_observations_run_wallet_market",
             "run_id",
+            "wallet",
             "market_id",
-            "filter_profile",
             unique=True,
         ),
-        Index("ix_polymarket_tracked_markets_run_id", "run_id"),
-        Index("ix_polymarket_tracked_markets_market_id", "market_id"),
+        Index("ix_polymarket_market_observations_run_id", "run_id"),
+        Index("ix_polymarket_market_observations_market_id", "market_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -78,12 +77,10 @@ class TrackedMarket(Base):
         ForeignKey("polymarket_markets.id", ondelete="CASCADE"),
         nullable=False,
     )
-    filter_profile: Mapped[str] = mapped_column(String, nullable=False)
-    whale_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    wallets: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False)
-    total_size: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    total_current_value: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    weighted_avg_price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    wallet: Mapped[str] = mapped_column(String, nullable=False)
+    size: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    current_value: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    avg_price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     cur_price: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     negative_risk: Mapped[bool] = mapped_column(nullable=False, default=False)
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

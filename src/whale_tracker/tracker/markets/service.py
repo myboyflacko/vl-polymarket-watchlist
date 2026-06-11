@@ -13,12 +13,12 @@ from whale_tracker.tracker.markets.domain import (
 from whale_tracker.tracker.markets.discovery import DefaultMarketDiscoveryProfile
 from whale_tracker.tracker.markets.filter import (
     TrackedMarketFilterProfile,
-    build_market_candidates,
+    build_market_observations,
 )
 from whale_tracker.tracker.markets.repository import (
     list_tracked_markets,
+    persist_market_observations,
     persist_market_run,
-    persist_tracked_markets,
 )
 from whale_tracker.tracker.whales.repository import get_latest_discovery_run_id
 
@@ -50,20 +50,21 @@ class MarketTrackerService:
             whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
         )
-        candidates = build_market_candidates(markets.positions)
-        tracked_candidates = self.filter_profile.run(candidates)
+        observations = build_market_observations(
+            positions=markets.positions,
+            generated_at=generated_at,
+        )
         persist_market_run(
             run_id=run_id,
             whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
-            checked_market_count=len(candidates),
+            checked_market_count=len({observation.token_id for observation in observations}),
         )
-        tracked_markets = persist_tracked_markets(
+        tracked_markets = persist_market_observations(
             run_id=run_id,
-            whales_run_id=actual_whales_run_id,
             generated_at=generated_at,
-            markets=tracked_candidates,
-            filter_profile=self.filter_profile.name,
+            observations=observations,
+            filter_profile=self.filter_profile,
         )
 
         return MarketTrackingResult(

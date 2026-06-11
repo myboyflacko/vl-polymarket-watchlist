@@ -16,8 +16,8 @@ from whale_tracker.providers.polymarket.params.orderbook import (
 from whale_tracker.settings import get_settings
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
+    MarketObservation,
     MarketRun,
-    TrackedMarket,
 )
 from whale_tracker.tracker.orderbooks import service as service_module
 from whale_tracker.tracker.orderbooks.discovery import OrderBookDiscoveryProfile
@@ -65,7 +65,7 @@ def test_orderbook_discovery_limits_depth_and_computes_metrics() -> None:
             client=client,
             sources=[
                 TrackedMarketOrderBookSource(
-                    tracked_market_id=123,
+                    market_id=123,
                     token_id=YES_TOKEN,
                     condition_id=CONDITION_ID,
                     title="Title",
@@ -81,7 +81,7 @@ def test_orderbook_discovery_limits_depth_and_computes_metrics() -> None:
     assert result.checked_market_count == 1
     assert result.errors == []
     snapshot = result.snapshots[0]
-    assert snapshot.tracked_market_id == 123
+    assert snapshot.market_id == 123
     assert len(snapshot.bids) == 5
     assert len(snapshot.asks) == 5
     assert snapshot.best_bid == 0.45
@@ -95,7 +95,7 @@ def test_orderbook_tracker_run_persists_metrics_for_tracked_markets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     database_url = _prepare_database(monkeypatch)
-    tracked_market_id = _insert_tracked_market_run(database_url)
+    market_id = _insert_market_observation_run(database_url)
     client = FakeOrderBookClient()
     monkeypatch.setattr(
         service_module,
@@ -120,7 +120,7 @@ def test_orderbook_tracker_run_persists_metrics_for_tracked_markets(
     assert run.stored_orderbook_count == 1
     assert run.failed_orderbook_count == 0
     assert metric is not None
-    assert metric.tracked_market_id == tracked_market_id
+    assert metric.market_id == market_id
     assert len(metric.bids) == 5
     assert len(metric.asks) == 5
 
@@ -142,7 +142,7 @@ def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
     return database_url
 
 
-def _insert_tracked_market_run(database_url: str) -> int:
+def _insert_market_observation_run(database_url: str) -> int:
     with database_session(database_url) as session:
         session.add(
             MarketRun(
@@ -150,8 +150,7 @@ def _insert_tracked_market_run(database_url: str) -> int:
                 whales_run_id=None,
                 status="completed",
                 generated_at=NOW,
-                checked_market_count=1,
-                tracked_market_count=1,
+                checked_market_count=5,
             )
         )
         market = MarketIdentity(
@@ -165,25 +164,27 @@ def _insert_tracked_market_run(database_url: str) -> int:
         )
         session.add(market)
         session.flush()
-        tracked = TrackedMarket(
-            run_id="markets-run-1",
-            market_id=market.id,
-            filter_profile="test_filter",
-            whale_count=3,
-            wallets=["0x1", "0x2", "0x3"],
-            total_size=10,
-            total_current_value=100,
-            weighted_avg_price=0.5,
-            cur_price=0.5,
-            negative_risk=False,
-            generated_at=NOW,
+        market_id = market.id
+        session.add_all(
+            [
+                MarketObservation(
+                    run_id="markets-run-1",
+                    market_id=market_id,
+                    wallet=f"0x{index}",
+                    size=10,
+                    current_value=100,
+                    avg_price=0.5,
+                    cur_price=0.5,
+                    negative_risk=False,
+                    generated_at=NOW,
+                )
+                for index in range(1, 6)
+            ]
         )
-        session.add(tracked)
         session.flush()
-        tracked_market_id = tracked.id
         session.commit()
 
-    return tracked_market_id
+    return market_id
 
 
 def _set_database_env(monkeypatch: pytest.MonkeyPatch, database_url: str) -> None:

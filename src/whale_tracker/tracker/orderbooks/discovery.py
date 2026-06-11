@@ -139,7 +139,7 @@ def _snapshot_from_response(
     timestamp_raw = _string_or_none(item.get("timestamp"))
 
     return OrderBookSnapshot(
-        tracked_market_id=source.tracked_market_id,
+        market_id=source.market_id,
         token_id=source.token_id,
         condition_id=source.condition_id,
         market=str(item.get("market") or source.condition_id),

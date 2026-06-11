@@ -18,8 +18,8 @@ from whale_tracker.tracker.markets.filter import (
 )
 from whale_tracker.tracker.markets.models import (
     MarketIdentity,
+    MarketObservation,
     MarketRun,
-    TrackedMarket,
 )
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
@@ -69,16 +69,17 @@ def test_build_market_candidates_groups_positions_by_token() -> None:
 
 
 def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:
-    result = TrackedMarketFilterProfile(min_whale_count=3).run(
+    result = TrackedMarketFilterProfile().run(
         [
             _market(
                 token_id=YES_TOKEN,
-                whale_count=3,
+                whale_count=5,
                 total_current_value=300,
             ),
             _market(
                 token_id=NO_TOKEN,
-                whale_count=2,
+                wallets=["0x6"],
+                whale_count=1,
                 total_current_value=200,
             ),
         ]
@@ -87,18 +88,52 @@ def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:
     assert [market.token_id for market in result] == [YES_TOKEN]
 
 
-def test_tracked_market_filter_rejects_condition_with_two_tracked_directions() -> None:
-    result = TrackedMarketFilterProfile(min_whale_count=3).run(
+def test_tracked_market_filter_rejects_under_min_whale_count() -> None:
+    result = TrackedMarketFilterProfile().run(
         [
             _market(
                 token_id=YES_TOKEN,
-                whale_count=3,
+                wallets=["0x1", "0x2", "0x3", "0x4"],
+                whale_count=4,
                 total_current_value=300,
+            ),
+        ]
+    )
+
+    assert result == []
+
+
+def test_tracked_market_filter_accepts_five_of_six_whales() -> None:
+    result = TrackedMarketFilterProfile().run(
+        [
+            _market(
+                token_id=YES_TOKEN,
+                wallets=["0x1", "0x2", "0x3", "0x4", "0x5"],
+                whale_count=5,
             ),
             _market(
                 token_id=NO_TOKEN,
-                whale_count=3,
-                total_current_value=200,
+                wallets=["0x6"],
+                whale_count=1,
+            ),
+        ]
+    )
+
+    assert [market.token_id for market in result] == [YES_TOKEN]
+
+
+def test_tracked_market_filter_rejects_five_of_seven_whales() -> None:
+    result = TrackedMarketFilterProfile().run(
+        [
+            _market(
+                token_id=YES_TOKEN,
+                wallets=["0x1", "0x2", "0x3", "0x4", "0x5"],
+                whale_count=5,
+            ),
+            _market(
+                token_id=NO_TOKEN,
+                wallets=["0x6", "0x7"],
+                whale_count=2,
             ),
         ]
     )
@@ -127,18 +162,19 @@ def test_market_tracker_run_persists_only_tracked_markets(
 
     with database_session(database_url) as session:
         run = session.scalar(select(MarketRun))
-        identity = session.scalar(select(MarketIdentity))
-        tracked = session.scalar(select(TrackedMarket))
+        identities = list(session.scalars(select(MarketIdentity)))
+        observations = list(session.scalars(select(MarketObservation)))
 
     assert run is not None
     assert run.whales_run_id == "whales-run-1"
     assert run.checked_market_count == 2
-    assert run.tracked_market_count == 1
-    assert identity is not None
-    assert identity.token_id == YES_TOKEN
-    assert tracked is not None
-    assert tracked.whale_count == 3
-    assert tracked.total_current_value == 225
+    assert {identity.token_id for identity in identities} == {YES_TOKEN, NO_TOKEN}
+    assert len(observations) == 4
+    assert sum(
+        observation.current_value
+        for observation in observations
+        if observation.market.token_id == YES_TOKEN
+    ) == 225
 
 
 def _prepare_database(monkeypatch: pytest.MonkeyPatch) -> str:
@@ -250,11 +286,13 @@ def _whale_position(
 def _market(
     *,
     token_id: str,
+    wallets: list[str] | None = None,
     weighted_avg_price: float = 0.4,
     cur_price: float = 0.5,
     total_current_value: float = 30,
     whale_count: int = 3,
 ) -> Market:
+    actual_wallets = wallets or [f"0x{index}" for index in range(1, whale_count + 1)]
     return Market(
         token_id=token_id,
         condition_id=CONDITION_ID,
@@ -262,7 +300,7 @@ def _market(
         slug="will-this-happen",
         outcome="Yes",
         whale_count=whale_count,
-        wallets=[WALLET_ONE, WALLET_TWO, WALLET_THREE],
+        wallets=actual_wallets,
         total_size=10,
         total_current_value=total_current_value,
         weighted_avg_price=weighted_avg_price,

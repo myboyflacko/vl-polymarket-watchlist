@@ -11,7 +11,7 @@ class OrderBookLevel(BaseModel):
 
 
 class TrackedMarketOrderBookSource(BaseModel):
-    tracked_market_id: int
+    market_id: int
     token_id: str
     condition_id: str
     title: str
@@ -20,7 +20,7 @@ class TrackedMarketOrderBookSource(BaseModel):
 
 
 class OrderBookSnapshot(BaseModel):
-    tracked_market_id: int
+    market_id: int
     token_id: str
     condition_id: str
     market: str

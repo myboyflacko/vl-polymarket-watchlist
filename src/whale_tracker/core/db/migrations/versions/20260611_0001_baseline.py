@@ -95,7 +95,6 @@ def upgrade() -> None:
         sa.Column("status", sa.String(), nullable=False),
         sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("checked_market_count", sa.Integer(), nullable=False),
-        sa.Column("tracked_market_count", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
             ["whales_run_id"],
             ["polymarket_whale_runs.run_id"],
@@ -145,16 +144,14 @@ def upgrade() -> None:
         ["end_date"],
     )
     op.create_table(
-        "polymarket_tracked_markets",
+        "polymarket_market_observations",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(), nullable=False),
         sa.Column("market_id", sa.Integer(), nullable=False),
-        sa.Column("filter_profile", sa.String(), nullable=False),
-        sa.Column("whale_count", sa.Integer(), nullable=False),
-        sa.Column("wallets", sa.ARRAY(sa.String()), nullable=False),
-        sa.Column("total_size", sa.Float(), nullable=False),
-        sa.Column("total_current_value", sa.Float(), nullable=False),
-        sa.Column("weighted_avg_price", sa.Float(), nullable=False),
+        sa.Column("wallet", sa.String(), nullable=False),
+        sa.Column("size", sa.Float(), nullable=False),
+        sa.Column("current_value", sa.Float(), nullable=False),
+        sa.Column("avg_price", sa.Float(), nullable=False),
         sa.Column("cur_price", sa.Float(), nullable=False),
         sa.Column("negative_risk", sa.Boolean(), nullable=False),
         sa.Column("generated_at", sa.DateTime(timezone=True), nullable=False),
@@ -171,19 +168,19 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_polymarket_tracked_markets_run_market_filter",
-        "polymarket_tracked_markets",
-        ["run_id", "market_id", "filter_profile"],
+        "ux_polymarket_market_observations_run_wallet_market",
+        "polymarket_market_observations",
+        ["run_id", "wallet", "market_id"],
         unique=True,
     )
     op.create_index(
-        "ix_polymarket_tracked_markets_run_id",
-        "polymarket_tracked_markets",
+        "ix_polymarket_market_observations_run_id",
+        "polymarket_market_observations",
         ["run_id"],
     )
     op.create_index(
-        "ix_polymarket_tracked_markets_market_id",
-        "polymarket_tracked_markets",
+        "ix_polymarket_market_observations_market_id",
+        "polymarket_market_observations",
         ["market_id"],
     )
 
@@ -208,7 +205,7 @@ def upgrade() -> None:
         "polymarket_orderbook_metrics",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("run_id", sa.String(), nullable=False),
-        sa.Column("tracked_market_id", sa.Integer(), nullable=False),
+        sa.Column("market_id", sa.Integer(), nullable=False),
         sa.Column("exchange_timestamp", sa.DateTime(timezone=True), nullable=True),
         sa.Column("exchange_timestamp_raw", sa.String(), nullable=True),
         sa.Column("book_hash", sa.String(), nullable=False),
@@ -229,16 +226,16 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.ForeignKeyConstraint(
-            ["tracked_market_id"],
-            ["polymarket_tracked_markets.id"],
+            ["market_id"],
+            ["polymarket_markets.id"],
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(
-        "ux_polymarket_orderbook_metrics_run_tracked_market",
+        "ux_polymarket_orderbook_metrics_run_market",
         "polymarket_orderbook_metrics",
-        ["run_id", "tracked_market_id"],
+        ["run_id", "market_id"],
         unique=True,
     )
     op.create_index(
@@ -247,9 +244,9 @@ def upgrade() -> None:
         ["run_id"],
     )
     op.create_index(
-        "ix_polymarket_orderbook_metrics_tracked_market_id",
+        "ix_polymarket_orderbook_metrics_market_id",
         "polymarket_orderbook_metrics",
-        ["tracked_market_id"],
+        ["market_id"],
     )
     op.create_index(
         "ix_polymarket_orderbook_metrics_generated_at",
@@ -264,7 +261,7 @@ def downgrade() -> None:
         table_name="polymarket_orderbook_metrics",
     )
     op.drop_index(
-        "ix_polymarket_orderbook_metrics_tracked_market_id",
+        "ix_polymarket_orderbook_metrics_market_id",
         table_name="polymarket_orderbook_metrics",
     )
     op.drop_index(
@@ -272,25 +269,25 @@ def downgrade() -> None:
         table_name="polymarket_orderbook_metrics",
     )
     op.drop_index(
-        "ux_polymarket_orderbook_metrics_run_tracked_market",
+        "ux_polymarket_orderbook_metrics_run_market",
         table_name="polymarket_orderbook_metrics",
     )
     op.drop_table("polymarket_orderbook_metrics")
     op.drop_table("polymarket_orderbook_runs")
 
     op.drop_index(
-        "ix_polymarket_tracked_markets_market_id",
-        table_name="polymarket_tracked_markets",
+        "ix_polymarket_market_observations_market_id",
+        table_name="polymarket_market_observations",
     )
     op.drop_index(
-        "ix_polymarket_tracked_markets_run_id",
-        table_name="polymarket_tracked_markets",
+        "ix_polymarket_market_observations_run_id",
+        table_name="polymarket_market_observations",
     )
     op.drop_index(
-        "ux_polymarket_tracked_markets_run_market_filter",
-        table_name="polymarket_tracked_markets",
+        "ux_polymarket_market_observations_run_wallet_market",
+        table_name="polymarket_market_observations",
     )
-    op.drop_table("polymarket_tracked_markets")
+    op.drop_table("polymarket_market_observations")
     op.drop_index("ix_polymarket_markets_end_date", table_name="polymarket_markets")
     op.drop_index(
         "ix_polymarket_markets_condition_id",

@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from whale_tracker.core.db.base import Base
 from whale_tracker.tracker.markets import models as _market_models
-from whale_tracker.tracker.markets.models import TrackedMarket as TrackedMarketRow
+from whale_tracker.tracker.markets.models import MarketIdentity
 
 
 _ = _market_models
@@ -40,15 +40,15 @@ class OrderBookMetric(Base):
     __tablename__ = "polymarket_orderbook_metrics"
     __table_args__ = (
         Index(
-            "ux_polymarket_orderbook_metrics_run_tracked_market",
+            "ux_polymarket_orderbook_metrics_run_market",
             "run_id",
-            "tracked_market_id",
+            "market_id",
             unique=True,
         ),
         Index("ix_polymarket_orderbook_metrics_run_id", "run_id"),
         Index(
-            "ix_polymarket_orderbook_metrics_tracked_market_id",
-            "tracked_market_id",
+            "ix_polymarket_orderbook_metrics_market_id",
+            "market_id",
         ),
         Index("ix_polymarket_orderbook_metrics_generated_at", "generated_at"),
     )
@@ -58,8 +58,8 @@ class OrderBookMetric(Base):
         ForeignKey("polymarket_orderbook_runs.run_id", ondelete="CASCADE"),
         nullable=False,
     )
-    tracked_market_id: Mapped[int] = mapped_column(
-        ForeignKey("polymarket_tracked_markets.id", ondelete="CASCADE"),
+    market_id: Mapped[int] = mapped_column(
+        ForeignKey("polymarket_markets.id", ondelete="CASCADE"),
         nullable=False,
     )
     exchange_timestamp: Mapped[datetime | None] = mapped_column(
@@ -81,4 +81,4 @@ class OrderBookMetric(Base):
     generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     run: Mapped[OrderBookRun] = relationship(back_populates="metrics")
-    tracked_market: Mapped[TrackedMarketRow] = relationship(lazy="joined")
+    market: Mapped[MarketIdentity] = relationship(lazy="joined")

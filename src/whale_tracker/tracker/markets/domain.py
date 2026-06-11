@@ -65,7 +65,24 @@ class MarketRunSummary(BaseModel):
     whales_run_id: str | None = None
     generated_at: datetime
     checked_market_count: int
-    tracked_market_count: int
+
+
+class MarketObservation(BaseModel):
+    proxy_wallet: str
+    token_id: str
+    condition_id: str
+    title: str
+    slug: str
+    outcome: str
+    size: float = 0.0
+    current_value: float = 0.0
+    avg_price: float = 0.0
+    cur_price: float = 0.0
+    opposite_token_id: str | None = None
+    opposite_outcome: str | None = None
+    end_date: date | None = None
+    negative_risk: bool = False
+    generated_at: datetime
 
 
 class MarketPositionCollectionError(BaseModel):
