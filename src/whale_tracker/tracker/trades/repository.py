@@ -24,7 +24,8 @@ from whale_tracker.tracker.trades.models import (
 )
 
 
-MAX_INSERT_ROWS_PER_BATCH = 5_000
+MAX_TRADE_FACT_ROWS_PER_BATCH = 1_000
+MAX_TRADE_RUN_ITEM_ROWS_PER_BATCH = 5_000
 MAX_SELECT_IDS_PER_BATCH = 10_000
 
 
@@ -124,7 +125,7 @@ def persist_trades(
             ]
         )
         if item_rows:
-            for batch in _batches(item_rows, MAX_INSERT_ROWS_PER_BATCH):
+            for batch in _batches(item_rows, MAX_TRADE_RUN_ITEM_ROWS_PER_BATCH):
                 statement = insert(TradeRunItem).values(batch)
                 session.execute(
                     statement.on_conflict_do_update(
@@ -188,7 +189,7 @@ def _upsert_trade_facts(*, session, trades: list[Trade]) -> dict[str, int]:
     if not rows:
         return {}
 
-    for batch in _batches(rows, MAX_INSERT_ROWS_PER_BATCH):
+    for batch in _batches(rows, MAX_TRADE_FACT_ROWS_PER_BATCH):
         statement = insert(TradeFact).values(batch)
         session.execute(
             statement.on_conflict_do_update(

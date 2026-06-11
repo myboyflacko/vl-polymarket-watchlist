@@ -19,6 +19,7 @@ from whale_tracker.tracker.trades.discovery import DefaultTradeDiscoveryProfile
 from whale_tracker.tracker.trades.domain import Trade, TradeSource
 from whale_tracker.tracker.trades.models import TradeFact, TradeRun, TradeRunItem
 from whale_tracker.tracker.trades.repository import (
+    MAX_TRADE_FACT_ROWS_PER_BATCH,
     list_trade_sources,
     persist_trade_run,
     persist_trades,
@@ -92,6 +93,10 @@ def test_trade_discovery_fetches_trades_for_wallet_condition() -> None:
     assert trade.size == 10
     assert trade.value == 4.2
     assert trade.trade_timestamp == datetime(2026, 6, 1, tzinfo=UTC)
+
+
+def test_trade_fact_batches_stay_below_large_statement_size() -> None:
+    assert MAX_TRADE_FACT_ROWS_PER_BATCH == 1_000
 
 
 def test_trade_sources_use_selected_markets(
