@@ -147,17 +147,20 @@ whale-tracker api
 
 Endpoints:
 
-- `GET /whale-observations`
+- `GET /whales`
 - `GET /markets`
-- `GET /orderbooks`
 
 Alle Endpoints nutzen standardmaessig den letzten passenden Run. Optional kann
 ein `run_id` gesetzt werden:
 
 ```text
+/whales?run_id=20260611T115500000000Z-whales
 /markets?run_id=20260611T120000000000Z-markets
-/orderbooks?run_id=20260611T120500000000Z-orderbooks
 ```
+
+Trades und Orderbooks werden bewusst nicht als oeffentliche API-Endpunkte
+angeboten. Beide Datenmengen koennen schnell gross werden und bleiben vorerst
+interne Datenbank-/Backtesting-Inputs.
 
 ## Docker
 

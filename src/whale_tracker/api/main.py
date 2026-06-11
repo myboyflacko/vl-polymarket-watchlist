@@ -7,10 +7,6 @@ from whale_tracker.tracker.markets.repository import (
     get_latest_market_run_id,
     list_tracked_markets,
 )
-from whale_tracker.tracker.orderbooks.repository import (
-    get_latest_orderbook_run_id,
-    list_tracked_orderbooks,
-)
 from whale_tracker.tracker.whales.repository import (
     get_latest_discovery_run_id,
     list_whale_observations,
@@ -41,19 +37,6 @@ class MarketsResponse(BaseModel):
         return len(self.markets)
 
 
-class OrderBooksResponse(BaseModel):
-    orderbooks: list
-    run_id: str
-    market_run_id: str
-    generated_at: datetime
-    depth: int
-
-    @computed_field
-    @property
-    def orderbooks_count(self) -> int:
-        return len(self.orderbooks)
-
-
 app = FastAPI()
 
 
@@ -74,29 +57,8 @@ def get_latest_markets(run_id: str | None = None):
     )
 
 
-@app.get("/orderbooks")
-def get_latest_orderbooks(run_id: str | None = None):
-    if run_id is None:
-        run_id = get_latest_orderbook_run_id()
-
-    if run_id is None:
-        raise HTTPException(status_code=404, detail="No orderbook run found")
-
-    orderbooks = list_tracked_orderbooks(run_id=run_id)
-    if not orderbooks.run_id:
-        raise HTTPException(status_code=404, detail="No orderbook run found")
-
-    return OrderBooksResponse(
-        run_id=orderbooks.run_id,
-        market_run_id=orderbooks.market_run_id,
-        generated_at=orderbooks.generated_at,
-        depth=orderbooks.depth,
-        orderbooks=orderbooks.orderbooks,
-    )
-
-
-@app.get("/whale-observations")
-def get_latest_whale_observations(run_id: str | None = None):
+@app.get("/whales")
+def get_latest_whales(run_id: str | None = None):
     if run_id is None:
         run_id = get_latest_discovery_run_id()
 
