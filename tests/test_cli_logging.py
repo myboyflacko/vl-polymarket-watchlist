@@ -135,6 +135,7 @@ def test_run_markets_after_whales_waits_for_active_whale_run(
         task = asyncio.create_task(
             cli.run_markets_after_whales(
                 whales_lock=lock,
+                markets_lock=asyncio.Lock(),
                 whales_run_id="whales-run-1",
             )
         )
@@ -164,11 +165,168 @@ def test_run_markets_after_whales_runs_immediately_when_whales_are_idle(
         monkeypatch.setattr(cli, "run_markets", fake_run_markets)
         return await cli.run_markets_after_whales(
             whales_lock=asyncio.Lock(),
+            markets_lock=asyncio.Lock(),
             whales_run_id=None,
         )
 
     assert asyncio.run(run_test()) == "markets-run-1"
     assert calls == ["None"]
+
+
+def test_run_trades_after_markets_waits_for_active_market_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_trades(*, market_run_id: str | None) -> str:
+        calls.append(str(market_run_id))
+        return "trades-run-1"
+
+    async def run_test() -> None:
+        markets_lock = asyncio.Lock()
+        await markets_lock.acquire()
+        monkeypatch.setattr(cli, "run_trades", fake_run_trades)
+
+        task = asyncio.create_task(
+            cli.run_trades_after_markets(
+                markets_lock=markets_lock,
+                trades_lock=asyncio.Lock(),
+                market_run_id="markets-run-1",
+            )
+        )
+        await asyncio.sleep(0)
+
+        assert calls == []
+
+        markets_lock.release()
+        result = await task
+
+        assert result == "trades-run-1"
+
+    asyncio.run(run_test())
+    assert calls == ["markets-run-1"]
+
+
+def test_run_trades_after_markets_skips_when_trade_run_is_active(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_trades(*, market_run_id: str | None) -> str:
+        calls.append(str(market_run_id))
+        return "trades-run-1"
+
+    async def run_test() -> str | None:
+        trades_lock = asyncio.Lock()
+        await trades_lock.acquire()
+        monkeypatch.setattr(cli, "run_trades", fake_run_trades)
+        return await cli.run_trades_after_markets(
+            markets_lock=asyncio.Lock(),
+            trades_lock=trades_lock,
+            market_run_id="markets-run-1",
+        )
+
+    assert asyncio.run(run_test()) is None
+    assert calls == []
+
+
+def test_run_orderbooks_after_markets_waits_for_active_market_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
+        calls.append(f"{market_run_id}:{depth}")
+        return "orderbooks-run-1"
+
+    async def run_test() -> None:
+        markets_lock = asyncio.Lock()
+        await markets_lock.acquire()
+        monkeypatch.setattr(cli, "run_orderbooks", fake_run_orderbooks)
+
+        task = asyncio.create_task(
+            cli.run_orderbooks_after_markets(
+                markets_lock=markets_lock,
+                orderbooks_lock=asyncio.Lock(),
+                market_run_id="markets-run-1",
+                depth=5,
+            )
+        )
+        await asyncio.sleep(0)
+
+        assert calls == []
+
+        markets_lock.release()
+        result = await task
+
+        assert result == "orderbooks-run-1"
+
+    asyncio.run(run_test())
+    assert calls == ["markets-run-1:5"]
+
+
+def test_run_orderbooks_after_markets_skips_when_orderbook_run_is_active(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
+        calls.append(f"{market_run_id}:{depth}")
+        return "orderbooks-run-1"
+
+    async def run_test() -> str | None:
+        orderbooks_lock = asyncio.Lock()
+        await orderbooks_lock.acquire()
+        monkeypatch.setattr(cli, "run_orderbooks", fake_run_orderbooks)
+        return await cli.run_orderbooks_after_markets(
+            markets_lock=asyncio.Lock(),
+            orderbooks_lock=orderbooks_lock,
+            market_run_id="markets-run-1",
+            depth=5,
+        )
+
+    assert asyncio.run(run_test()) is None
+    assert calls == []
+
+
+def test_trades_and_orderbooks_can_run_together_when_market_is_idle(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[str] = []
+
+    async def fake_run_trades(*, market_run_id: str | None) -> str:
+        calls.append(f"trades:{market_run_id}")
+        await asyncio.sleep(0)
+        return "trades-run-1"
+
+    async def fake_run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
+        calls.append(f"orderbooks:{market_run_id}:{depth}")
+        await asyncio.sleep(0)
+        return "orderbooks-run-1"
+
+    async def run_test() -> list[str | None]:
+        monkeypatch.setattr(cli, "run_trades", fake_run_trades)
+        monkeypatch.setattr(cli, "run_orderbooks", fake_run_orderbooks)
+        markets_lock = asyncio.Lock()
+        return await asyncio.gather(
+            cli.run_trades_after_markets(
+                markets_lock=markets_lock,
+                trades_lock=asyncio.Lock(),
+                market_run_id="markets-run-1",
+            ),
+            cli.run_orderbooks_after_markets(
+                markets_lock=markets_lock,
+                orderbooks_lock=asyncio.Lock(),
+                market_run_id="markets-run-1",
+                depth=5,
+            ),
+        )
+
+    assert asyncio.run(run_test()) == ["trades-run-1", "orderbooks-run-1"]
+    assert sorted(calls) == [
+        "orderbooks:markets-run-1:5",
+        "trades:markets-run-1",
+    ]
 
 
 def _read_log_payloads(stdout: str) -> list[dict[str, object]]:

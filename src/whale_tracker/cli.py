@@ -105,6 +105,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Seconds between market tracking runs.",
     )
     schedule_parser.add_argument(
+        "--trades-interval",
+        type=positive_int,
+        default=1200,
+        help="Seconds between trade tracking runs.",
+    )
+    schedule_parser.add_argument(
         "--orderbooks-interval",
         type=positive_int,
         default=300,
@@ -118,7 +124,7 @@ def build_parser() -> argparse.ArgumentParser:
     schedule_parser.add_argument(
         "--market-run-id",
         default=None,
-        help="Market run id to use for orderbook tracking.",
+        help="Market run id to use for trade and orderbook tracking.",
     )
     schedule_parser.add_argument(
         "--orderbook-depth",
@@ -181,6 +187,9 @@ async def run_once(args: argparse.Namespace) -> None:
 
 async def schedule(args: argparse.Namespace) -> None:
     whales_lock = asyncio.Lock()
+    markets_lock = asyncio.Lock()
+    trades_lock = asyncio.Lock()
+    orderbooks_lock = asyncio.Lock()
     whales_runner = scheduled_runner(
         name="whales",
         interval=args.whales_interval,
@@ -191,18 +200,30 @@ async def schedule(args: argparse.Namespace) -> None:
         interval=args.markets_interval,
         runner=lambda: run_markets_after_whales(
             whales_lock=whales_lock,
+            markets_lock=markets_lock,
             whales_run_id=args.whales_run_id,
+        ),
+    )
+    trades_runner = scheduled_runner(
+        name="trades",
+        interval=args.trades_interval,
+        runner=lambda: run_trades_after_markets(
+            markets_lock=markets_lock,
+            trades_lock=trades_lock,
+            market_run_id=args.market_run_id,
         ),
     )
     orderbooks_runner = scheduled_runner(
         name="orderbooks",
         interval=args.orderbooks_interval,
-        runner=lambda: run_orderbooks(
+        runner=lambda: run_orderbooks_after_markets(
+            markets_lock=markets_lock,
+            orderbooks_lock=orderbooks_lock,
             market_run_id=args.market_run_id,
             depth=args.orderbook_depth,
         ),
     )
-    await asyncio.gather(whales_runner, markets_runner, orderbooks_runner)
+    await asyncio.gather(whales_runner, markets_runner, trades_runner, orderbooks_runner)
 
 
 def run_api(args: argparse.Namespace) -> None:
@@ -246,23 +267,91 @@ async def run_locked_whales(*, lock: asyncio.Lock) -> str:
 async def run_markets_after_whales(
     *,
     whales_lock: asyncio.Lock,
+    markets_lock: asyncio.Lock,
     whales_run_id: str | None,
 ) -> str:
-    if whales_lock.locked():
-        logger.info(
-            "Waiting for whale service",
-            extra={
-                "event": "service.waiting",
-                "context": {
-                    "service": "markets",
-                    "waiting_for": "whales",
-                },
-            },
-        )
-        async with whales_lock:
-            pass
+    await wait_for_service_lock(
+        lock=whales_lock,
+        service="markets",
+        waiting_for="whales",
+    )
+    async with markets_lock:
+        return await run_markets(whales_run_id=whales_run_id)
 
-    return await run_markets(whales_run_id=whales_run_id)
+
+async def run_trades_after_markets(
+    *,
+    markets_lock: asyncio.Lock,
+    trades_lock: asyncio.Lock,
+    market_run_id: str | None,
+) -> str | None:
+    await wait_for_service_lock(
+        lock=markets_lock,
+        service="trades",
+        waiting_for="markets",
+    )
+    if trades_lock.locked():
+        log_skipped_service(service="trades", reason="already_running")
+        return None
+
+    async with trades_lock:
+        return await run_trades(market_run_id=market_run_id)
+
+
+async def run_orderbooks_after_markets(
+    *,
+    markets_lock: asyncio.Lock,
+    orderbooks_lock: asyncio.Lock,
+    market_run_id: str | None,
+    depth: int,
+) -> str | None:
+    await wait_for_service_lock(
+        lock=markets_lock,
+        service="orderbooks",
+        waiting_for="markets",
+    )
+    if orderbooks_lock.locked():
+        log_skipped_service(service="orderbooks", reason="already_running")
+        return None
+
+    async with orderbooks_lock:
+        return await run_orderbooks(market_run_id=market_run_id, depth=depth)
+
+
+async def wait_for_service_lock(
+    *,
+    lock: asyncio.Lock,
+    service: str,
+    waiting_for: str,
+) -> None:
+    if not lock.locked():
+        return
+
+    logger.info(
+        "Waiting for service",
+        extra={
+            "event": "service.waiting",
+            "context": {
+                "service": service,
+                "waiting_for": waiting_for,
+            },
+        },
+    )
+    async with lock:
+        pass
+
+
+def log_skipped_service(*, service: str, reason: str) -> None:
+    logger.info(
+        "Service skipped",
+        extra={
+            "event": "service.skipped",
+            "context": {
+                "service": service,
+                "reason": reason,
+            },
+        },
+    )
 
 
 async def run_whales() -> str:
