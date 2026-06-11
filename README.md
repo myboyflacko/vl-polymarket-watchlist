@@ -1,462 +1,312 @@
 # Whale Tracker
 
-Whale Tracker is a Polymarket tracking service that discovers high-signal wallets,
-collects their trading and position metrics, filters and scores them, and then
-uses the selected wallets to find markets where multiple whales are currently
-positioned.
+Whale Tracker sammelt Polymarket-Daten fuer eine erste Research-,
+Backtesting- und Paper-Trading-Pipeline.
 
-The project is intentionally split into two tracking domains:
+Der aktuelle Fokus ist bewusst pragmatisch:
 
-- `whales`: find and rank relevant Polymarket wallets.
-- `markets`: find and rank markets based on the positions held by selected whales.
+- relevante Wallets finden
+- offene Positionen dieser Wallets speichern
+- daraus handelbare Market-Kandidaten ableiten
+- Trades und Orderbooks fuer diese Kandidaten sammeln
+- spaeter einfache Strategien dagegen testen
 
-Data is collected from Polymarket APIs and persisted to PostgreSQL through
-SQLAlchemy.
+Das Projekt platziert keine Live-Trades und keine echten Orders.
 
-## Main Components
-
-### `src/whale_tracker/cli.py`
-
-The CLI is the runtime entrypoint exposed as `whale-tracker`.
-
-Commands:
-
-```bash
-whale-tracker init-db
-whale-tracker run whales
-whale-tracker run markets
-whale-tracker run all
-whale-tracker schedule
-whale-tracker api
-```
-
-Important options:
-
-- `--no-scoring`: disables scoring where a scoring profile is registered.
-- `--market-limit`: limits persisted scored markets when market scoring is enabled.
-- `--whales-run-id`: runs market tracking against a specific whale selection run.
-- `--whales-interval`: scheduler interval for whale runs, default `3600` seconds.
-- `--markets-interval`: scheduler interval for market runs, default `900` seconds.
-- `api --host`: API server host, default `127.0.0.1`.
-- `api --port`: API server port, default `8000`.
-- `api --no-reload`: disables local auto-reload.
-
-`run all` first runs whale tracking, then passes that whale run id into market
-tracking.
-
-## HTTP API
-
-The FastAPI app exposes compact read endpoints for the latest persisted runs.
-
-Start the API locally:
-
-```bash
-whale-tracker api
-```
-
-This starts a local Uvicorn server for `whale_tracker.api.main:app`. The command
-runs in the foreground until stopped with `Ctrl+C`.
-
-Endpoints:
-
-- `GET /whales`: returns the selected whales for the latest completed whale run.
-- `GET /markets`: returns the qualified markets for the latest completed market run.
-
-Both endpoints accept an optional `run_id` query parameter:
+## Pipeline
 
 ```text
-/whales?run_id=20260101T120000000000Z-whales
-/markets?run_id=20260101T120000000000Z-markets
+whales -> markets -> trades -> orderbooks
 ```
 
-If no `run_id` is provided, the latest completed run is used. If no matching run
-exists, the endpoint returns `404`.
+### `whales`
 
-## Docker
+Findet und bewertet Polymarket-Wallets ueber Leaderboards, Trades und offene
+Positionen. Persistiert Wallet-Identitaeten, Whale-Runs und aktuelle
+Whale-Metriken.
 
-The Docker setup uses one image with separate Compose services:
+### `markets`
 
-- `postgres`: stores tracker state.
-- `api`: starts the local HTTP API on port `8000`.
-- `scheduler`: runs whale and market tracking continuously.
-- `cli`: tool service for one-off commands.
+Laedt die offenen Positionen der ausgewaehlten Whales und speichert sie als
+wallet-level Positionen.
 
-Build the image:
+Wichtig: `polymarket_markets` ist die Market-Identity-Tabelle. Eine Zeile steht
+fuer einen Token, also eine handelbare Seite eines Conditions-Markets.
 
-```bash
-docker compose build
-```
-
-Initialize the database:
-
-```bash
-docker compose run --rm cli init-db
-```
-
-Start the API:
-
-```bash
-docker compose up api
-```
-
-Run one-off tracker commands:
-
-```bash
-docker compose run --rm cli run whales
-docker compose run --rm cli run markets
-```
-
-Start the scheduler:
-
-```bash
-docker compose up scheduler
-```
-
-The Compose services use the named `postgres-data` volume for database state.
-Application logs are emitted as JSON lines to stdout and can be inspected through
-Docker logs, for example with `docker compose logs api` or
-`docker compose logs scheduler`.
-
-### `src/whale_tracker/settings.py`
-
-Settings are Pydantic settings loaded from environment variables and `.env`.
-
-Main settings groups:
-
-- `PolymarketDataApiClientSettings`: Data API base URL, timeout, concurrency,
-  request delay, retry/backoff and per-endpoint rate limits.
-- `DatabaseSettings`: PostgreSQL connection fields used to build the internal
-  SQLAlchemy database URL.
-- `LoggingSettings`: JSON stdout log level.
-
-Internal database URL format:
+Die aktuelle Market-Auswahl ist eine Read-View auf den gespeicherten Positionen:
 
 ```text
-postgresql+psycopg://USER:PASSWORD@HOST:PORT/DB
+dominant_side_5_whales_80_percent_latest_run
 ```
 
-Useful environment variables:
+Sie nutzt den letzten completed Market-Run und waehlt pro `condition_id` die
+dominante Token-Seite, wenn:
 
-- `WHALE_TRACKER_POSTGRES_DB`
-- `WHALE_TRACKER_POSTGRES_USER`
-- `WHALE_TRACKER_POSTGRES_PASSWORD`
-- `WHALE_TRACKER_POSTGRES_HOST`
-- `WHALE_TRACKER_POSTGRES_PORT`
-- `WHALE_TRACKER_LOG_LEVEL`
-- `POLYMARKET_DATA_API_BASE_URL`
-- `POLYMARKET_DATA_API_TIMEOUT_SECONDS`
-- `POLYMARKET_DATA_API_MAX_CONCURRENT_REQUESTS`
-- `POLYMARKET_DATA_API_REQUEST_DELAY_SECONDS`
-- `POLYMARKET_DATA_API_RATE_LIMIT_RETRY_ATTEMPTS`
-- `POLYMARKET_DATA_API_RATE_LIMIT_BACKOFF_SECONDS`
-- `POLYMARKET_DATA_API_REQUESTS_PER_SECOND`
-- `POLYMARKET_TRADES_REQUESTS_PER_SECOND`
-- `POLYMARKET_POSITIONS_REQUESTS_PER_SECOND`
-- `POLYMARKET_LEADERBOARD_REQUESTS_PER_SECOND`
+- mindestens 5 unique Wallets auf der dominanten Seite liegen
+- die dominante Seite mindestens 80% aller unique Wallets der Condition stellt
 
-### `src/whale_tracker/core/logging.py`
+Die Gegenseite disqualifiziert den Market nicht automatisch. Entscheidend ist
+die Ratio.
 
-Logging is configured by `configure_logging()` and emits JSON lines to stdout.
+### `trades`
 
-Current behavior:
+Sammelt Trades fuer die ausgewaehlten Markets. Quellen sind die Wallets aus der
+Market-Read-View, gruppiert nach `wallet + condition_id`.
 
-- writes one JSON object per line to stdout
-- supports `DEBUG`, `INFO`, `WARNING`, `ERROR` and `CRITICAL`
-- reduces `httpx` and `httpcore` log noise to `WARNING`
-- is idempotent for the same level
+Trades werden global dedupliziert und pro Run verlinkt. Ein einfacher Time-Sync
+verhindert, dass bekannte Trades am zuletzt gesehenen Timestamp erneut
+gespeichert werden. Der erste Lauf kann deshalb gross sein; spaetere Laeufe
+sollten deutlich weniger neue Zeilen speichern, muessen aber weiterhin die
+relevanten Quellen abfragen.
 
-### `src/whale_tracker/tracker/whales`
+### `orderbooks`
 
-The whale tracker discovers candidate wallets, collects wallet metrics, filters
-them, scores them, and persists the selected wallets.
+Sammelt Orderbook-Snapshots fuer die ausgewaehlten Markets. Orderbook-Metriken
+referenzieren direkt `polymarket_markets.market_id`, nicht mehr eine alte
+Tracked-Market-Tabelle.
 
-Key files:
+## CLI
 
-- `service.py`: orchestrates discovery, filtering, scoring and persistence.
-- `discovery.py`: defines the discovery profile.
-- `helpers.py`: fetches leaderboards, trades and current positions, then aggregates
-  metrics.
-- `filter.py`: contains the default whale filter profile.
-- `scoring.py`: contains whale scoring profiles.
-- `domain.py`: Pydantic domain models for wallets, metrics, filter results and
-  scoring results.
-- `repository.py`: persists runs, wallet identities and metric snapshots.
-
-### `src/whale_tracker/tracker/markets`
-
-The market tracker starts from selected whale wallets, collects their open
-positions, groups positions into market candidates, filters markets, optionally
-scores them, and persists market snapshots.
-
-Key files:
-
-- `service.py`: orchestrates market discovery, filtering, optional scoring and
-  persistence.
-- `discovery.py`: loads selected whale wallets and collects their current
-  positions.
-- `helpers.py`: fetches and normalizes wallet positions.
-- `filter.py`: groups positions by token and applies the default market filter.
-- `scoring.py`: contains the market scoring profile.
-- `domain.py`: Pydantic domain models for positions, markets and run results.
-- `repository.py`: persists market identities, run metadata and metric snapshots.
-
-## Discovery, Filtering And Scoring Architecture
-
-Both domains follow the same pipeline:
-
-```text
-discovery -> filter -> scoring -> persistence
-```
-
-Discovery produces raw domain objects:
-
-- Whale discovery produces `Whales`.
-- Market discovery produces `Markets`.
-
-Filtering removes objects that do not meet hard eligibility rules:
-
-- Whale filtering produces `FilteredWhales`.
-- Market filtering produces `FilteredMarkets`.
-
-Scoring ranks the filtered objects and may remove low-ranked entries:
-
-- Whale scoring produces `ScoredWhales`.
-- Market scoring produces `ScoredMarkets`.
-
-Persistence stores the final selected entries. If scoring is disabled or absent,
-the filtered entries are persisted with score `0.0`.
-
-## Whale Discovery
-
-Current whale discovery profile:
-
-```text
-profile_version = whale_discovery_trade_first
-wallet_count = 250
-wallet_batch_size = 4
-leaderboard_category = OVERALL
-leaderboard_time_period = MONTH
-leaderboard_limit = 50
-trade_window_days = 30
-recent_window_days = 7
-trade_limit = 500
-max_trade_pages_per_wallet = 20
-taker_only = true
-current_positions_limit = 500
-current_positions_market_chunk_size = 50
-```
-
-Discovery works like this:
-
-1. Fetch Polymarket leaderboard pages ordered by monthly PnL.
-2. Fetch Polymarket leaderboard pages ordered by monthly volume.
-3. Merge wallets from both leaderboards.
-4. For each candidate wallet, collect recent trades.
-5. Aggregate 30-day and 7-day trade metrics.
-6. Collect current positions for markets touched by recent trades.
-7. Aggregate exposure metrics.
-
-The resulting whale metrics include:
-
-- leaderboard PnL and volume
-- PnL rank and volume rank
-- candidate source: `pnl`, `volume` or `both`
-- 30-day and 7-day trade count
-- 30-day and 7-day trade volume
-- last trade age
-- buy/sell volume and net flow
-- unique traded markets
-- market concentration
-- current position value
-- open position count
-- position concentration
-- collection quality flags
-
-## Whale Filter Profile
-
-Current default profile:
-
-```text
-name = default_whale_filter
-min_trade_count_30d = 0
-min_current_position_value = 0.0
-```
-
-A whale is kept when:
-
-```text
-trade_count_30d >= min_trade_count_30d
-and current_position_value >= min_current_position_value
-```
-
-With the current defaults, this filter is intentionally permissive. It mainly
-keeps the pipeline shape stable while the scoring profile performs the meaningful
-selection.
-
-## Whale Scoring Profiles
-
-### Default: `trade_first_zscore_v1`
-
-The default whale service registers `ZScoreWhaleScoringProfile`.
-
-Default weights:
-
-```text
-pnl_weight = 0.30
-volume_weight = 0.25
-trade_activity_weight = 0.20
-recency_weight = 0.15
-exposure_weight = 0.10
-concentration_penalty_weight = 0.10
-score_scale = 2.0
-min_score = 50.0
-```
-
-Scoring uses current-run Z-scores for:
-
-- monthly leaderboard PnL
-- monthly leaderboard volume
-- 30-day trade volume
-- last trade age, where lower is better
-- current position value
-- 30-day market concentration
-- current position concentration
-
-The positive signals are combined as a weighted mean. Concentration is applied as
-a penalty using the larger positive Z-score of market concentration or position
-concentration. Below-average concentration does not create a bonus.
-
-The raw score is converted to a `0..100` score with a sigmoid function. Wallets
-with `score > min_score` are selected. Wallets with `score <= min_score` are
-removed.
-
-### Alternative: `trade_first_percentile_v1`
-
-`PercentileWhaleScoringProfile` is available but not the default.
-
-It scores the same signals with percentile ranks instead of Z-scores and cuts the
-bottom percentile:
-
-```text
-bottom_cut_percentile = 0.75
-```
-
-With the default value, only the top 25 percent of filtered whales are kept.
-
-## Market Discovery
-
-Market discovery depends on a whale selection run.
-
-If `whales_run_id` is provided, that run is used. Otherwise, the latest completed
-whale selection run is used.
-
-Discovery works like this:
-
-1. Load selected whale wallets from the whale repository.
-2. Fetch current positions for each selected wallet.
-3. Normalize each position into `WhalePosition`.
-4. Return all collected positions plus collection errors.
-
-Positions include token id, condition id, outcome, market title, slug, size,
-current value, average price, current price, opposite token data, end date and
-negative-risk flag.
-
-## Market Filter Profile
-
-Current default profile:
-
-```text
-name = default_market_filter
-min_whale_count = 3
-```
-
-Filtering works like this:
-
-1. Group all whale positions by `token_id`.
-2. Build one `Market` candidate per token.
-3. Count unique whale wallets per token.
-4. Keep markets where `whale_count >= min_whale_count`.
-5. Sort kept markets by `whale_count` and `total_current_value`, descending.
-
-For each market candidate, the filter calculates:
-
-- unique whale wallet count
-- total position size
-- total current value
-- weighted average entry price
-- current price
-- wallet list
-- opposite token and outcome metadata
-
-## Market Scoring Profile
-
-Available profile:
-
-```text
-name = market_zscore_v1
-whale_count_weight = 1.0
-total_current_value_weight = 1.0
-value_per_wallet_weight = 1.0
-bottom_cut_percentile = 0.75
-score_scale = 2.0
-```
-
-Market scoring uses current-run Z-scores for:
-
-- whale count
-- total current value
-- value per wallet
-
-The weighted mean is converted to a `0..100` score with a sigmoid function.
-Markets are ranked by score, whale count and total current value. The bottom
-percentile is removed; with the current default, the top 25 percent are kept.
-`--market-limit` can further cap the number of persisted scored markets.
-
-Scoring also enriches selected markets with:
-
-- `qualified = true`
-- `score`
-- `price_delta = cur_price - weighted_avg_price`
-- `price_delta_pct`
-- `value_per_wallet`
-
-Important current behavior: `ZScoreMarketScoringProfile` exists and is
-registerable, but `MarketTrackerService` does not register it by default. The CLI
-therefore currently persists filtered markets unless market scoring is registered
-programmatically.
-
-## Development
-
-Install the package in editable mode:
+Lokale Installation:
 
 ```bash
 python -m pip install -e .
 ```
 
-Initialize the default database:
+Datenbank migrieren:
 
 ```bash
 whale-tracker init-db
 ```
 
-`init-db` runs Alembic migrations against the PostgreSQL URL built from
-`WHALE_TRACKER_POSTGRES_*`.
+Einzelne Services ausfuehren:
 
-Run tests:
+```bash
+whale-tracker run whales
+whale-tracker run markets
+whale-tracker run trades
+whale-tracker run orderbooks
+whale-tracker run all
+```
+
+Nuetzliche Optionen:
+
+```bash
+whale-tracker run markets --whales-run-id <run_id>
+whale-tracker run trades --market-run-id <run_id>
+whale-tracker run orderbooks --market-run-id <run_id> --orderbook-depth 5
+```
+
+`run all` fuehrt nacheinander `whales`, `markets`, `trades` und `orderbooks` aus
+und reicht die erzeugten Run-IDs intern weiter.
+
+## Scheduler
+
+Scheduler starten:
+
+```bash
+whale-tracker schedule
+```
+
+Default-Intervalle:
+
+| Service | Intervall |
+| --- | ---: |
+| whales | 3600s |
+| markets | 900s |
+| trades | 1200s |
+| orderbooks | 300s |
+
+Anpassung:
+
+```bash
+whale-tracker schedule \
+  --whales-interval 3600 \
+  --markets-interval 900 \
+  --trades-interval 1200 \
+  --orderbooks-interval 300 \
+  --orderbook-depth 5
+```
+
+Blockierlogik:
+
+- `markets` wartet, wenn `whales` laeuft
+- `trades` wartet, wenn `markets` laeuft
+- `orderbooks` wartet, wenn `markets` laeuft
+- `trades` wird uebersprungen, wenn ein Trade-Run noch laeuft
+- `orderbooks` wird uebersprungen, wenn ein Orderbook-Run noch laeuft
+- `trades` und `orderbooks` duerfen parallel laufen
+
+## HTTP API
+
+API starten:
+
+```bash
+whale-tracker api
+```
+
+Endpoints:
+
+- `GET /whale-observations`
+- `GET /markets`
+- `GET /orderbooks`
+
+Alle Endpoints nutzen standardmaessig den letzten passenden Run. Optional kann
+ein `run_id` gesetzt werden:
+
+```text
+/markets?run_id=20260611T120000000000Z-markets
+/orderbooks?run_id=20260611T120500000000Z-orderbooks
+```
+
+## Docker
+
+Image bauen:
+
+```bash
+docker compose build
+```
+
+Datenbank starten:
+
+```bash
+docker compose up -d postgres
+```
+
+Migrationen ausfuehren:
+
+```bash
+docker compose run --rm cli init-db
+```
+
+Scheduler starten:
+
+```bash
+docker compose up -d scheduler
+```
+
+API starten:
+
+```bash
+docker compose up -d api
+```
+
+Logs:
+
+```bash
+docker compose logs -f scheduler
+docker compose logs -f api
+```
+
+## Konfiguration
+
+Settings kommen aus Environment-Variablen oder `.env`.
+
+Wichtige Variablen:
+
+```text
+WHALE_TRACKER_POSTGRES_DB
+WHALE_TRACKER_POSTGRES_USER
+WHALE_TRACKER_POSTGRES_PASSWORD
+WHALE_TRACKER_POSTGRES_HOST
+WHALE_TRACKER_POSTGRES_PORT
+WHALE_TRACKER_LOG_LEVEL
+
+POLYMARKET_DATA_API_BASE_URL
+POLYMARKET_DATA_API_TIMEOUT_SECONDS
+POLYMARKET_DATA_API_MAX_CONCURRENT_REQUESTS
+POLYMARKET_DATA_API_REQUEST_DELAY_SECONDS
+POLYMARKET_DATA_API_RATE_LIMIT_RETRY_ATTEMPTS
+POLYMARKET_DATA_API_RATE_LIMIT_BACKOFF_SECONDS
+POLYMARKET_DATA_API_REQUESTS_PER_SECOND
+POLYMARKET_TRADES_REQUESTS_PER_SECOND
+POLYMARKET_POSITIONS_REQUESTS_PER_SECOND
+POLYMARKET_LEADERBOARD_REQUESTS_PER_SECOND
+```
+
+Interne PostgreSQL-URL:
+
+```text
+postgresql+psycopg://USER:PASSWORD@HOST:PORT/DB
+```
+
+## Datenmodell
+
+Die wichtigsten Tabellen:
+
+| Tabelle | Zweck |
+| --- | --- |
+| `polymarket_wallets` | Wallet-Identity |
+| `polymarket_whale_runs` | Whale-Run-Metadaten |
+| `polymarket_whale_observations` | Whale-Metriken pro Run |
+| `polymarket_markets` | Market-/Token-Identity |
+| `polymarket_market_runs` | Market-Run-Metadaten |
+| `polymarket_market_positions` | Offene Wallet-Positionen pro Market-Run |
+| `polymarket_trade_runs` | Trade-Run-Metadaten |
+| `polymarket_trades` | Deduplizierte Trade-Facts |
+| `polymarket_trade_run_items` | Zuordnung Trade-Facts zu Trade-Runs |
+| `polymarket_orderbook_runs` | Orderbook-Run-Metadaten |
+| `polymarket_orderbook_metrics` | Orderbook-Snapshots und Metriken |
+
+## Backtesting-Stand
+
+Der aktuelle Stand reicht fuer ein erstes MVP-Backtesting:
+
+- ausgewaehlte Whales
+- offene Positionen je Run
+- ausgewaehlte Markets ueber Read-View
+- historische Trades fuer diese Markets und Wallets
+- Orderbook-Snapshots fuer die ausgewaehlten Markets
+
+Noch nicht fertig fuer sauberes Backtesting:
+
+- Market-Resolution und Outcome-Daten
+- harte Timestamp-Cutoffs gegen Lookahead-Bias
+- Slippage-, Fee- und Fill-Modell
+- Strategy Runner mit Entry-, Exit- und Sizing-Regeln
+- Paper-Trading-Ausfuehrung ohne echte Orders
+
+Die sinnvolle Reihenfolge ist:
+
+```text
+1. Daten stabil sammeln
+2. einfache Backtesting-Dataset-View bauen
+3. erste Strategie offline testen
+4. Paper Trading ohne echte Orders
+5. erst danach Live-Trading separat planen
+```
+
+## Entwicklung
+
+Tests:
 
 ```bash
 pytest
 ```
 
-Database integration tests require a PostgreSQL database URL whose database name
-contains `test`:
+Ruff:
+
+```bash
+ruff check .
+```
+
+Integrationstests gegen PostgreSQL brauchen eine Test-Datenbank. Der Datenbankname
+muss `test` enthalten:
 
 ```bash
 WHALE_TRACKER_TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/whale_tracker_test pytest
 ```
 
-Run Ruff:
+## Projektstruktur
 
-```bash
-ruff check .
+```text
+src/whale_tracker/cli.py                  CLI, Scheduler, API-Start
+src/whale_tracker/api/                    FastAPI Read-Endpoints
+src/whale_tracker/core/db/                SQLAlchemy, Alembic
+src/whale_tracker/providers/polymarket/   Polymarket API Client und Params
+src/whale_tracker/tracker/whales/         Whale Discovery und Persistence
+src/whale_tracker/tracker/markets/        Position Collection und Market Read-View
+src/whale_tracker/tracker/trades/         Trade Collection und Deduplication
+src/whale_tracker/tracker/orderbooks/     Orderbook Collection
+tests/                                    Unit- und Integrationstests
 ```
