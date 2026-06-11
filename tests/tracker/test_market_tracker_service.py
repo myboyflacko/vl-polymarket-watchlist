@@ -21,6 +21,7 @@ from whale_tracker.tracker.markets.models import (
     MarketObservation,
     MarketRun,
 )
+from whale_tracker.tracker.markets.repository import _batches
 from whale_tracker.tracker.markets.service import MarketTrackerService
 from whale_tracker.tracker.whales.models import (
     PolymarketWhale,
@@ -66,6 +67,10 @@ def test_build_market_candidates_groups_positions_by_token() -> None:
     assert candidates[0].wallets == [WALLET_ONE, WALLET_TWO]
     assert candidates[0].total_current_value == 150
     assert candidates[0].weighted_avg_price == 0.4
+
+
+def test_batches_splits_large_payloads() -> None:
+    assert _batches([1, 2, 3, 4, 5], 2) == [[1, 2], [3, 4], [5]]
 
 
 def test_tracked_market_filter_keeps_unique_condition_one_direction() -> None:

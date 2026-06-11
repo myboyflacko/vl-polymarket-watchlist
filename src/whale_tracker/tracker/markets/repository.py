@@ -22,6 +22,8 @@ from whale_tracker.tracker.markets.models import (
 
 
 DEFAULT_TRACKED_MARKET_FILTER_PROFILE = "dominant_side_5_whales_80_percent_latest_run"
+MAX_INSERT_ROWS_PER_BATCH = 5_000
+MAX_SELECT_IDS_PER_BATCH = 10_000
 
 
 def get_latest_market_run() -> MarketRunSummary | None:
@@ -93,24 +95,25 @@ def persist_market_observations(
             if observation.token_id in market_ids
         ]
         if rows:
-            statement = insert(MarketObservationRow).values(rows)
-            session.execute(
-                statement.on_conflict_do_update(
-                    index_elements=[
-                        MarketObservationRow.run_id,
-                        MarketObservationRow.wallet,
-                        MarketObservationRow.market_id,
-                    ],
-                    set_={
-                        "size": statement.excluded.size,
-                        "current_value": statement.excluded.current_value,
-                        "avg_price": statement.excluded.avg_price,
-                        "cur_price": statement.excluded.cur_price,
-                        "negative_risk": statement.excluded.negative_risk,
-                        "generated_at": statement.excluded.generated_at,
-                    },
+            for batch in _batches(rows, MAX_INSERT_ROWS_PER_BATCH):
+                statement = insert(MarketObservationRow).values(batch)
+                session.execute(
+                    statement.on_conflict_do_update(
+                        index_elements=[
+                            MarketObservationRow.run_id,
+                            MarketObservationRow.wallet,
+                            MarketObservationRow.market_id,
+                        ],
+                        set_={
+                            "size": statement.excluded.size,
+                            "current_value": statement.excluded.current_value,
+                            "avg_price": statement.excluded.avg_price,
+                            "cur_price": statement.excluded.cur_price,
+                            "negative_risk": statement.excluded.negative_risk,
+                            "generated_at": statement.excluded.generated_at,
+                        },
+                    )
                 )
-            )
 
         session.commit()
 
@@ -207,25 +210,31 @@ def _upsert_markets(
     if not rows:
         return {}
 
-    statement = insert(MarketIdentity).values(rows)
-    update_columns = {
-        column: getattr(statement.excluded, column)
-        for column in rows[0]
-        if column not in {"token_id", "first_seen_at"}
-    }
-    session.execute(
-        statement.on_conflict_do_update(
-            index_elements=[MarketIdentity.token_id],
-            set_=update_columns,
-        )
-    )
-    return dict(
+    for batch in _batches(rows, MAX_INSERT_ROWS_PER_BATCH):
+        statement = insert(MarketIdentity).values(batch)
+        update_columns = {
+            column: getattr(statement.excluded, column)
+            for column in batch[0]
+            if column not in {"token_id", "first_seen_at"}
+        }
         session.execute(
-            select(MarketIdentity.token_id, MarketIdentity.id).where(
-                MarketIdentity.token_id.in_([row["token_id"] for row in rows])
+            statement.on_conflict_do_update(
+                index_elements=[MarketIdentity.token_id],
+                set_=update_columns,
             )
-        ).all()
-    )
+        )
+
+    market_ids: dict[str, int] = {}
+    token_ids = [row["token_id"] for row in rows]
+    for batch in _batches(token_ids, MAX_SELECT_IDS_PER_BATCH):
+        market_ids.update(
+            session.execute(
+                select(MarketIdentity.token_id, MarketIdentity.id).where(
+                    MarketIdentity.token_id.in_(batch)
+                )
+            ).all()
+        )
+    return market_ids
 
 
 def _market_row(*, observation: MarketObservation, seen_at: datetime) -> dict:
@@ -295,3 +304,7 @@ def _tracked_market_from_market(
         generated_at=generated_at,
         filter_profile=filter_profile,
     )
+
+
+def _batches[T](items: list[T], size: int) -> list[list[T]]:
+    return [items[index : index + size] for index in range(0, len(items), size)]
