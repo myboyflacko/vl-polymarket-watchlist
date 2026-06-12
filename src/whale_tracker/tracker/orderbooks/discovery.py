@@ -124,8 +124,8 @@ def _snapshot_from_response(
 ) -> OrderBookSnapshot:
     bids = _levels(item.get("bids"), depth)
     asks = _levels(item.get("asks"), depth)
-    best_bid = bids[0].price if bids else None
-    best_ask = asks[0].price if asks else None
+    best_bid = bids[-1].price if bids else None
+    best_ask = asks[-1].price if asks else None
     spread = (
         best_ask - best_bid
         if best_bid is not None and best_ask is not None
