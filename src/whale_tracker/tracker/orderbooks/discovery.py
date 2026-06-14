@@ -124,8 +124,17 @@ def _snapshot_from_response(
 ) -> OrderBookSnapshot:
     bids = _levels(item.get("bids"), depth)
     asks = _levels(item.get("asks"), depth)
-    best_bid = bids[-1].price if bids else None
-    best_ask = asks[-1].price if asks else None
+
+    if not bids:
+        best_bid = None
+    else:
+        best_bid = max(bids, key=lambda level: level.price).price
+
+    if not asks:
+        best_ask = None
+    else:
+        best_ask = min(asks, key=lambda level: level.price).price
+
     spread = (
         best_ask - best_bid
         if best_bid is not None and best_ask is not None
