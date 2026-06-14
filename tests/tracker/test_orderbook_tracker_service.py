@@ -91,6 +91,48 @@ def test_orderbook_discovery_limits_depth_and_computes_metrics() -> None:
     assert snapshot.exchange_timestamp == datetime(2026, 6, 1, tzinfo=UTC)
 
 
+def test_orderbook_discovery_handles_missing_side_metrics() -> None:
+    class MissingSideClient:
+        async def get_order_books(self, params: Any) -> list[dict[str, Any]]:
+            body = params.output_body()
+            return [
+                {
+                    "market": CONDITION_ID,
+                    "asset_id": body[0]["token_id"],
+                    "timestamp": "1780272000",
+                    "hash": "hash-missing-side",
+                    "bids": [
+                        {"price": "0.43", "size": "100"},
+                        {"price": "0.45", "size": "100"},
+                    ],
+                    "asks": [],
+                }
+            ]
+
+    result = asyncio.run(
+        OrderBookDiscoveryProfile(depth=5).run(
+            client=MissingSideClient(),
+            sources=[
+                TrackedMarketOrderBookSource(
+                    market_id=123,
+                    token_id=YES_TOKEN,
+                    condition_id=CONDITION_ID,
+                    title="Title",
+                    slug="slug",
+                    outcome="Yes",
+                )
+            ],
+            generated_at=NOW,
+        )
+    )
+
+    snapshot = result.snapshots[0]
+    assert snapshot.best_bid == 0.45
+    assert snapshot.best_ask is None
+    assert snapshot.spread is None
+    assert snapshot.midpoint is None
+
+
 def test_orderbook_tracker_run_persists_metrics_for_tracked_markets(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
