@@ -128,12 +128,12 @@ def _snapshot_from_response(
     if not bids:
         best_bid = None
     else:
-        best_bid = max(bids, key=lambda level: level.price).price
+        best_bid = max(bids, key=lambda level: level['price'])['price']
 
     if not asks:
         best_ask = None
     else:
-        best_ask = min(asks, key=lambda level: level.price).price
+        best_ask = min(asks, key=lambda level: level['price'])['price']
 
     spread = (
         best_ask - best_bid
