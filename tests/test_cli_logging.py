@@ -1,13 +1,11 @@
-import asyncio
 import json
 import logging
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 
 import pytest
 
-from whale_tracker import cli
-from whale_tracker.settings import get_settings
+from polymarket_storage import cli
+from polymarket_storage.settings import get_settings
 
 
 @pytest.fixture(autouse=True)
@@ -18,7 +16,7 @@ def reset_logging() -> None:
     yield
 
     for handler in list(root_logger.handlers):
-        if handler.name and handler.name.startswith("whale_tracker_jsonl_"):
+        if handler.name and handler.name.startswith("polymarket_storage_jsonl_"):
             root_logger.removeHandler(handler)
             handler.close()
 
@@ -26,316 +24,95 @@ def reset_logging() -> None:
     get_settings.cache_clear()
 
 
-def test_run_whales_logs_started_and_completed_events(
+def test_run_markets_logs_started_and_completed_events(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     get_settings.cache_clear()
 
-    class FakeWhaleService:
+    class FakeMarketService:
         async def run(self) -> SimpleNamespace:
             return SimpleNamespace(
                 run_id="run-1",
-                whales=SimpleNamespace(checked_wallet_count=5, wallet_count=4),
+                strategy_name="leaderboard_current_positions",
+                checked_market_count=3,
+                stored_market_count=2,
+                errors=[],
             )
 
-    monkeypatch.setattr(cli, "build_whale_service", lambda: FakeWhaleService())
+    monkeypatch.setattr(
+        cli,
+        "build_market_service",
+        lambda *, strategy_name: FakeMarketService(),
+    )
 
-    exit_code = cli.main(["run", "whales"])
+    exit_code = cli.main(["run", "markets"])
 
     assert exit_code == 0
     stdout = capsys.readouterr().out
-    assert "Whales completed: run_id=run-1" in stdout
+    assert "Markets completed: run_id=run-1" in stdout
 
-    events = _read_log_events(stdout)
-    assert events == ["service.started", "service.completed"]
+    payloads = _read_log_payloads(stdout)
+    assert [payload["event"] for payload in payloads] == [
+        "service.started",
+        "service.completed",
+    ]
+    assert payloads[1]["context"] == {
+        "service": "markets",
+        "run_id": "run-1",
+        "strategy": "leaderboard_current_positions",
+        "checked": 3,
+        "stored": 2,
+        "errors": 0,
+    }
 
-    completed = _read_log_payloads(stdout)[1]
-    assert completed["context"]["service"] == "whales"
-    assert completed["context"]["run_id"] == "run-1"
-    assert completed["context"]["observed"] == 4
-    assert "tracked" not in completed["context"]
 
-
-def test_run_whales_logs_failed_event_once(
+def test_run_markets_logs_failed_event_once(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     get_settings.cache_clear()
 
-    class FailingWhaleService:
+    class FailingMarketService:
         async def run(self) -> None:
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(cli, "build_whale_service", lambda: FailingWhaleService())
+    monkeypatch.setattr(
+        cli,
+        "build_market_service",
+        lambda *, strategy_name: FailingMarketService(),
+    )
 
-    exit_code = cli.main(["run", "whales"])
+    exit_code = cli.main(["run", "markets"])
 
     assert exit_code == 1
-    stdout = capsys.readouterr().out
-    assert _read_log_events(stdout) == ["service.started", "service.failed"]
-
-    failed = _read_log_payloads(stdout)[1]
-    assert failed["levelname"] == "ERROR"
-    assert failed["context"]["command"] == "run"
-    assert failed["context"]["service"] == "whales"
-    assert "RuntimeError: boom" in failed["exc_info"]
-
-
-def test_api_command_starts_uvicorn_with_local_defaults(
-    monkeypatch: pytest.MonkeyPatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    get_settings.cache_clear()
-    calls = []
-
-    fake_uvicorn = ModuleType("uvicorn")
-
-    def fake_run(app: str, *, host: str, port: int, reload: bool) -> None:
-        calls.append(
-            {
-                "app": app,
-                "host": host,
-                "port": port,
-                "reload": reload,
-            }
-        )
-
-    fake_uvicorn.run = fake_run
-    monkeypatch.setitem(sys.modules, "uvicorn", fake_uvicorn)
-
-    exit_code = cli.main(["api"])
-
-    assert exit_code == 0
-    assert calls == [
-        {
-            "app": "whale_tracker.api.main:app",
-            "host": "127.0.0.1",
-            "port": 8000,
-            "reload": True,
-        }
+    payloads = _read_log_payloads(capsys.readouterr().out)
+    assert [payload["event"] for payload in payloads] == [
+        "service.started",
+        "service.failed",
     ]
-    assert "Starting API server at http://127.0.0.1:8000" in capsys.readouterr().out
+    assert payloads[1]["levelname"] == "ERROR"
+    assert payloads[1]["context"]["command"] == "run"
+    assert payloads[1]["context"]["service"] == "markets"
+    assert "RuntimeError: boom" in payloads[1]["exc_info"]
 
 
-def test_run_markets_after_whales_waits_for_active_whale_run(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
+def test_removed_services_are_not_cli_choices() -> None:
+    parser = cli.build_parser()
 
-    async def fake_run_markets(*, whales_run_id: str | None) -> str:
-        calls.append(str(whales_run_id))
-        return "markets-run-1"
+    with pytest.raises(SystemExit):
+        parser.parse_args(["run", "whales"])
 
-    async def run_test() -> None:
-        lock = asyncio.Lock()
-        await lock.acquire()
-        monkeypatch.setattr(cli, "run_markets", fake_run_markets)
+    with pytest.raises(SystemExit):
+        parser.parse_args(["run", "trades"])
 
-        task = asyncio.create_task(
-            cli.run_markets_after_whales(
-                whales_lock=lock,
-                markets_lock=asyncio.Lock(),
-                whales_run_id="whales-run-1",
-            )
-        )
-        await asyncio.sleep(0)
-
-        assert calls == []
-
-        lock.release()
-        result = await task
-
-        assert result == "markets-run-1"
-
-    asyncio.run(run_test())
-    assert calls == ["whales-run-1"]
+    with pytest.raises(SystemExit):
+        parser.parse_args(["api"])
 
 
-def test_run_markets_after_whales_runs_immediately_when_whales_are_idle(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    async def fake_run_markets(*, whales_run_id: str | None) -> str:
-        calls.append(str(whales_run_id))
-        return "markets-run-1"
-
-    async def run_test() -> str:
-        monkeypatch.setattr(cli, "run_markets", fake_run_markets)
-        return await cli.run_markets_after_whales(
-            whales_lock=asyncio.Lock(),
-            markets_lock=asyncio.Lock(),
-            whales_run_id=None,
-        )
-
-    assert asyncio.run(run_test()) == "markets-run-1"
-    assert calls == ["None"]
-
-
-def test_run_trades_after_markets_waits_for_active_market_run(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    async def fake_run_trades(*, market_run_id: str | None) -> str:
-        calls.append(str(market_run_id))
-        return "trades-run-1"
-
-    async def run_test() -> None:
-        markets_lock = asyncio.Lock()
-        await markets_lock.acquire()
-        monkeypatch.setattr(cli, "run_trades", fake_run_trades)
-
-        task = asyncio.create_task(
-            cli.run_trades_after_markets(
-                markets_lock=markets_lock,
-                trades_lock=asyncio.Lock(),
-                market_run_id="markets-run-1",
-            )
-        )
-        await asyncio.sleep(0)
-
-        assert calls == []
-
-        markets_lock.release()
-        result = await task
-
-        assert result == "trades-run-1"
-
-    asyncio.run(run_test())
-    assert calls == ["markets-run-1"]
-
-
-def test_run_trades_after_markets_skips_when_trade_run_is_active(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    async def fake_run_trades(*, market_run_id: str | None) -> str:
-        calls.append(str(market_run_id))
-        return "trades-run-1"
-
-    async def run_test() -> str | None:
-        trades_lock = asyncio.Lock()
-        await trades_lock.acquire()
-        monkeypatch.setattr(cli, "run_trades", fake_run_trades)
-        return await cli.run_trades_after_markets(
-            markets_lock=asyncio.Lock(),
-            trades_lock=trades_lock,
-            market_run_id="markets-run-1",
-        )
-
-    assert asyncio.run(run_test()) is None
-    assert calls == []
-
-
-def test_run_orderbooks_after_markets_waits_for_active_market_run(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    async def fake_run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
-        calls.append(f"{market_run_id}:{depth}")
-        return "orderbooks-run-1"
-
-    async def run_test() -> None:
-        markets_lock = asyncio.Lock()
-        await markets_lock.acquire()
-        monkeypatch.setattr(cli, "run_orderbooks", fake_run_orderbooks)
-
-        task = asyncio.create_task(
-            cli.run_orderbooks_after_markets(
-                markets_lock=markets_lock,
-                orderbooks_lock=asyncio.Lock(),
-                market_run_id="markets-run-1",
-                depth=5,
-            )
-        )
-        await asyncio.sleep(0)
-
-        assert calls == []
-
-        markets_lock.release()
-        result = await task
-
-        assert result == "orderbooks-run-1"
-
-    asyncio.run(run_test())
-    assert calls == ["markets-run-1:5"]
-
-
-def test_run_orderbooks_after_markets_skips_when_orderbook_run_is_active(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    async def fake_run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
-        calls.append(f"{market_run_id}:{depth}")
-        return "orderbooks-run-1"
-
-    async def run_test() -> str | None:
-        orderbooks_lock = asyncio.Lock()
-        await orderbooks_lock.acquire()
-        monkeypatch.setattr(cli, "run_orderbooks", fake_run_orderbooks)
-        return await cli.run_orderbooks_after_markets(
-            markets_lock=asyncio.Lock(),
-            orderbooks_lock=orderbooks_lock,
-            market_run_id="markets-run-1",
-            depth=5,
-        )
-
-    assert asyncio.run(run_test()) is None
-    assert calls == []
-
-
-def test_trades_and_orderbooks_can_run_together_when_market_is_idle(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    calls: list[str] = []
-
-    async def fake_run_trades(*, market_run_id: str | None) -> str:
-        calls.append(f"trades:{market_run_id}")
-        await asyncio.sleep(0)
-        return "trades-run-1"
-
-    async def fake_run_orderbooks(*, market_run_id: str | None, depth: int) -> str:
-        calls.append(f"orderbooks:{market_run_id}:{depth}")
-        await asyncio.sleep(0)
-        return "orderbooks-run-1"
-
-    async def run_test() -> list[str | None]:
-        monkeypatch.setattr(cli, "run_trades", fake_run_trades)
-        monkeypatch.setattr(cli, "run_orderbooks", fake_run_orderbooks)
-        markets_lock = asyncio.Lock()
-        return await asyncio.gather(
-            cli.run_trades_after_markets(
-                markets_lock=markets_lock,
-                trades_lock=asyncio.Lock(),
-                market_run_id="markets-run-1",
-            ),
-            cli.run_orderbooks_after_markets(
-                markets_lock=markets_lock,
-                orderbooks_lock=asyncio.Lock(),
-                market_run_id="markets-run-1",
-                depth=5,
-            ),
-        )
-
-    assert asyncio.run(run_test()) == ["trades-run-1", "orderbooks-run-1"]
-    assert sorted(calls) == [
-        "orderbooks:markets-run-1:5",
-        "trades:markets-run-1",
-    ]
-
-
-def _read_log_payloads(stdout: str) -> list[dict[str, object]]:
+def _read_log_payloads(stdout: str) -> list[dict]:
     return [
         json.loads(line)
         for line in stdout.splitlines()
-        if line.startswith("{")
+        if line.startswith("{") and line.endswith("}")
     ]
-
-
-def _read_log_events(stdout: str) -> list[str]:
-    return [str(payload["event"]) for payload in _read_log_payloads(stdout)]

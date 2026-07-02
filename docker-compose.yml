@@ -3,12 +3,12 @@ services:
     container_name: postgres
     image: postgres:16-alpine
     environment:
-      - POSTGRES_DB
-      - POSTGRES_USER
-      - POSTGRES_PASSWORD
-      - POSTGRES_PORT
+      POSTGRES_DB: ${POLYMARKET_STORAGE_POSTGRES_DB:-polymarket_storage}
+      POSTGRES_USER: ${POLYMARKET_STORAGE_POSTGRES_USER:-polymarket_storage}
+      POSTGRES_PASSWORD: ${POLYMARKET_STORAGE_POSTGRES_PASSWORD:-polymarket_storage}
+      POSTGRES_PORT: ${POLYMARKET_STORAGE_POSTGRES_PORT:-5432}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U whale_tracker -d whale_tracker"]
+      test: ["CMD-SHELL", "pg_isready -U polymarket_storage -d polymarket_storage"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -16,45 +16,20 @@ services:
       - postgres-data:/var/lib/postgresql/data
     restart: unless-stopped
     ports:
-      - ${POSTGRES_PORT}:${POSTGRES_PORT}
+      - ${POLYMARKET_STORAGE_POSTGRES_PORT:-5432}:${POLYMARKET_STORAGE_POSTGRES_PORT:-5432}
       
-
-  api:
-    build: .
-    image: whale-tracker:latest
-    command:
-      - whale-tracker
-      - api
-      - --host
-      - 0.0.0.0
-      - --port
-      - "8000"
-      - --no-reload
-    environment:
-      - WHALE_TRACKER_POSTGRES_DB
-      - WHALE_TRACKER_POSTGRES_USER
-      - WHALE_TRACKER_POSTGRES_PASSWORD
-      - WHALE_TRACKER_POSTGRES_HOST
-      - WHALE_TRACKER_POSTGRES_PORT
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "8000:8000"
-    restart: unless-stopped
-
   scheduler:
     build: .
-    image: whale-tracker:latest
+    image: polymarket-storage:latest
     command:
-      - whale-tracker
+      - polymarket-storage
       - schedule
     environment:
-      - WHALE_TRACKER_POSTGRES_DB
-      - WHALE_TRACKER_POSTGRES_USER
-      - WHALE_TRACKER_POSTGRES_PASSWORD
-      - WHALE_TRACKER_POSTGRES_HOST
-      - WHALE_TRACKER_POSTGRES_PORT
+      - POLYMARKET_STORAGE_POSTGRES_DB
+      - POLYMARKET_STORAGE_POSTGRES_USER
+      - POLYMARKET_STORAGE_POSTGRES_PASSWORD
+      - POLYMARKET_STORAGE_POSTGRES_HOST
+      - POLYMARKET_STORAGE_POSTGRES_PORT
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,17 +37,17 @@ services:
 
   cli:
     build: .
-    image: whale-tracker:latest
+    image: polymarket-storage:latest
     entrypoint:
-      - whale-tracker
+      - polymarket-storage
     command:
       - --help
     environment:
-      - WHALE_TRACKER_POSTGRES_DB
-      - WHALE_TRACKER_POSTGRES_USER
-      - WHALE_TRACKER_POSTGRES_PASSWORD
-      - WHALE_TRACKER_POSTGRES_HOST
-      - WHALE_TRACKER_POSTGRES_PORT
+      - POLYMARKET_STORAGE_POSTGRES_DB
+      - POLYMARKET_STORAGE_POSTGRES_USER
+      - POLYMARKET_STORAGE_POSTGRES_PASSWORD
+      - POLYMARKET_STORAGE_POSTGRES_HOST
+      - POLYMARKET_STORAGE_POSTGRES_PORT
     depends_on:
       postgres:
         condition: service_healthy

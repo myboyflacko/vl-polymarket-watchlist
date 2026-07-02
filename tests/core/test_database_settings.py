@@ -1,9 +1,9 @@
-from whale_tracker.settings import DatabaseSettings
+from polymarket_storage.settings import DatabaseSettings
 
 
 def test_database_settings_builds_postgres_url() -> None:
     settings = DatabaseSettings(
-        name="whale_tracker",
+        name="polymarket_storage",
         user="tracker",
         password="secret",
         host="postgres",
@@ -12,5 +12,5 @@ def test_database_settings_builds_postgres_url() -> None:
 
     assert (
         settings.database_url
-        == "postgresql+psycopg://tracker:secret@postgres:5432/whale_tracker"
+        == "postgresql+psycopg://tracker:secret@postgres:5432/polymarket_storage"
     )
