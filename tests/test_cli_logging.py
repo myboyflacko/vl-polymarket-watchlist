@@ -97,6 +97,43 @@ def test_run_discovery_logs_failed_event_once(
     assert "RuntimeError: boom" in payloads[1]["exc_info"]
 
 
+def test_run_orderbooks_logs_skipped_event(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    get_settings.cache_clear()
+
+    class SkippedOrderbookService:
+        async def run(self) -> SimpleNamespace:
+            return SimpleNamespace(
+                run_id=None,
+                status="skipped",
+                skip_reason="no_completed_discovery_run",
+            )
+
+    monkeypatch.setattr(
+        cli,
+        "build_orderbook_service",
+        lambda *, batch_size: SkippedOrderbookService(),
+    )
+
+    exit_code = cli.main(["run", "orderbooks"])
+
+    assert exit_code == 0
+    stdout = capsys.readouterr().out
+    assert "Orderbooks skipped: reason=no_completed_discovery_run" in stdout
+
+    payloads = _read_log_payloads(stdout)
+    assert [payload["event"] for payload in payloads] == [
+        "service.started",
+        "service.skipped",
+    ]
+    assert payloads[1]["context"] == {
+        "service": "orderbooks",
+        "reason": "no_completed_discovery_run",
+    }
+
+
 def test_removed_services_are_not_cli_choices() -> None:
     parser = cli.build_parser()
 

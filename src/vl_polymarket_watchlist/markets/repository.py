@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from vl_polymarket_watchlist.core.db.engine import database_session
 from vl_polymarket_watchlist.core.db.models import (
@@ -16,6 +16,111 @@ from vl_polymarket_watchlist.core.time import ensure_utc
 from vl_polymarket_watchlist.markets.domain import (
     MarketObservation,
 )
+
+
+READY_DISCOVERY_STATUSES = ("completed", "partial")
+
+
+def create_discovery_run(
+    *,
+    run_id: str,
+    source: str,
+    source_version: str,
+    started_at: datetime,
+    generated_at: datetime,
+    config_json: dict[str, Any],
+    input_refs_json: dict[str, Any] | None = None,
+    metadata_json: dict[str, Any] | None = None,
+) -> None:
+    started_at = ensure_utc(started_at)
+    generated_at = ensure_utc(generated_at)
+
+    with database_session() as session:
+        session.add(
+            MarketDiscoveryRun(
+                run_id=run_id,
+                source=source,
+                source_version=source_version,
+                status="running",
+                started_at=started_at,
+                finished_at=None,
+                generated_at=generated_at,
+                config_json=config_json,
+                input_refs_json=input_refs_json or {},
+                checked_count=0,
+                observed_count=0,
+                error_count=0,
+                error_message=None,
+                metadata_json=metadata_json or {},
+            )
+        )
+        session.commit()
+
+
+def complete_discovery_run(
+    *,
+    run_id: str,
+    status: str,
+    finished_at: datetime,
+    generated_at: datetime,
+    checked_count: int,
+    observations: list[MarketObservation],
+    error_count: int,
+    error_message: str | None = None,
+) -> int:
+    if status not in READY_DISCOVERY_STATUSES:
+        raise ValueError(f"Discovery completion status must be ready, got {status!r}")
+
+    finished_at = ensure_utc(finished_at)
+    generated_at = ensure_utc(generated_at)
+
+    with database_session() as session:
+        run = session.get(MarketDiscoveryRun, run_id)
+        if run is None:
+            raise ValueError(f"Unknown discovery run: {run_id}")
+
+        for observation in observations:
+            _upsert_condition(
+                session=session,
+                observation=observation,
+                seen_at=generated_at,
+            )
+            _upsert_token(
+                session=session,
+                observation=observation,
+                seen_at=generated_at,
+            )
+            session.add(_observation_row(run_id=run_id, observation=observation))
+
+        run.status = status
+        run.finished_at = finished_at
+        run.generated_at = generated_at
+        run.checked_count = checked_count
+        run.observed_count = len(observations)
+        run.error_count = error_count
+        run.error_message = error_message
+        session.commit()
+        return len(observations)
+
+
+def fail_discovery_run(
+    *,
+    run_id: str,
+    finished_at: datetime,
+    error_message: str,
+) -> None:
+    with database_session() as session:
+        session.execute(
+            update(MarketDiscoveryRun)
+            .where(MarketDiscoveryRun.run_id == run_id)
+            .values(
+                status="failed",
+                finished_at=ensure_utc(finished_at),
+                error_count=1,
+                error_message=error_message,
+            )
+        )
+        session.commit()
 
 
 def persist_discovery_run(
@@ -35,53 +140,41 @@ def persist_discovery_run(
     error_message: str | None = None,
     metadata_json: dict[str, Any] | None = None,
 ) -> int:
-    started_at = ensure_utc(started_at)
-    finished_at = ensure_utc(finished_at) if finished_at is not None else None
-    generated_at = ensure_utc(generated_at)
-
-    with database_session() as session:
-        session.add(
-            MarketDiscoveryRun(
-                run_id=run_id,
-                source=source,
-                source_version=source_version,
-                status=status,
-                started_at=started_at,
-                finished_at=finished_at,
-                generated_at=generated_at,
-                config_json=config_json,
-                input_refs_json=input_refs_json or {},
-                checked_count=checked_count,
-                observed_count=len(observations),
-                error_count=error_count,
-                error_message=error_message,
-                metadata_json=metadata_json or {},
-            )
+    create_discovery_run(
+        run_id=run_id,
+        source=source,
+        source_version=source_version,
+        started_at=started_at,
+        generated_at=generated_at,
+        config_json=config_json,
+        input_refs_json=input_refs_json,
+        metadata_json=metadata_json,
+    )
+    if status == "failed":
+        fail_discovery_run(
+            run_id=run_id,
+            finished_at=finished_at or generated_at,
+            error_message=error_message or "Discovery failed",
         )
-        session.flush()
+        return 0
 
-        for observation in observations:
-            _upsert_condition(
-                session=session,
-                observation=observation,
-                seen_at=generated_at,
-            )
-            _upsert_token(
-                session=session,
-                observation=observation,
-                seen_at=generated_at,
-            )
-            session.add(_observation_row(run_id=run_id, observation=observation))
-
-        session.commit()
-        return len(observations)
+    return complete_discovery_run(
+        run_id=run_id,
+        status=status,
+        finished_at=finished_at or generated_at,
+        generated_at=generated_at,
+        checked_count=checked_count,
+        observations=observations,
+        error_count=error_count,
+        error_message=error_message,
+    )
 
 
 def get_latest_discovery_run_id(*, source: str | None = None) -> str | None:
     with database_session() as session:
         statement = (
             select(MarketDiscoveryRun)
-            .where(MarketDiscoveryRun.status == "completed")
+            .where(MarketDiscoveryRun.status.in_(READY_DISCOVERY_STATUSES))
             .order_by(
                 MarketDiscoveryRun.generated_at.desc(),
                 MarketDiscoveryRun.run_id.desc(),
@@ -94,6 +187,30 @@ def get_latest_discovery_run_id(*, source: str | None = None) -> str | None:
         run = session.scalar(statement)
 
     return run.run_id if run is not None else None
+
+
+def has_running_discovery_run() -> bool:
+    with database_session() as session:
+        run_id = session.scalar(
+            select(MarketDiscoveryRun.run_id)
+            .where(MarketDiscoveryRun.status == "running")
+            .limit(1)
+        )
+
+    return run_id is not None
+
+
+def get_latest_ready_discovery_run() -> MarketDiscoveryRun | None:
+    with database_session() as session:
+        return session.scalar(
+            select(MarketDiscoveryRun)
+            .where(MarketDiscoveryRun.status.in_(READY_DISCOVERY_STATUSES))
+            .order_by(
+                MarketDiscoveryRun.generated_at.desc(),
+                MarketDiscoveryRun.run_id.desc(),
+            )
+            .limit(1)
+        )
 
 
 def _upsert_condition(

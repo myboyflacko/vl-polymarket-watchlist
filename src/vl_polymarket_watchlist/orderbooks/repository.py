@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from sqlalchemy import text, update
 
 from vl_polymarket_watchlist.core.db.engine import database_session
 from vl_polymarket_watchlist.core.db.models import (
+    MarketDiscoveryRun,
     OrderbookCollectionItem,
     OrderbookCollectionRun,
     OrderbookSnapshot,
@@ -15,11 +16,50 @@ from vl_polymarket_watchlist.core.db.models import (
 from vl_polymarket_watchlist.core.time import ensure_utc
 from vl_polymarket_watchlist.orderbooks.domain import (
     OrderBookCollectionItemPayload,
+    OrderbookReadiness,
     ParsedOrderBook,
 )
 
 
 WATCHLIST_VERSION = "polymarket_watchlist_v_mvp"
+READY_DISCOVERY_STATUSES = ("completed", "partial")
+DEFAULT_DISCOVERY_MAX_AGE_HOURS = 24
+
+
+def get_orderbook_readiness(
+    *,
+    now: datetime,
+    max_age_hours: int = DEFAULT_DISCOVERY_MAX_AGE_HOURS,
+) -> OrderbookReadiness:
+    now = ensure_utc(now)
+    with database_session() as session:
+        running_run_id = session.scalar(
+            text(
+                """
+                SELECT run_id
+                FROM market_discovery_runs
+                WHERE status = 'running'
+                LIMIT 1
+                """
+            )
+        )
+        if running_run_id is not None:
+            return OrderbookReadiness(ready=False, reason="discovery_running")
+
+        latest_ready_run = session.query(MarketDiscoveryRun).filter(
+            MarketDiscoveryRun.status.in_(READY_DISCOVERY_STATUSES)
+        ).order_by(
+            MarketDiscoveryRun.generated_at.desc(),
+            MarketDiscoveryRun.run_id.desc(),
+        ).first()
+
+    if latest_ready_run is None:
+        return OrderbookReadiness(ready=False, reason="no_completed_discovery_run")
+
+    if ensure_utc(latest_ready_run.generated_at) < now - timedelta(hours=max_age_hours):
+        return OrderbookReadiness(ready=False, reason="discovery_stale")
+
+    return OrderbookReadiness(ready=True)
 
 
 def create_orderbook_collection_run(

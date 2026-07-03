@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -63,9 +63,16 @@ class ParsedOrderBook(BaseModel):
 
 
 class OrderBookCollectionResult(BaseModel):
-    run_id: str
+    run_id: str | None = None
+    status: Literal["completed", "partial", "failed", "skipped"] = "completed"
+    skip_reason: str | None = None
     selected_token_count: int = 0
     success_count: int = 0
     failure_count: int = 0
     snapshots: list[ParsedOrderBook] = Field(default_factory=list)
     generated_at: datetime
+
+
+class OrderbookReadiness(BaseModel):
+    ready: bool
+    reason: str | None = None

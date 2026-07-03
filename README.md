@@ -79,6 +79,12 @@ Default-Intervalle:
 | discovery | 900s |
 | orderbooks | 300s |
 
+Orderbooks laufen unabhängig und können deutlich häufiger getaktet werden als
+Discovery. Vor jedem Orderbook-Run prüft der Collector, ob kein Discovery-Run
+gerade `running` ist und ob der letzte `completed` oder `partial` Discovery-Run
+maximal 24 Stunden alt ist. Wenn diese Readiness fehlt, wird ohne
+`orderbook_collection_runs` Eintrag geskippt.
+
 ## Datenmodell
 
 | Tabelle/View | Zweck |

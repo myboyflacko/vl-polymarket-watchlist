@@ -10,7 +10,11 @@ from vl_polymarket_watchlist.markets.domain import (
     DiscoveryRunResult,
     MarketDiscoverySource,
 )
-from vl_polymarket_watchlist.markets.repository import persist_discovery_run
+from vl_polymarket_watchlist.markets.repository import (
+    complete_discovery_run,
+    create_discovery_run,
+    fail_discovery_run,
+)
 from vl_polymarket_watchlist.polymarket.client import get_polymarket_data_client
 
 
@@ -25,21 +29,35 @@ class MarketDiscoveryService:
     async def run(self, *, now: datetime | None = None) -> DiscoveryRunResult:
         started_at = ensure_utc(now or datetime.now(UTC))
         run_id = _build_run_id(started_at, source=self.source.source)
-        collected = await self.source.run(
-            client=get_polymarket_data_client(),
-            generated_at=started_at,
-        )
-        finished_at = datetime.now(UTC)
-        status = "completed" if not collected.errors else "partial"
-        persist_discovery_run(
+        create_discovery_run(
             run_id=run_id,
             source=self.source.source,
             source_version=self.source.source_version,
-            status=status,
             started_at=started_at,
+            generated_at=started_at,
+            config_json=self.source.config(),
+        )
+
+        try:
+            collected = await self.source.run(
+                client=get_polymarket_data_client(),
+                generated_at=started_at,
+            )
+        except Exception as exc:
+            fail_discovery_run(
+                run_id=run_id,
+                finished_at=datetime.now(UTC),
+                error_message=str(exc),
+            )
+            raise
+
+        finished_at = datetime.now(UTC)
+        status = "completed" if not collected.errors else "partial"
+        complete_discovery_run(
+            run_id=run_id,
+            status=status,
             finished_at=finished_at,
             generated_at=collected.generated_at,
-            config_json=self.source.config(),
             checked_count=collected.checked_count,
             observations=collected.observations,
             error_count=len(collected.errors),

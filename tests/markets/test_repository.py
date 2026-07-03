@@ -68,6 +68,69 @@ def test_persist_discovery_run_upserts_registry_and_appends_observations(
     assert len(observations) == 2
 
 
+def test_create_discovery_run_persists_running_status(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+
+    @contextmanager
+    def test_session():
+        with session_factory() as session:
+            yield session
+
+    monkeypatch.setattr(repository, "database_session", test_session)
+
+    repository.create_discovery_run(
+        run_id="run-1",
+        source="whale_discovery",
+        source_version="v1",
+        started_at=NOW,
+        generated_at=NOW,
+        config_json={},
+    )
+
+    with Session(engine) as session:
+        run = session.get(MarketDiscoveryRun, "run-1")
+
+    assert run is not None
+    assert run.status == "running"
+    assert run.finished_at is None
+
+
+def test_fail_discovery_run_marks_existing_run_failed(monkeypatch) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
+
+    @contextmanager
+    def test_session():
+        with session_factory() as session:
+            yield session
+
+    monkeypatch.setattr(repository, "database_session", test_session)
+    repository.create_discovery_run(
+        run_id="run-1",
+        source="whale_discovery",
+        source_version="v1",
+        started_at=NOW,
+        generated_at=NOW,
+        config_json={},
+    )
+
+    repository.fail_discovery_run(
+        run_id="run-1",
+        finished_at=NOW,
+        error_message="boom",
+    )
+
+    with Session(engine) as session:
+        run = session.get(MarketDiscoveryRun, "run-1")
+
+    assert run is not None
+    assert run.status == "failed"
+    assert run.error_message == "boom"
+
+
 def _observation(*, token_id: str, title: str) -> MarketObservation:
     condition = ConditionPayload(
         condition_id="condition-1",

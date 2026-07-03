@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Literal
 
 from vl_polymarket_watchlist.core.time import ensure_utc
 from vl_polymarket_watchlist.orderbooks.domain import OrderBookCollectionResult
@@ -8,6 +9,7 @@ from vl_polymarket_watchlist.orderbooks.parser import parse_orderbook_payload
 from vl_polymarket_watchlist.orderbooks.repository import (
     complete_orderbook_collection_run,
     create_orderbook_collection_run,
+    get_orderbook_readiness,
     persist_orderbook_snapshots,
     snapshot_collectable_watchlist,
 )
@@ -19,16 +21,37 @@ from vl_polymarket_watchlist.polymarket.params.orderbook import (
 
 
 class OrderbookCollectionService:
-    def __init__(self, *, batch_size: int = 50) -> None:
+    def __init__(
+        self,
+        *,
+        batch_size: int = 50,
+        discovery_max_age_hours: int = 24,
+    ) -> None:
         self.batch_size = batch_size
+        self.discovery_max_age_hours = discovery_max_age_hours
 
     async def run(self, *, now: datetime | None = None) -> OrderBookCollectionResult:
         generated_at = ensure_utc(now or datetime.now(UTC))
+        readiness = get_orderbook_readiness(
+            now=generated_at,
+            max_age_hours=self.discovery_max_age_hours,
+        )
+        if not readiness.ready:
+            return OrderBookCollectionResult(
+                run_id=None,
+                status="skipped",
+                skip_reason=readiness.reason,
+                generated_at=generated_at,
+            )
+
         run_id = _build_run_id(generated_at)
         create_orderbook_collection_run(
             run_id=run_id,
             started_at=generated_at,
-            config_json={"batch_size": self.batch_size},
+            config_json={
+                "batch_size": self.batch_size,
+                "discovery_max_age_hours": self.discovery_max_age_hours,
+            },
         )
         items = snapshot_collectable_watchlist(run_id=run_id, selected_at=generated_at)
         client = get_polymarket_data_client()
@@ -79,6 +102,10 @@ class OrderbookCollectionService:
         )
         return OrderBookCollectionResult(
             run_id=run_id,
+            status=_collection_status(
+                success_count=len(snapshots),
+                failure_count=len(errors),
+            ),
             selected_token_count=len(items),
             success_count=len(snapshots),
             failure_count=len(errors),
@@ -89,6 +116,20 @@ class OrderbookCollectionService:
 
 def _build_run_id(generated_at: datetime) -> str:
     return f"{generated_at.strftime('%Y%m%dT%H%M%S%fZ')}-orderbooks"
+
+
+def _collection_status(
+    *,
+    success_count: int,
+    failure_count: int,
+) -> Literal["completed", "partial", "failed"]:
+    if failure_count == 0:
+        return "completed"
+
+    if success_count == 0:
+        return "failed"
+
+    return "partial"
 
 
 def _batches[T](items: list[T], size: int) -> list[list[T]]:
