@@ -8,18 +8,18 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from vl_polymarket_watchlist.data.markets.market import (
+from vl_polymarket_watchlist.markets.domain import (
     CollectedMarkets,
     ConditionPayload,
     MarketCollectionError,
     MarketObservation,
     TokenPayload,
 )
-from vl_polymarket_watchlist.source.client import PolymarketDataClient
-from vl_polymarket_watchlist.source.params.leaderboard.leaderboard import (
+from vl_polymarket_watchlist.polymarket.client import PolymarketDataClient
+from vl_polymarket_watchlist.polymarket.params.leaderboard.leaderboard import (
     LeaderboardParams,
 )
-from vl_polymarket_watchlist.source.params.profile.current_positions import (
+from vl_polymarket_watchlist.polymarket.params.profile.current_positions import (
     CurrentPositionsParams,
 )
 

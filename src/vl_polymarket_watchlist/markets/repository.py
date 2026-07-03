@@ -13,7 +13,7 @@ from vl_polymarket_watchlist.core.db.models import (
     PolymarketToken,
 )
 from vl_polymarket_watchlist.core.time import ensure_utc
-from vl_polymarket_watchlist.data.markets.market import (
+from vl_polymarket_watchlist.markets.domain import (
     MarketObservation,
 )
 

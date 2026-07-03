@@ -10,13 +10,13 @@ from urllib.parse import urljoin
 import httpx
 from asynciolimiter import StrictLimiter
 
-from vl_polymarket_watchlist.source.errors import PolymarketRateLimitError
-from vl_polymarket_watchlist.source.params.base import BaseParams
-from vl_polymarket_watchlist.source.params.leaderboard.leaderboard import (
+from vl_polymarket_watchlist.polymarket.errors import PolymarketRateLimitError
+from vl_polymarket_watchlist.polymarket.params.base import BaseParams
+from vl_polymarket_watchlist.polymarket.params.leaderboard.leaderboard import (
     LeaderboardParams,
 )
-from vl_polymarket_watchlist.source.params.orderbook import OrderBooksParams
-from vl_polymarket_watchlist.source.params.profile.current_positions import (
+from vl_polymarket_watchlist.polymarket.params.orderbook import OrderBooksParams
+from vl_polymarket_watchlist.polymarket.params.profile.current_positions import (
     CurrentPositionsParams,
 )
 from vl_polymarket_watchlist.settings import (

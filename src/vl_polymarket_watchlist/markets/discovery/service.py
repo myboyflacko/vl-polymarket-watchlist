@@ -3,15 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from vl_polymarket_watchlist.core.time import ensure_utc
-from vl_polymarket_watchlist.data.markets.market import (
+from vl_polymarket_watchlist.markets.discovery.strategies.whale_leaderboard import (
+    WhaleDiscoverySource,
+)
+from vl_polymarket_watchlist.markets.domain import (
     DiscoveryRunResult,
     MarketDiscoverySource,
 )
-from vl_polymarket_watchlist.data.markets.repository import persist_discovery_run
-from vl_polymarket_watchlist.data.markets.strategies.whale_leaderboard import (
-    WhaleDiscoverySource,
-)
-from vl_polymarket_watchlist.source.client import get_polymarket_data_client
+from vl_polymarket_watchlist.markets.repository import persist_discovery_run
+from vl_polymarket_watchlist.polymarket.client import get_polymarket_data_client
 
 
 class MarketDiscoveryService:

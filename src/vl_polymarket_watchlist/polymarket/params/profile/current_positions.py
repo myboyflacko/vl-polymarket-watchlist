@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from vl_polymarket_watchlist.source.params.base import BaseParams
+from vl_polymarket_watchlist.polymarket.params.base import BaseParams
 
 
 class CurrentPositionsParams(BaseParams):

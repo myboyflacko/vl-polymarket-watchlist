@@ -8,11 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from vl_polymarket_watchlist.core.logging import configure_logging
-from vl_polymarket_watchlist.data.markets.sources import build_source
+from vl_polymarket_watchlist.markets.discovery.registry import build_source
 
 if TYPE_CHECKING:
-    from vl_polymarket_watchlist.data.markets.service import MarketDiscoveryService
-    from vl_polymarket_watchlist.data.orderbooks.service import OrderbookCollectionService
+    from vl_polymarket_watchlist.markets.discovery.service import MarketDiscoveryService
+    from vl_polymarket_watchlist.orderbooks.service import OrderbookCollectionService
 
 
 logger = logging.getLogger(__name__)
@@ -270,13 +270,13 @@ async def run_orderbooks(*, batch_size: int) -> str:
 
 
 def build_discovery_service(*, source_name: str) -> MarketDiscoveryService:
-    from vl_polymarket_watchlist.data.markets.service import MarketDiscoveryService
+    from vl_polymarket_watchlist.markets.discovery.service import MarketDiscoveryService
 
     return MarketDiscoveryService(source=build_source(source_name))
 
 
 def build_orderbook_service(*, batch_size: int) -> OrderbookCollectionService:
-    from vl_polymarket_watchlist.data.orderbooks.service import OrderbookCollectionService
+    from vl_polymarket_watchlist.orderbooks.service import OrderbookCollectionService
 
     return OrderbookCollectionService(batch_size=batch_size)
 

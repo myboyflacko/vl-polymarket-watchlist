@@ -164,8 +164,8 @@ Projektstruktur:
 ```text
 src/vl_polymarket_watchlist/cli.py                 CLI und Scheduler
 src/vl_polymarket_watchlist/core/db/               SQLAlchemy, Alembic
-src/vl_polymarket_watchlist/source/                Polymarket API Client und Params
-src/vl_polymarket_watchlist/data/markets/          Discovery, Registry, Watchlist-Daten
-src/vl_polymarket_watchlist/data/orderbooks/       Collection, Parser, Persistence
+src/vl_polymarket_watchlist/polymarket/            Polymarket API Client und Params
+src/vl_polymarket_watchlist/markets/               Registry, Watchlist-Daten, Discovery
+src/vl_polymarket_watchlist/orderbooks/            Collection, Parser, Persistence
 tests/                                             Unit- und Integrationstests
 ```

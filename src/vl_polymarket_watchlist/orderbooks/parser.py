@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from vl_polymarket_watchlist.data.orderbooks.market import (
+from vl_polymarket_watchlist.orderbooks.domain import (
     PARSER_VERSION,
     ParsedOrderBook,
 )

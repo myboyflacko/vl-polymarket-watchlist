@@ -6,7 +6,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
-from vl_polymarket_watchlist.source.client import PolymarketDataClient
+from vl_polymarket_watchlist.polymarket.client import PolymarketDataClient
 
 
 class ConditionPayload(BaseModel):

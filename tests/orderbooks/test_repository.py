@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from vl_polymarket_watchlist.core.db.base import Base
 from vl_polymarket_watchlist.core.db.models import OrderbookCollectionItem
-from vl_polymarket_watchlist.data.orderbooks import repository
+from vl_polymarket_watchlist.orderbooks import repository
 
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from vl_polymarket_watchlist.data.markets.strategies.whale_leaderboard import (
+from vl_polymarket_watchlist.markets.discovery.strategies.whale_leaderboard import (
     WhaleDiscoverySource,
 )
 

@@ -13,7 +13,7 @@ from vl_polymarket_watchlist.core.db.models import (
     OrderbookSnapshot,
 )
 from vl_polymarket_watchlist.core.time import ensure_utc
-from vl_polymarket_watchlist.data.orderbooks.market import (
+from vl_polymarket_watchlist.orderbooks.domain import (
     OrderBookCollectionItemPayload,
     ParsedOrderBook,
 )

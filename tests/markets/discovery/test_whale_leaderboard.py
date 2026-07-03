@@ -2,7 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from vl_polymarket_watchlist.data.markets.strategies.whale_leaderboard import (
+from vl_polymarket_watchlist.markets.discovery.strategies.whale_leaderboard import (
     WhaleDiscoverySource,
     select_intersection_wallets,
 )

@@ -11,8 +11,8 @@ from vl_polymarket_watchlist.core.db.models import (
     PolymarketCondition,
     PolymarketToken,
 )
-from vl_polymarket_watchlist.data.markets import repository
-from vl_polymarket_watchlist.data.markets.market import (
+from vl_polymarket_watchlist.markets import repository
+from vl_polymarket_watchlist.markets.domain import (
     ConditionPayload,
     MarketObservation,
     TokenPayload,
