@@ -3,12 +3,12 @@ services:
     container_name: postgres
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: ${POLYMARKET_STORAGE_POSTGRES_DB:-polymarket_storage}
-      POSTGRES_USER: ${POLYMARKET_STORAGE_POSTGRES_USER:-polymarket_storage}
-      POSTGRES_PASSWORD: ${POLYMARKET_STORAGE_POSTGRES_PASSWORD:-polymarket_storage}
+      POSTGRES_DB: ${POLYMARKET_STORAGE_POSTGRES_DB:-vl_polymarket_watchlist}
+      POSTGRES_USER: ${POLYMARKET_STORAGE_POSTGRES_USER:-vl_polymarket_watchlist}
+      POSTGRES_PASSWORD: ${POLYMARKET_STORAGE_POSTGRES_PASSWORD:-vl_polymarket_watchlist}
       POSTGRES_PORT: ${POLYMARKET_STORAGE_POSTGRES_PORT:-5432}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U polymarket_storage -d polymarket_storage"]
+      test: ["CMD-SHELL", "pg_isready -U vl_polymarket_watchlist -d vl_polymarket_watchlist"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -20,9 +20,9 @@ services:
       
   scheduler:
     build: .
-    image: polymarket-storage:latest
+    image: vl-polymarket-watchlist:latest
     command:
-      - polymarket-storage
+      - vl-polymarket-watchlist
       - schedule
     environment:
       - POLYMARKET_STORAGE_POSTGRES_DB
@@ -37,9 +37,9 @@ services:
 
   cli:
     build: .
-    image: polymarket-storage:latest
+    image: vl-polymarket-watchlist:latest
     entrypoint:
-      - polymarket-storage
+      - vl-polymarket-watchlist
     command:
       - --help
     environment:

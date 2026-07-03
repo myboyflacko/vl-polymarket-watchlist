@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from polymarket_storage import cli
-from polymarket_storage.settings import get_settings
+from vl_polymarket_watchlist import cli
+from vl_polymarket_watchlist.settings import get_settings
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +16,7 @@ def reset_logging() -> None:
     yield
 
     for handler in list(root_logger.handlers):
-        if handler.name and handler.name.startswith("polymarket_storage_jsonl_"):
+        if handler.name and handler.name.startswith("vl_polymarket_watchlist_jsonl_"):
             root_logger.removeHandler(handler)
             handler.close()
 

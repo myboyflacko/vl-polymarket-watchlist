@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Any
 
-from polymarket_storage.market_acquisition.domain import Market, MarketCollectionError
-from polymarket_storage.polymarket.client import PolymarketDataClient
-from polymarket_storage.polymarket.params.profile.current_positions import (
+from vl_polymarket_watchlist.market_acquisition.domain import Market, MarketCollectionError
+from vl_polymarket_watchlist.polymarket.client import PolymarketDataClient
+from vl_polymarket_watchlist.polymarket.params.profile.current_positions import (
     CurrentPositionsParams,
 )
 

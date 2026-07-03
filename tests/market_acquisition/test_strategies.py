@@ -2,7 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
-from polymarket_storage.market_acquisition.strategies import (
+from vl_polymarket_watchlist.market_acquisition.strategies import (
     LeaderboardCurrentPositionsStrategy,
     select_intersection_wallets,
 )

@@ -105,10 +105,10 @@ class PolymarketClobApiClientSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    name: str = Field(default="polymarket_storage", alias="POLYMARKET_STORAGE_POSTGRES_DB")
-    user: str = Field(default="polymarket_storage", alias="POLYMARKET_STORAGE_POSTGRES_USER")
+    name: str = Field(default="vl_polymarket_watchlist", alias="POLYMARKET_STORAGE_POSTGRES_DB")
+    user: str = Field(default="vl_polymarket_watchlist", alias="POLYMARKET_STORAGE_POSTGRES_USER")
     password: str = Field(
-        default="polymarket_storage",
+        default="vl_polymarket_watchlist",
         alias="POLYMARKET_STORAGE_POSTGRES_PASSWORD",
     )
     host: str = Field(default="postgres", alias="POLYMARKET_STORAGE_POSTGRES_HOST")

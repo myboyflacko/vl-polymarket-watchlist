@@ -1,9 +1,9 @@
-from polymarket_storage.settings import DatabaseSettings
+from vl_polymarket_watchlist.settings import DatabaseSettings
 
 
 def test_database_settings_builds_postgres_url() -> None:
     settings = DatabaseSettings(
-        name="polymarket_storage",
+        name="vl_polymarket_watchlist",
         user="tracker",
         password="secret",
         host="postgres",
@@ -12,5 +12,5 @@ def test_database_settings_builds_postgres_url() -> None:
 
     assert (
         settings.database_url
-        == "postgresql+psycopg://tracker:secret@postgres:5432/polymarket_storage"
+        == "postgresql+psycopg://tracker:secret@postgres:5432/vl_polymarket_watchlist"
     )

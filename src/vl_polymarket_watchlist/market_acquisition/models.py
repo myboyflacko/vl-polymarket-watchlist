@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from polymarket_storage.core.db.base import Base
+from vl_polymarket_watchlist.core.db.base import Base
 
 
 class Market(Base):

@@ -4,14 +4,14 @@ from datetime import UTC, datetime
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from polymarket_storage.core.db.base import Base
-from polymarket_storage.market_acquisition.domain import Market
-from polymarket_storage.market_acquisition.models import (
+from vl_polymarket_watchlist.core.db.base import Base
+from vl_polymarket_watchlist.market_acquisition.domain import Market
+from vl_polymarket_watchlist.market_acquisition.models import (
     CollectorRun,
     CollectorRunMarket,
     Market as MarketRow,
 )
-from polymarket_storage.market_acquisition import repository
+from vl_polymarket_watchlist.market_acquisition import repository
 
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)

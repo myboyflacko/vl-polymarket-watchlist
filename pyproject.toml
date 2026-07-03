@@ -3,9 +3,9 @@ requires = ["setuptools>=69", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "polymarket-storage"
+name = "vl-polymarket-watchlist"
 version = "0.1.0"
-description = "Polymarket market storage service."
+description = "Polymarket market watchlist service."
 requires-python = ">=3.12"
 dependencies = [
     "alembic==1.17.2",
@@ -26,11 +26,11 @@ dev = [
 ]
 
 [project.scripts]
-polymarket-storage = "polymarket_storage.cli:main"
+vl-polymarket-watchlist = "vl_polymarket_watchlist.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
-include = ["polymarket_storage*"]
+include = ["vl_polymarket_watchlist*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

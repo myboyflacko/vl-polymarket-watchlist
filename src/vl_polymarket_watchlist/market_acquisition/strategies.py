@@ -7,10 +7,10 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from polymarket_storage.market_acquisition.domain import CollectedMarkets
-from polymarket_storage.market_acquisition.helpers import collect_wallet_markets
-from polymarket_storage.polymarket.client import PolymarketDataClient
-from polymarket_storage.polymarket.params.leaderboard.leaderboard import (
+from vl_polymarket_watchlist.market_acquisition.domain import CollectedMarkets
+from vl_polymarket_watchlist.market_acquisition.helpers import collect_wallet_markets
+from vl_polymarket_watchlist.polymarket.client import PolymarketDataClient
+from vl_polymarket_watchlist.polymarket.params.leaderboard.leaderboard import (
     LeaderboardParams,
 )
 

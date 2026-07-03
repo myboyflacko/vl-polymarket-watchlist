@@ -3,8 +3,8 @@ import logging
 
 import pytest
 
-from polymarket_storage.core.logging import configure_logging
-from polymarket_storage.settings import get_settings
+from vl_polymarket_watchlist.core.logging import configure_logging
+from vl_polymarket_watchlist.settings import get_settings
 
 
 @pytest.fixture(autouse=True)
@@ -15,7 +15,7 @@ def reset_logging() -> None:
     yield
 
     for handler in list(root_logger.handlers):
-        if handler.name and handler.name.startswith("polymarket_storage_jsonl_"):
+        if handler.name and handler.name.startswith("vl_polymarket_watchlist_jsonl_"):
             root_logger.removeHandler(handler)
             handler.close()
 
@@ -37,7 +37,7 @@ def test_configure_logging_writes_jsonl_to_stdout(
     handlers = [
         handler
         for handler in root_logger.handlers
-        if handler.name and handler.name.startswith("polymarket_storage_jsonl_")
+        if handler.name and handler.name.startswith("vl_polymarket_watchlist_jsonl_")
     ]
 
     assert len(handlers) == 1

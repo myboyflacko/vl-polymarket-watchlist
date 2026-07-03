@@ -7,11 +7,11 @@ from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from polymarket_storage.core.logging import configure_logging
-from polymarket_storage.market_acquisition.strategies import build_strategy
+from vl_polymarket_watchlist.core.logging import configure_logging
+from vl_polymarket_watchlist.market_acquisition.strategies import build_strategy
 
 if TYPE_CHECKING:
-    from polymarket_storage.market_acquisition.service import MarketCollectorService
+    from vl_polymarket_watchlist.market_acquisition.service import MarketCollectorService
 
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ def main(argv: list[str] | None = None) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="polymarket-storage",
+        prog="vl-polymarket-watchlist",
         description="Collect and store Polymarket markets.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -192,7 +192,7 @@ async def run_markets(*, strategy_name: str) -> str:
 
 
 def build_market_service(*, strategy_name: str) -> MarketCollectorService:
-    from polymarket_storage.market_acquisition.service import MarketCollectorService
+    from vl_polymarket_watchlist.market_acquisition.service import MarketCollectorService
 
     return MarketCollectorService(strategy=build_strategy(strategy_name))
 

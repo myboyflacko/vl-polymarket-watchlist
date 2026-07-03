@@ -3,10 +3,10 @@ import sys
 
 from pythonjsonlogger.json import JsonFormatter
 
-from polymarket_storage.settings import Settings, get_settings
+from vl_polymarket_watchlist.settings import Settings, get_settings
 
 
-_STDOUT_HANDLER_NAME = "polymarket_storage_jsonl_stdout"
+_STDOUT_HANDLER_NAME = "vl_polymarket_watchlist_jsonl_stdout"
 
 _LEVEL_MAP = {
     "DEBUG": logging.DEBUG,

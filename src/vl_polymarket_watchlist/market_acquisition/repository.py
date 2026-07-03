@@ -5,10 +5,10 @@ from typing import Any
 
 from sqlalchemy import select
 
-from polymarket_storage.core.db.engine import database_session
-from polymarket_storage.core.time import ensure_utc
-from polymarket_storage.market_acquisition.domain import Market as MarketPayload
-from polymarket_storage.market_acquisition.models import (
+from vl_polymarket_watchlist.core.db.engine import database_session
+from vl_polymarket_watchlist.core.time import ensure_utc
+from vl_polymarket_watchlist.market_acquisition.domain import Market as MarketPayload
+from vl_polymarket_watchlist.market_acquisition.models import (
     CollectorRun,
     CollectorRunMarket,
     Market,

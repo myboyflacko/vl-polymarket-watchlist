@@ -7,7 +7,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from polymarket_storage.settings import get_settings
+from vl_polymarket_watchlist.settings import get_settings
 
 
 def get_database_url(database_url: str | None = None) -> str:

@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from polymarket_storage.core.time import ensure_utc
-from polymarket_storage.market_acquisition.domain import (
+from vl_polymarket_watchlist.core.time import ensure_utc
+from vl_polymarket_watchlist.market_acquisition.domain import (
     CollectorRunResult,
     MarketCollectorStrategy,
 )
-from polymarket_storage.market_acquisition.repository import persist_collector_run
-from polymarket_storage.market_acquisition.strategies import (
+from vl_polymarket_watchlist.market_acquisition.repository import persist_collector_run
+from vl_polymarket_watchlist.market_acquisition.strategies import (
     LeaderboardCurrentPositionsStrategy,
 )
-from polymarket_storage.polymarket.client import get_polymarket_data_client
+from vl_polymarket_watchlist.polymarket.client import get_polymarket_data_client
 
 
 class MarketCollectorService:

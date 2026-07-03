@@ -1,6 +1,6 @@
-# Polymarket Storage
+# VL Polymarket Watchlist
 
-Polymarket Storage sammelt und speichert Polymarket-Market-Kandidaten fuer
+VL Polymarket Watchlist sammelt und speichert Polymarket-Market-Kandidaten fuer
 Research- und Backtesting-Pipelines.
 
 Das Projekt platziert keine Live-Trades, keine echten Orders und bewegt keine
@@ -49,25 +49,25 @@ python -m pip install -e .
 Datenbank migrieren:
 
 ```bash
-polymarket-storage init-db
+vl-polymarket-watchlist init-db
 ```
 
 Market Collection einmal ausfuehren:
 
 ```bash
-polymarket-storage run markets
+vl-polymarket-watchlist run markets
 ```
 
 Explizite Strategy:
 
 ```bash
-polymarket-storage run markets --strategy leaderboard_current_positions
+vl-polymarket-watchlist run markets --strategy leaderboard_current_positions
 ```
 
 Scheduler starten:
 
 ```bash
-polymarket-storage schedule
+vl-polymarket-watchlist schedule
 ```
 
 Default-Intervall:
@@ -79,7 +79,7 @@ Default-Intervall:
 Anpassung:
 
 ```bash
-polymarket-storage schedule --markets-interval 900
+vl-polymarket-watchlist schedule --markets-interval 900
 ```
 
 ## Konfiguration
@@ -137,15 +137,15 @@ Integrationstests gegen PostgreSQL brauchen eine Test-Datenbank. Der Datenbankna
 muss `test` enthalten:
 
 ```bash
-POLYMARKET_STORAGE_TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/polymarket_storage_test pytest
+POLYMARKET_STORAGE_TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/vl_polymarket_watchlist_test pytest
 ```
 
 ## Projektstruktur
 
 ```text
-src/polymarket_storage/cli.py                 CLI und Scheduler
-src/polymarket_storage/core/db/               SQLAlchemy, Alembic
-src/polymarket_storage/polymarket/            Polymarket API Client und Params
-src/polymarket_storage/market_acquisition/    Market Collector Strategies
+src/vl_polymarket_watchlist/cli.py                 CLI und Scheduler
+src/vl_polymarket_watchlist/core/db/               SQLAlchemy, Alembic
+src/vl_polymarket_watchlist/polymarket/            Polymarket API Client und Params
+src/vl_polymarket_watchlist/market_acquisition/    Market Collector Strategies
 tests/                                        Unit- und Integrationstests
 ```

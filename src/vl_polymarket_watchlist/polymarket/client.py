@@ -10,16 +10,16 @@ from urllib.parse import urljoin
 import httpx
 from asynciolimiter import StrictLimiter
 
-from polymarket_storage.polymarket.errors import PolymarketRateLimitError
-from polymarket_storage.polymarket.params.base import BaseParams
-from polymarket_storage.polymarket.params.leaderboard.leaderboard import (
+from vl_polymarket_watchlist.polymarket.errors import PolymarketRateLimitError
+from vl_polymarket_watchlist.polymarket.params.base import BaseParams
+from vl_polymarket_watchlist.polymarket.params.leaderboard.leaderboard import (
     LeaderboardParams,
 )
-from polymarket_storage.polymarket.params.orderbook import OrderBooksParams
-from polymarket_storage.polymarket.params.profile.current_positions import (
+from vl_polymarket_watchlist.polymarket.params.orderbook import OrderBooksParams
+from vl_polymarket_watchlist.polymarket.params.profile.current_positions import (
     CurrentPositionsParams,
 )
-from polymarket_storage.settings import (
+from vl_polymarket_watchlist.settings import (
     PolymarketClobApiClientSettings,
     PolymarketDataApiClientSettings,
     get_settings,

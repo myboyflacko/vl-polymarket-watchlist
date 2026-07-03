@@ -5,7 +5,7 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 
-from polymarket_storage.polymarket.client import PolymarketDataClient
+from vl_polymarket_watchlist.polymarket.client import PolymarketDataClient
 
 
 class Market(BaseModel):
