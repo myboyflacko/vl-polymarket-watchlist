@@ -9,12 +9,12 @@ from sqlalchemy import engine_from_config, pool
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
-from vl_polymarket_watchlist.market_acquisition import models as market_models
 from vl_polymarket_watchlist.core.db.base import Base
 from vl_polymarket_watchlist.core.db.engine import get_database_url
+from vl_polymarket_watchlist.core.db import models as db_models
 
 
-_ = market_models
+_ = db_models
 
 
 config = context.config

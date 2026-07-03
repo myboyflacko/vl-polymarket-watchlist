@@ -5,18 +5,18 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from vl_polymarket_watchlist.core.db.base import Base
-from vl_polymarket_watchlist.market_acquisition.domain import (
-    ConditionPayload,
-    MarketObservation,
-    TokenPayload,
-)
-from vl_polymarket_watchlist.market_acquisition.models import (
+from vl_polymarket_watchlist.core.db.models import (
     MarketDiscoveryObservation,
     MarketDiscoveryRun,
     PolymarketCondition,
     PolymarketToken,
 )
-from vl_polymarket_watchlist.market_acquisition import repository
+from vl_polymarket_watchlist.data.markets import repository
+from vl_polymarket_watchlist.data.markets.market import (
+    ConditionPayload,
+    MarketObservation,
+    TokenPayload,
+)
 
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)

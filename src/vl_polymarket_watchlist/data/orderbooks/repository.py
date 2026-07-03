@@ -7,13 +7,13 @@ from typing import Any
 from sqlalchemy import text, update
 
 from vl_polymarket_watchlist.core.db.engine import database_session
-from vl_polymarket_watchlist.core.time import ensure_utc
-from vl_polymarket_watchlist.market_acquisition.models import (
+from vl_polymarket_watchlist.core.db.models import (
     OrderbookCollectionItem,
     OrderbookCollectionRun,
     OrderbookSnapshot,
 )
-from vl_polymarket_watchlist.orderbooks.domain import (
+from vl_polymarket_watchlist.core.time import ensure_utc
+from vl_polymarket_watchlist.data.orderbooks.market import (
     OrderBookCollectionItemPayload,
     ParsedOrderBook,
 )

@@ -3,16 +3,16 @@ from __future__ import annotations
 from datetime import UTC, datetime
 
 from vl_polymarket_watchlist.core.time import ensure_utc
-from vl_polymarket_watchlist.orderbooks.domain import OrderBookCollectionResult
-from vl_polymarket_watchlist.orderbooks.parser import parse_orderbook_payload
-from vl_polymarket_watchlist.orderbooks.repository import (
+from vl_polymarket_watchlist.data.orderbooks.market import OrderBookCollectionResult
+from vl_polymarket_watchlist.data.orderbooks.parser import parse_orderbook_payload
+from vl_polymarket_watchlist.data.orderbooks.repository import (
     complete_orderbook_collection_run,
     create_orderbook_collection_run,
     persist_orderbook_snapshots,
     snapshot_collectable_watchlist,
 )
-from vl_polymarket_watchlist.polymarket.client import get_polymarket_data_client
-from vl_polymarket_watchlist.polymarket.params.orderbook import (
+from vl_polymarket_watchlist.source.client import get_polymarket_data_client
+from vl_polymarket_watchlist.source.params.orderbook import (
     OrderBookRequest,
     OrderBooksParams,
 )

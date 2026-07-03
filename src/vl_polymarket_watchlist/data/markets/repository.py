@@ -6,15 +6,15 @@ from typing import Any
 from sqlalchemy import select
 
 from vl_polymarket_watchlist.core.db.engine import database_session
-from vl_polymarket_watchlist.core.time import ensure_utc
-from vl_polymarket_watchlist.market_acquisition.domain import (
-    MarketObservation,
-)
-from vl_polymarket_watchlist.market_acquisition.models import (
+from vl_polymarket_watchlist.core.db.models import (
     MarketDiscoveryObservation,
     MarketDiscoveryRun,
     PolymarketCondition,
     PolymarketToken,
+)
+from vl_polymarket_watchlist.core.time import ensure_utc
+from vl_polymarket_watchlist.data.markets.market import (
+    MarketObservation,
 )
 
 
