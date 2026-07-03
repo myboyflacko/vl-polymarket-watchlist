@@ -8,10 +8,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from vl_polymarket_watchlist.core.logging import configure_logging
-from vl_polymarket_watchlist.market_acquisition.strategies import build_strategy
+from vl_polymarket_watchlist.market_acquisition.strategies import build_source
 
 if TYPE_CHECKING:
-    from vl_polymarket_watchlist.market_acquisition.service import MarketCollectorService
+    from vl_polymarket_watchlist.market_acquisition.service import MarketDiscoveryService
+    from vl_polymarket_watchlist.orderbooks.service import OrderbookCollectionService
 
 
 logger = logging.getLogger(__name__)
@@ -53,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="vl-polymarket-watchlist",
-        description="Collect and store Polymarket markets.",
+        description="Discover Polymarket markets and collect watchlist orderbooks.",
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -62,49 +63,84 @@ def build_parser() -> argparse.ArgumentParser:
     run_parser = subparsers.add_parser("run", help="Run one collector once.")
     run_parser.add_argument(
         "service",
-        choices=("markets", "all"),
+        choices=("discovery", "orderbooks", "all"),
         help="Collector to run.",
     )
-    add_market_arguments(run_parser)
+    add_discovery_arguments(run_parser)
+    add_orderbook_arguments(run_parser)
 
     schedule_parser = subparsers.add_parser(
         "schedule",
-        help="Run market collection continuously.",
+        help="Run discovery and orderbook collection continuously.",
     )
     schedule_parser.add_argument(
-        "--markets-interval",
+        "--discovery-interval",
         type=positive_int,
         default=900,
-        help="Seconds between market collection runs.",
+        help="Seconds between discovery runs.",
     )
-    add_market_arguments(schedule_parser)
+    schedule_parser.add_argument(
+        "--orderbooks-interval",
+        type=positive_int,
+        default=300,
+        help="Seconds between orderbook collection runs.",
+    )
+    add_discovery_arguments(schedule_parser)
+    add_orderbook_arguments(schedule_parser)
 
     return parser
 
 
-def add_market_arguments(parser: argparse.ArgumentParser) -> None:
+def add_discovery_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--strategy",
-        default="leaderboard_current_positions",
-        help="Market collector strategy to run.",
+        "--source",
+        default="whale_discovery",
+        help="Market discovery source to run.",
+    )
+
+
+def add_orderbook_arguments(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--orderbook-batch-size",
+        type=positive_int,
+        default=50,
+        help="Number of token orderbooks per CLOB batch request.",
     )
 
 
 async def run_once(args: argparse.Namespace) -> None:
-    await run_markets(strategy_name=args.strategy)
+    if args.service == "discovery":
+        await run_discovery(source_name=args.source)
+        return
+
+    if args.service == "orderbooks":
+        await run_orderbooks(batch_size=args.orderbook_batch_size)
+        return
+
+    await run_discovery(source_name=args.source)
+    await run_orderbooks(batch_size=args.orderbook_batch_size)
 
 
 async def schedule(args: argparse.Namespace) -> None:
-    markets_lock = asyncio.Lock()
-    markets_runner = scheduled_runner(
-        name="markets",
-        interval=args.markets_interval,
-        runner=lambda: run_locked_markets(
-            lock=markets_lock,
-            strategy_name=args.strategy,
+    discovery_lock = asyncio.Lock()
+    orderbooks_lock = asyncio.Lock()
+    discovery_runner = scheduled_runner(
+        name="discovery",
+        interval=args.discovery_interval,
+        runner=lambda: run_locked_discovery(
+            lock=discovery_lock,
+            source_name=args.source,
         ),
     )
-    await markets_runner
+    orderbooks_runner = scheduled_runner(
+        name="orderbooks",
+        interval=args.orderbooks_interval,
+        runner=lambda: run_locked_orderbooks(
+            lock=orderbooks_lock,
+            batch_size=args.orderbook_batch_size,
+        ),
+    )
+    await asyncio.gather(discovery_runner, orderbooks_runner)
 
 
 async def scheduled_runner(
@@ -128,13 +164,22 @@ async def scheduled_runner(
         await asyncio.sleep(interval)
 
 
-async def run_locked_markets(*, lock: asyncio.Lock, strategy_name: str) -> str:
+async def run_locked_discovery(*, lock: asyncio.Lock, source_name: str) -> str:
     if lock.locked():
-        log_skipped_service(service="markets", reason="already_running")
+        log_skipped_service(service="discovery", reason="already_running")
         return ""
 
     async with lock:
-        return await run_markets(strategy_name=strategy_name)
+        return await run_discovery(source_name=source_name)
+
+
+async def run_locked_orderbooks(*, lock: asyncio.Lock, batch_size: int) -> str:
+    if lock.locked():
+        log_skipped_service(service="orderbooks", reason="already_running")
+        return ""
+
+    async with lock:
+        return await run_orderbooks(batch_size=batch_size)
 
 
 def log_skipped_service(*, service: str, reason: str) -> None:
@@ -150,18 +195,18 @@ def log_skipped_service(*, service: str, reason: str) -> None:
     )
 
 
-async def run_markets(*, strategy_name: str) -> str:
+async def run_discovery(*, source_name: str) -> str:
     logger.info(
         "Service started",
         extra={
             "event": "service.started",
             "context": {
-                "service": "markets",
-                "strategy": strategy_name,
+                "service": "discovery",
+                "source": source_name,
             },
         },
     )
-    service = build_market_service(strategy_name=strategy_name)
+    service = build_discovery_service(source_name=source_name)
     result = await service.run()
     error_count = len(result.errors)
 
@@ -170,31 +215,70 @@ async def run_markets(*, strategy_name: str) -> str:
         extra={
             "event": "service.completed",
             "context": {
-                "service": "markets",
+                "service": "discovery",
                 "run_id": result.run_id,
-                "strategy": result.strategy_name,
-                "checked": result.checked_market_count,
-                "stored": result.stored_market_count,
+                "source": result.source,
+                "checked": result.checked_count,
+                "observed": result.observed_count,
                 "errors": error_count,
             },
         },
     )
 
     print(
-        "Markets completed: "
+        "Discovery completed: "
         f"run_id={result.run_id} "
-        f"strategy={result.strategy_name} "
-        f"checked={result.checked_market_count} "
-        f"stored={result.stored_market_count} "
+        f"source={result.source} "
+        f"checked={result.checked_count} "
+        f"observed={result.observed_count} "
         f"errors={error_count}"
     )
     return result.run_id
 
 
-def build_market_service(*, strategy_name: str) -> MarketCollectorService:
-    from vl_polymarket_watchlist.market_acquisition.service import MarketCollectorService
+async def run_orderbooks(*, batch_size: int) -> str:
+    logger.info(
+        "Service started",
+        extra={
+            "event": "service.started",
+            "context": {"service": "orderbooks", "batch_size": batch_size},
+        },
+    )
+    service = build_orderbook_service(batch_size=batch_size)
+    result = await service.run()
+    logger.info(
+        "Service completed",
+        extra={
+            "event": "service.completed",
+            "context": {
+                "service": "orderbooks",
+                "run_id": result.run_id,
+                "selected": result.selected_token_count,
+                "success": result.success_count,
+                "failure": result.failure_count,
+            },
+        },
+    )
+    print(
+        "Orderbooks completed: "
+        f"run_id={result.run_id} "
+        f"selected={result.selected_token_count} "
+        f"success={result.success_count} "
+        f"failure={result.failure_count}"
+    )
+    return result.run_id
 
-    return MarketCollectorService(strategy=build_strategy(strategy_name))
+
+def build_discovery_service(*, source_name: str) -> MarketDiscoveryService:
+    from vl_polymarket_watchlist.market_acquisition.service import MarketDiscoveryService
+
+    return MarketDiscoveryService(source=build_source(source_name))
+
+
+def build_orderbook_service(*, batch_size: int) -> OrderbookCollectionService:
+    from vl_polymarket_watchlist.orderbooks.service import OrderbookCollectionService
+
+    return OrderbookCollectionService(batch_size=batch_size)
 
 
 def init_db() -> None:

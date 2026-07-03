@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from vl_polymarket_watchlist.market_acquisition.strategies import (
-    LeaderboardCurrentPositionsStrategy,
+    WhaleDiscoverySource,
     select_intersection_wallets,
 )
 
@@ -56,13 +56,14 @@ def test_select_intersection_wallets_keeps_only_pnl_and_volume_wallets() -> None
     assert wallets == [WALLET_TWO]
 
 
-def test_leaderboard_current_positions_collects_only_intersection_wallets() -> None:
+def test_whale_discovery_collects_only_intersection_wallet_observations() -> None:
     client = FakePolymarketClient()
-    strategy = LeaderboardCurrentPositionsStrategy(wallet_count=10)
+    source = WhaleDiscoverySource(wallet_count=10)
 
-    result = asyncio.run(strategy.run(client=client, generated_at=NOW))
+    result = asyncio.run(source.run(client=client, generated_at=NOW))
 
     assert client.position_wallets == [WALLET_TWO]
-    assert result.checked_market_count == 1
-    assert result.markets[0].token_id == "token-yes"
-    assert result.markets[0].opposite_token_id == "token-no"
+    assert result.checked_count == 1
+    assert result.observed_count == 1
+    assert result.observations[0].condition.condition_id == "condition-1"
+    assert result.observations[0].token.token_id == "token-yes"

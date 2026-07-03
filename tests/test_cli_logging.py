@@ -24,33 +24,33 @@ def reset_logging() -> None:
     get_settings.cache_clear()
 
 
-def test_run_markets_logs_started_and_completed_events(
+def test_run_discovery_logs_started_and_completed_events(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     get_settings.cache_clear()
 
-    class FakeMarketService:
+    class FakeDiscoveryService:
         async def run(self) -> SimpleNamespace:
             return SimpleNamespace(
                 run_id="run-1",
-                strategy_name="leaderboard_current_positions",
-                checked_market_count=3,
-                stored_market_count=2,
+                source="whale_discovery",
+                checked_count=3,
+                observed_count=2,
                 errors=[],
             )
 
     monkeypatch.setattr(
         cli,
-        "build_market_service",
-        lambda *, strategy_name: FakeMarketService(),
+        "build_discovery_service",
+        lambda *, source_name: FakeDiscoveryService(),
     )
 
-    exit_code = cli.main(["run", "markets"])
+    exit_code = cli.main(["run", "discovery"])
 
     assert exit_code == 0
     stdout = capsys.readouterr().out
-    assert "Markets completed: run_id=run-1" in stdout
+    assert "Discovery completed: run_id=run-1" in stdout
 
     payloads = _read_log_payloads(stdout)
     assert [payload["event"] for payload in payloads] == [
@@ -58,32 +58,32 @@ def test_run_markets_logs_started_and_completed_events(
         "service.completed",
     ]
     assert payloads[1]["context"] == {
-        "service": "markets",
+        "service": "discovery",
         "run_id": "run-1",
-        "strategy": "leaderboard_current_positions",
+        "source": "whale_discovery",
         "checked": 3,
-        "stored": 2,
+        "observed": 2,
         "errors": 0,
     }
 
 
-def test_run_markets_logs_failed_event_once(
+def test_run_discovery_logs_failed_event_once(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     get_settings.cache_clear()
 
-    class FailingMarketService:
+    class FailingDiscoveryService:
         async def run(self) -> None:
             raise RuntimeError("boom")
 
     monkeypatch.setattr(
         cli,
-        "build_market_service",
-        lambda *, strategy_name: FailingMarketService(),
+        "build_discovery_service",
+        lambda *, source_name: FailingDiscoveryService(),
     )
 
-    exit_code = cli.main(["run", "markets"])
+    exit_code = cli.main(["run", "discovery"])
 
     assert exit_code == 1
     payloads = _read_log_payloads(capsys.readouterr().out)
@@ -93,7 +93,7 @@ def test_run_markets_logs_failed_event_once(
     ]
     assert payloads[1]["levelname"] == "ERROR"
     assert payloads[1]["context"]["command"] == "run"
-    assert payloads[1]["context"]["service"] == "markets"
+    assert payloads[1]["context"]["service"] == "discovery"
     assert "RuntimeError: boom" in payloads[1]["exc_info"]
 
 
@@ -105,6 +105,9 @@ def test_removed_services_are_not_cli_choices() -> None:
 
     with pytest.raises(SystemExit):
         parser.parse_args(["run", "trades"])
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(["run", "markets"])
 
     with pytest.raises(SystemExit):
         parser.parse_args(["api"])

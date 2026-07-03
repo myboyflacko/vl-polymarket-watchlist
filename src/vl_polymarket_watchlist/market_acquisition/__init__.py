@@ -1,19 +1,23 @@
 from vl_polymarket_watchlist.market_acquisition.domain import (
     CollectedMarkets,
-    CollectorRunResult,
-    Market,
+    ConditionPayload,
+    DiscoveryRunResult,
     MarketCollectionError,
+    MarketObservation,
+    TokenPayload,
 )
-from vl_polymarket_watchlist.market_acquisition.service import MarketCollectorService
+from vl_polymarket_watchlist.market_acquisition.service import MarketDiscoveryService
 from vl_polymarket_watchlist.market_acquisition.strategies import (
-    LeaderboardCurrentPositionsStrategy,
+    WhaleDiscoverySource,
 )
 
 __all__ = [
     "CollectedMarkets",
-    "CollectorRunResult",
-    "LeaderboardCurrentPositionsStrategy",
-    "Market",
+    "ConditionPayload",
+    "DiscoveryRunResult",
     "MarketCollectionError",
-    "MarketCollectorService",
+    "MarketDiscoveryService",
+    "MarketObservation",
+    "TokenPayload",
+    "WhaleDiscoverySource",
 ]

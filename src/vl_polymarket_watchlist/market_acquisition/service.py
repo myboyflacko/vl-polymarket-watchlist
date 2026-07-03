@@ -4,50 +4,57 @@ from datetime import UTC, datetime
 
 from vl_polymarket_watchlist.core.time import ensure_utc
 from vl_polymarket_watchlist.market_acquisition.domain import (
-    CollectorRunResult,
-    MarketCollectorStrategy,
+    DiscoveryRunResult,
+    MarketDiscoverySource,
 )
-from vl_polymarket_watchlist.market_acquisition.repository import persist_collector_run
-from vl_polymarket_watchlist.market_acquisition.strategies import (
-    LeaderboardCurrentPositionsStrategy,
-)
+from vl_polymarket_watchlist.market_acquisition.repository import persist_discovery_run
+from vl_polymarket_watchlist.market_acquisition.strategies import WhaleDiscoverySource
 from vl_polymarket_watchlist.polymarket.client import get_polymarket_data_client
 
 
-class MarketCollectorService:
+class MarketDiscoveryService:
     def __init__(
         self,
         *,
-        strategy: MarketCollectorStrategy | None = None,
+        source: MarketDiscoverySource | None = None,
     ) -> None:
-        self.strategy = strategy or LeaderboardCurrentPositionsStrategy()
+        self.source = source or WhaleDiscoverySource()
 
-    async def run(self, *, now: datetime | None = None) -> CollectorRunResult:
-        generated_at = ensure_utc(now or datetime.now(UTC))
-        run_id = _build_run_id(generated_at)
-        collected = await self.strategy.run(
+    async def run(self, *, now: datetime | None = None) -> DiscoveryRunResult:
+        started_at = ensure_utc(now or datetime.now(UTC))
+        run_id = _build_run_id(started_at, source=self.source.source)
+        collected = await self.source.run(
             client=get_polymarket_data_client(),
-            generated_at=generated_at,
+            generated_at=started_at,
         )
-        stored_market_count = persist_collector_run(
+        finished_at = datetime.now(UTC)
+        status = "completed" if not collected.errors else "partial"
+        persist_discovery_run(
             run_id=run_id,
-            strategy_name=self.strategy.name,
-            strategy_params=self.strategy.params(),
-            generated_at=generated_at,
-            checked_market_count=collected.checked_market_count,
-            markets=collected.markets,
+            source=self.source.source,
+            source_version=self.source.source_version,
+            status=status,
+            started_at=started_at,
+            finished_at=finished_at,
+            generated_at=collected.generated_at,
+            config_json=self.source.config(),
+            checked_count=collected.checked_count,
+            observations=collected.observations,
+            error_count=len(collected.errors),
+            error_message="; ".join(error.message for error in collected.errors) or None,
         )
-        return CollectorRunResult(
+        return DiscoveryRunResult(
             run_id=run_id,
-            strategy_name=self.strategy.name,
-            strategy_params=self.strategy.params(),
-            markets=collected.markets,
+            source=self.source.source,
+            source_version=self.source.source_version,
+            status=status,
+            observations=collected.observations,
             errors=collected.errors,
-            checked_market_count=collected.checked_market_count,
-            stored_market_count=stored_market_count,
-            generated_at=generated_at,
+            checked_count=collected.checked_count,
+            observed_count=collected.observed_count,
+            generated_at=collected.generated_at,
         )
 
 
-def _build_run_id(generated_at: datetime) -> str:
-    return f"{generated_at.strftime('%Y%m%dT%H%M%S%fZ')}-markets"
+def _build_run_id(generated_at: datetime, *, source: str) -> str:
+    return f"{generated_at.strftime('%Y%m%dT%H%M%S%fZ')}-{source}"

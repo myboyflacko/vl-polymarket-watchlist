@@ -8,7 +8,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from vl_polymarket_watchlist.market_acquisition.domain import CollectedMarkets
-from vl_polymarket_watchlist.market_acquisition.helpers import collect_wallet_markets
+from vl_polymarket_watchlist.market_acquisition.helpers import (
+    collect_wallet_market_observations,
+)
 from vl_polymarket_watchlist.polymarket.client import PolymarketDataClient
 from vl_polymarket_watchlist.polymarket.params.leaderboard.leaderboard import (
     LeaderboardParams,
@@ -24,14 +26,15 @@ class LeaderboardEntry:
     row: dict[str, Any]
 
 
-class LeaderboardCurrentPositionsStrategy(BaseModel):
-    name: str = "leaderboard_current_positions"
+class WhaleDiscoverySource(BaseModel):
+    source: str = "whale_discovery"
+    source_version: str = "leaderboard_current_positions_v1"
     wallet_count: int = Field(default=25, ge=1, le=1000)
     leaderboard_category: str = "OVERALL"
     leaderboard_time_period: str = "DAY"
     leaderboard_limit: int = Field(default=50, ge=1, le=50)
 
-    def params(self) -> dict[str, Any]:
+    def config(self) -> dict[str, Any]:
         return self.model_dump()
 
     async def run(
@@ -42,18 +45,23 @@ class LeaderboardCurrentPositionsStrategy(BaseModel):
     ) -> CollectedMarkets:
         pnl_entries, volume_entries = await fetch_leaderboards(
             client=client,
-            strategy=self,
+            source=self,
         )
         wallets = select_intersection_wallets(
             pnl_entries=pnl_entries,
             volume_entries=volume_entries,
             wallet_count=self.wallet_count,
         )
-        markets, errors = await collect_wallet_markets(client=client, wallets=wallets)
+        observations, errors = await collect_wallet_market_observations(
+            client=client,
+            wallets=wallets,
+            source=self.source,
+            observed_at=generated_at,
+        )
         return CollectedMarkets(
-            markets=markets,
+            observations=observations,
             errors=errors,
-            checked_market_count=len(markets),
+            checked_count=len(wallets),
             generated_at=generated_at,
         )
 
@@ -61,30 +69,30 @@ class LeaderboardCurrentPositionsStrategy(BaseModel):
 async def fetch_leaderboards(
     *,
     client: PolymarketDataClient,
-    strategy: LeaderboardCurrentPositionsStrategy,
+    source: WhaleDiscoverySource,
 ) -> tuple[dict[str, dict[str, Any]], dict[str, dict[str, Any]]]:
     return await asyncio.gather(
-        fetch_leaderboard(client=client, strategy=strategy, order_by="PNL"),
-        fetch_leaderboard(client=client, strategy=strategy, order_by="VOL"),
+        fetch_leaderboard(client=client, source=source, order_by="PNL"),
+        fetch_leaderboard(client=client, source=source, order_by="VOL"),
     )
 
 
 async def fetch_leaderboard(
     *,
     client: PolymarketDataClient,
-    strategy: LeaderboardCurrentPositionsStrategy,
+    source: WhaleDiscoverySource,
     order_by: LeaderboardOrder,
 ) -> dict[str, dict[str, Any]]:
     entries: dict[str, dict[str, Any]] = {}
     offset = 0
     max_offset = 1000
 
-    while len(entries) < strategy.wallet_count and offset <= max_offset:
+    while len(entries) < source.wallet_count and offset <= max_offset:
         params = LeaderboardParams(
-            category=strategy.leaderboard_category,
-            timePeriod=strategy.leaderboard_time_period,
+            category=source.leaderboard_category,
+            timePeriod=source.leaderboard_time_period,
             orderBy=order_by,
-            limit=strategy.leaderboard_limit,
+            limit=source.leaderboard_limit,
             offset=offset,
         )
         page = await client.get_leaderboard(params)
@@ -97,7 +105,7 @@ async def fetch_leaderboard(
                 continue
 
             entries.setdefault(entry.proxy_wallet, entry.row)
-            if len(entries) >= strategy.wallet_count:
+            if len(entries) >= source.wallet_count:
                 break
 
         if len(page) < params.limit:
@@ -129,8 +137,8 @@ def parse_leaderboard_entry(row: Any) -> LeaderboardEntry | None:
     return LeaderboardEntry(proxy_wallet=proxy_wallet, row=row)
 
 
-def build_strategy(name: str) -> LeaderboardCurrentPositionsStrategy:
-    if name == "leaderboard_current_positions":
-        return LeaderboardCurrentPositionsStrategy()
+def build_source(name: str) -> WhaleDiscoverySource:
+    if name in {"whale_discovery", "leaderboard_current_positions"}:
+        return WhaleDiscoverySource()
 
-    raise ValueError(f"Unknown market collector strategy: {name}")
+    raise ValueError(f"Unknown market discovery source: {name}")

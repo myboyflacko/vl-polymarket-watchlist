@@ -1,7 +1,16 @@
 # VL Polymarket Watchlist
 
-VL Polymarket Watchlist sammelt und speichert Polymarket-Market-Kandidaten fuer
-Research- und Backtesting-Pipelines.
+VL Polymarket Watchlist baut ein reproduzierbares Polymarket-Collection-Universum:
+
+```text
+Discovery Sources
+-> market_discovery_runs
+-> market_discovery_observations
+-> polymarket_conditions / polymarket_tokens
+-> polymarket_watchlist_v
+-> orderbook_collection_runs / orderbook_collection_items
+-> orderbook_snapshots
+```
 
 Das Projekt platziert keine Live-Trades, keine echten Orders und bewegt keine
 Funds.
@@ -10,33 +19,20 @@ Funds.
 
 Gespeichert werden:
 
-- Polymarket Markets
-- generische Collector-Runs
-- Zuordnung, aus welchem Run ein Market kam
+- canonical Conditions und Outcome-Tokens
+- Discovery-Runs und append-only Market-Observations
+- manuelle Watchlist-Inclusions und Exclusions
+- Watchlist-Snapshots pro Orderbook-Collection-Run
+- Orderbook-Snapshots mit Validierungsstatus
 
-Nicht mehr gespeichert werden:
+Nicht gespeichert werden:
 
-- Whales
-- Positions
-- Trades
-- Python-read-only Views
+- dauerhafte Whale-Position-Full-Snapshots
+- Trade-Persistenz
 - HTTP API Endpunkte
 
-Orderbooks sind bewusst noch nicht an Collector-Runs gekoppelt. Die spaetere
-Quelle ist eine Watchlist-View ausserhalb dieses Scopes.
-
-## Market Collection
-
-Die erste Collector-Strategy ist:
-
-```text
-leaderboard_current_positions
-```
-
-Sie nutzt nur Wallets, die sowohl im PnL-Leaderboard als auch im
-Volume-Leaderboard vertreten sind. Fuer diese Wallets werden Current Positions
-nur ephemeral geladen. Persistiert werden daraus ausschliesslich Markets und die
-Run-Zuordnung.
+Whales sind nur eine Discovery-Quelle. Whale Discovery darf Current Positions
+temporär nutzen, persistiert daraus aber nur Market-Observations.
 
 ## CLI
 
@@ -52,16 +48,22 @@ Datenbank migrieren:
 vl-polymarket-watchlist init-db
 ```
 
-Market Collection einmal ausfuehren:
+Discovery einmal ausführen:
 
 ```bash
-vl-polymarket-watchlist run markets
+vl-polymarket-watchlist run discovery
 ```
 
-Explizite Strategy:
+Orderbooks aus der aktiven Watchlist sammeln:
 
 ```bash
-vl-polymarket-watchlist run markets --strategy leaderboard_current_positions
+vl-polymarket-watchlist run orderbooks
+```
+
+Beides nacheinander:
+
+```bash
+vl-polymarket-watchlist run all
 ```
 
 Scheduler starten:
@@ -70,17 +72,51 @@ Scheduler starten:
 vl-polymarket-watchlist schedule
 ```
 
-Default-Intervall:
+Default-Intervalle:
 
 | Collector | Intervall |
 | --- | ---: |
-| markets | 900s |
+| discovery | 900s |
+| orderbooks | 300s |
 
-Anpassung:
+## Datenmodell
 
-```bash
-vl-polymarket-watchlist schedule --markets-interval 900
+| Tabelle/View | Zweck |
+| --- | --- |
+| `polymarket_conditions` | Eine Zeile pro `condition_id` |
+| `polymarket_tokens` | Eine Zeile pro handelbarem Outcome-Token |
+| `market_discovery_runs` | Generische Discovery-Run-Metadaten |
+| `market_discovery_observations` | Append-only Strategy-/Source-Beobachtungen |
+| `manual_watchlist_items` | Manuell gepinnte oder temporär beobachtete Markets |
+| `market_exclusions` | Temporäre oder dauerhafte Exclusions |
+| `polymarket_watchlist_v` | Token-level Collection Universe |
+| `orderbook_collection_runs` | Audit-Run der Orderbook Collection |
+| `orderbook_collection_items` | Snapshot der Watchlist vor dem Fetch |
+| `orderbook_snapshots` | Parsed CLOB Orderbooks und Validierung |
+
+Orderbook Collection liest ausschließlich:
+
+```sql
+SELECT token_id
+FROM polymarket_watchlist_v
+WHERE collect_orderbook = true;
 ```
+
+Vor jedem API-Fetch wird diese View in `orderbook_collection_items` gesnapshottet.
+Backtests rekonstruieren dadurch, welcher Token wann und warum gesammelt wurde.
+
+## Orderbook Parser
+
+Polymarket CLOB liefert Bids low-to-high und Asks high-to-low. Der Parser nutzt
+deshalb:
+
+```text
+best_bid = max(bids.price)
+best_ask = min(asks.price)
+```
+
+Ungültige Books werden mit `valid_orderbook = false` und `invalid_reason`
+persistiert. Backtests sollen nur `valid_orderbook = true` verwenden.
 
 ## Konfiguration
 
@@ -105,19 +141,9 @@ POLYMARKET_DATA_API_RATE_LIMIT_BACKOFF_SECONDS
 POLYMARKET_DATA_API_REQUESTS_PER_SECOND
 POLYMARKET_POSITIONS_REQUESTS_PER_SECOND
 POLYMARKET_LEADERBOARD_REQUESTS_PER_SECOND
+POLYMARKET_CLOB_API_BASE_URL
+POLYMARKET_ORDERBOOK_REQUESTS_PER_SECOND
 ```
-
-## Datenmodell
-
-| Tabelle | Zweck |
-| --- | --- |
-| `polymarket_markets` | Market-/Token-Identity |
-| `polymarket_collector_runs` | Generische Collector-Run-Metadaten |
-| `polymarket_collector_run_markets` | Zuordnung von Markets zu Collector-Runs |
-
-`polymarket_markets` bleibt am bisherigen Market-Shape orientiert: eine Zeile
-pro `token_id` mit `condition_id`, `outcome`, `opposite_token_id` und
-`opposite_outcome`.
 
 ## Entwicklung
 
@@ -133,19 +159,13 @@ Ruff:
 ruff check .
 ```
 
-Integrationstests gegen PostgreSQL brauchen eine Test-Datenbank. Der Datenbankname
-muss `test` enthalten:
-
-```bash
-POLYMARKET_STORAGE_TEST_DATABASE_URL=postgresql+psycopg://user:password@localhost:5432/vl_polymarket_watchlist_test pytest
-```
-
-## Projektstruktur
+Projektstruktur:
 
 ```text
 src/vl_polymarket_watchlist/cli.py                 CLI und Scheduler
 src/vl_polymarket_watchlist/core/db/               SQLAlchemy, Alembic
 src/vl_polymarket_watchlist/polymarket/            Polymarket API Client und Params
-src/vl_polymarket_watchlist/market_acquisition/    Market Collector Strategies
-tests/                                        Unit- und Integrationstests
+src/vl_polymarket_watchlist/market_acquisition/    Discovery Sources und Registry
+src/vl_polymarket_watchlist/orderbooks/            Collection, Parser, Persistence
+tests/                                             Unit- und Integrationstests
 ```
