@@ -105,6 +105,16 @@ def test_run_orderbooks_logs_skipped_event(
 
     class SkippedOrderbookService:
         async def run(self) -> SimpleNamespace:
+            logging.getLogger("vl_polymarket_watchlist.orderbooks.service").info(
+                "Service skipped",
+                extra={
+                    "event": "service.skipped",
+                    "context": {
+                        "service": "orderbooks",
+                        "reason": "no_completed_discovery_run",
+                    },
+                },
+            )
             return SimpleNamespace(
                 run_id=None,
                 status="skipped",

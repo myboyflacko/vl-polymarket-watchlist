@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from typing import Literal
 
@@ -20,6 +21,9 @@ from vl_polymarket_watchlist.polymarket.params.orderbook import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
 class OrderbookCollectionService:
     def __init__(
         self,
@@ -37,6 +41,16 @@ class OrderbookCollectionService:
             max_age_hours=self.discovery_max_age_hours,
         )
         if not readiness.ready:
+            logger.info(
+                "Service skipped",
+                extra={
+                    "event": "service.skipped",
+                    "context": {
+                        "service": "orderbooks",
+                        "reason": readiness.reason,
+                    },
+                },
+            )
             return OrderBookCollectionResult(
                 run_id=None,
                 status="skipped",
@@ -69,6 +83,20 @@ class OrderbookCollectionService:
                     )
                 )
             except Exception as exc:
+                token_ids = [item.token_id for item in batch]
+                logger.warning(
+                    "Orderbook load failed",
+                    exc_info=True,
+                    extra={
+                        "event": "orderbook.load_failed",
+                        "context": {
+                            "run_id": run_id,
+                            "token_ids": token_ids,
+                            "reason": "batch_request_failed",
+                            "error": str(exc),
+                        },
+                    },
+                )
                 errors.append(str(exc))
                 continue
 
@@ -80,6 +108,17 @@ class OrderbookCollectionService:
             for item in batch:
                 payload = payload_by_token.get(item.token_id)
                 if payload is None:
+                    logger.warning(
+                        "Orderbook load failed",
+                        extra={
+                            "event": "orderbook.load_failed",
+                            "context": {
+                                "run_id": run_id,
+                                "token_id": item.token_id,
+                                "reason": "missing_payload",
+                            },
+                        },
+                    )
                     errors.append(f"missing orderbook payload for {item.token_id}")
                     continue
 

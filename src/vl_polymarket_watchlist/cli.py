@@ -247,16 +247,6 @@ async def run_orderbooks(*, batch_size: int) -> str:
     service = build_orderbook_service(batch_size=batch_size)
     result = await service.run()
     if result.status == "skipped":
-        logger.info(
-            "Service skipped",
-            extra={
-                "event": "service.skipped",
-                "context": {
-                    "service": "orderbooks",
-                    "reason": result.skip_reason,
-                },
-            },
-        )
         print(f"Orderbooks skipped: reason={result.skip_reason}")
         return ""
 
