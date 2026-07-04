@@ -27,7 +27,7 @@ def test_configure_logging_writes_jsonl_to_stdout(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    monkeypatch.setenv("POLYMARKET_STORAGE_LOG_LEVEL", "INFO")
+    monkeypatch.setenv("POLYMARKET_WATCHLIST_LOG_LEVEL", "DEBUG")
     get_settings.cache_clear()
 
     configure_logging()
@@ -41,6 +41,7 @@ def test_configure_logging_writes_jsonl_to_stdout(
     ]
 
     assert len(handlers) == 1
+    assert root_logger.level == logging.DEBUG
 
     logging.getLogger("tests.logging").info(
         "Test event",

@@ -105,14 +105,14 @@ class PolymarketClobApiClientSettings(BaseSettings):
 
 
 class DatabaseSettings(BaseSettings):
-    name: str = Field(default="vl_polymarket_watchlist", alias="POLYMARKET_STORAGE_POSTGRES_DB")
-    user: str = Field(default="vl_polymarket_watchlist", alias="POLYMARKET_STORAGE_POSTGRES_USER")
+    name: str = Field(default="vl_polymarket_watchlist", alias="POLYMARKET_WATCHLIST_POSTGRES_DB")
+    user: str = Field(default="vl_polymarket_watchlist", alias="POLYMARKET_WATCHLIST_POSTGRES_USER")
     password: str = Field(
         default="vl_polymarket_watchlist",
-        alias="POLYMARKET_STORAGE_POSTGRES_PASSWORD",
+        alias="POLYMARKET_WATCHLIST_POSTGRES_PASSWORD",
     )
-    host: str = Field(default="postgres", alias="POLYMARKET_STORAGE_POSTGRES_HOST")
-    port: int = Field(default=5432, ge=1, le=65535, alias="POLYMARKET_STORAGE_POSTGRES_PORT")
+    host: str = Field(default="postgres", alias="POLYMARKET_WATCHLIST_POSTGRES_HOST")
+    port: int = Field(default=5432, ge=1, le=65535, alias="POLYMARKET_WATCHLIST_POSTGRES_PORT")
 
     @computed_field
     @property
@@ -135,7 +135,7 @@ class DatabaseSettings(BaseSettings):
 
 
 class LoggingSettings(BaseSettings):
-    level: str = Field(default="INFO", alias="POLYMARKET_STORAGE_LOG_LEVEL")
+    level: str = Field(default="INFO", alias="POLYMARKET_WATCHLIST_LOG_LEVEL")
 
     model_config = SettingsConfigDict(
         env_file=ENV_FILE,
