@@ -7,7 +7,7 @@ from vl_polymarket_watchlist.orderbooks.parser import parse_orderbook_payload
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
 
 
-def test_orderbook_parser_uses_max_bid_and_min_ask() -> None:
+def test_orderbook_parser_uses_best_prices_for_top_depths() -> None:
     result = parse_orderbook_payload(
         condition_id="condition-1",
         token_id="token-1",
@@ -34,8 +34,10 @@ def test_orderbook_parser_uses_max_bid_and_min_ask() -> None:
     assert result.best_ask == Decimal("0.50")
     assert result.spread == Decimal("0.05")
     assert result.midpoint == Decimal("0.475")
-    assert result.bid_depth_top_1 == Decimal("100")
-    assert result.ask_depth_top_1 == Decimal("20")
+    assert result.bid_depth_top_1 == Decimal("50")
+    assert result.ask_depth_top_1 == Decimal("30")
+    assert result.bid_depth_top_3 == Decimal("150")
+    assert result.ask_depth_top_3 == Decimal("50")
     assert result.valid_orderbook is True
 
 

@@ -19,6 +19,8 @@ def parse_orderbook_payload(
 ) -> ParsedOrderBook:
     bids = _levels(payload.get("bids"))
     asks = _levels(payload.get("asks"))
+    top_bids = _top_bid_levels(bids)
+    top_asks = _top_ask_levels(asks)
     best_bid = max((level["price"] for level in bids), default=None)
     best_ask = min((level["price"] for level in asks), default=None)
     spread = (
@@ -49,12 +51,12 @@ def parse_orderbook_payload(
         midpoint=midpoint,
         spread=spread,
         last_trade_price=_decimal(payload.get("last_trade_price")),
-        bid_depth_top_1=_depth(bids, 1),
-        ask_depth_top_1=_depth(asks, 1),
-        bid_depth_top_3=_depth(bids, 3),
-        ask_depth_top_3=_depth(asks, 3),
-        bid_depth_top_5=_depth(bids, 5),
-        ask_depth_top_5=_depth(asks, 5),
+        bid_depth_top_1=_depth(top_bids, 1),
+        ask_depth_top_1=_depth(top_asks, 1),
+        bid_depth_top_3=_depth(top_bids, 3),
+        ask_depth_top_3=_depth(top_asks, 3),
+        bid_depth_top_5=_depth(top_bids, 5),
+        ask_depth_top_5=_depth(top_asks, 5),
         bid_levels_count=len(bids),
         ask_levels_count=len(asks),
         min_order_size=_decimal(payload.get("min_order_size")),
@@ -86,6 +88,14 @@ def _levels(value: Any) -> list[dict[str, Decimal]]:
 
         levels.append({"price": price, "size": size})
     return levels
+
+
+def _top_bid_levels(levels: list[dict[str, Decimal]]) -> list[dict[str, Decimal]]:
+    return sorted(levels, key=lambda level: level["price"], reverse=True)
+
+
+def _top_ask_levels(levels: list[dict[str, Decimal]]) -> list[dict[str, Decimal]]:
+    return sorted(levels, key=lambda level: level["price"])
 
 
 def _invalid_reason(
